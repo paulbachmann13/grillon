@@ -13,17 +13,29 @@ import type { FUniver } from '@univerjs/presets';
 const NUMBER = 2;
 const BOOLEAN = 3;
 
-/** Format Standard d'Excel : au plus 15 chiffres significatifs, notation scientifique au-delà de 1E+11. */
+/** Longueur maximale du format Standard d'Excel (colonne de largeur par défaut). */
+const GENERAL_MAX_CHARS = 11;
+
+/**
+ * Format Standard d'Excel, à la française : au plus 11 caractères (signe et virgule compris),
+ * décimales arrondies en conséquence ; notation scientifique pour les très grands/petits nombres.
+ */
 export function formatGeneralFr(n: number): string {
   if (!Number.isFinite(n)) return String(n);
   const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
   if (abs !== 0 && (abs >= 1e11 || abs < 1e-9)) {
     const [mant, exp] = n.toExponential(5).split('e');
     const m = String(Number(mant)).replace('.', ',');
     const e = Number(exp);
     return `${m}E${e < 0 ? '-' : '+'}${String(Math.abs(e)).padStart(2, '0')}`;
   }
-  return String(Number(n.toPrecision(15))).replace('.', ',');
+  // Supprime le bruit des flottants (0,1 + 0,2) avant d'arrondir à la largeur.
+  const clean = Number(abs.toPrecision(15));
+  const intDigits = Math.floor(clean) === 0 ? 1 : String(Math.floor(clean)).length;
+  const decimals = Math.max(0, GENERAL_MAX_CHARS - sign.length - intDigits - 1);
+  const text = clean.toFixed(Math.min(decimals, 20)).replace(/\.?0+$/, '');
+  return sign + text.replace('.', ',');
 }
 
 function isDefaultPattern(pattern: string | undefined): boolean {
