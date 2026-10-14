@@ -387,3 +387,18 @@ body,
   font: inherit;
   cursor: pointer;
 }
+
+.g-pivot-field {
+  display: grid;
+  grid-template-columns: 1fr 120px 110px;
+  gap: 6px;
+  align-items: center;
+}
+
+.g-pivot-filter {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding-left: 8px;
+}

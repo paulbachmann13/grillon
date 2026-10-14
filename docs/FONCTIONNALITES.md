@@ -1,6 +1,6 @@
 # Fonctionnalités et limites connues
 
-État à la fin de la **phase 3** (onglet Données).
+État à la fin de la **phase 4** (formules et analyse).
 
 ## Fonctionnalités
 
@@ -30,6 +30,14 @@
 | Plan | **Grouper / Dissocier** lignes et colonnes, **Masquer / Afficher le détail**, **Sous-total** |
 | Tableaux | **Mettre sous forme de tableau**, ligne d'en-tête, **ligne de totaux**, références structurées (`Ventes[Prix]`), filtres de tableau |
 
+### Formules et analyse
+- Barre de formule avec **autocomplétion**, **aide sur les arguments**, **coloration des références**, **F4** (références absolues), insertion de fonction par catégorie (Univer).
+- **Gestionnaire de noms**, **Repérer les antécédents / les dépendants**.
+- ≈ 520 fonctions Excel (noms anglais), matrices dynamiques, LAMBDA/LET ; liste des fonctions absentes : [FONCTIONS.md](FONCTIONS.md).
+- **Graphiques** : histogramme, barres, courbes, aires (groupés/empilés), secteurs, nuage de points, combiné, axe secondaire ; titre, légende, titres d'axes, couleurs ; mise à jour en direct.
+- **Tableau croisé dynamique** (lignes, colonnes, valeurs somme/nombre/moyenne/min/max, filtres, totaux, actualisation).
+- **Valeur cible**.
+
 ### Fichiers
 - **Import/export .xlsx** : valeurs, formules (y compris partagées), résultats en cache, types
   (nombre, texte, date, booléen, erreurs), texte enrichi, largeurs/hauteurs, lignes/colonnes masquées,
@@ -37,7 +45,8 @@
   fond, couleurs de thème, bordures, alignements, retour à la ligne, rotation, retrait), formats de
   nombre, plusieurs feuilles, feuilles masquées, couleur d'onglet, quadrillage masqué, volets figés,
   noms définis, liens, **mises en forme conditionnelles**, **validations de données**, **filtres
-  automatiques avec critères**, **tableaux structurés** (style, ligne de totaux), **plan** (groupes).
+  automatiques avec critères**, **tableaux structurés** (style, ligne de totaux), **plan** (groupes),
+  **graphiques**.
 - **CSV** : ouverture (séparateur et décimales détectés), import dans une nouvelle feuille,
   export de la feuille active au format Excel français.
 - **Ouvrir/enregistrer** : File System Access API (Chrome/Edge : Ctrl+S réécrit le fichier),
@@ -56,10 +65,14 @@
 
 | Limite | Contournement / plan |
 |---|---|
-| Graphiques, commentaires et images ne sont pas encore lus/écrits dans le .xlsx (images et notes fonctionnent dans l'application). | Phases 4 et 5. |
+| Commentaires/notes et images ne sont pas encore lus/écrits dans le .xlsx (ils fonctionnent dans l'application). | Phase 5. |
+| Graphiques : pas de graphiques 3D, radar, boursiers, en cascade, entonnoir, cartes ; un graphique Excel de ce type n'est pas importé. Étiquettes de données, courbes de tendance et mises en forme fines (dégradés, ombres) ne sont pas conservées. Les secteurs reprennent la palette par défaut. | Alternative : ECharts couvre l'essentiel ; types supplémentaires possibles plus tard. |
+| Tableau croisé dynamique : calculé par Grillon et écrit en valeurs. Dans le .xlsx il devient un tableau de valeurs (pas un TCD Excel) ; sa définition est conservée dans le classeur Grillon (sauvegarde automatique) mais pas dans le .xlsx. Pas de glisser-déposer des champs, pas de groupement de dates. Les TCD des fichiers Excel sont importés en valeurs. | Implémentation maison, Univer Pro étant payant. |
+| Sparklines et « Analyse rapide » non disponibles. | Optionnels ; à envisager plus tard. |
+| Audit des formules : liste des antécédents/dépendants, sans flèches dessinées sur la grille. | — |
 | Mise en forme conditionnelle : les règles « doublons », « commence par », « se termine par », « ne contient pas » sont écrites sous forme de règle formule équivalente (relues correctement par Grillon). | Effet identique dans Excel. |
 | Mise en forme conditionnelle : un seuil de barre de données ou de jeu d'icônes défini par une formule est remplacé par sa valeur numérique. | — |
-| Les noms définis par une formule (et non une plage) ne sont pas importés. | Limite d'ExcelJS ; à traiter en phase 4. |
+| Les noms définis par une formule (et non une plage) ne sont pas importés. | Limite d'ExcelJS. |
 | Motifs de remplissage (hachures) et dégradés : remplacés par une couleur unie. | Univer n'affiche que des fonds unis. |
 | Les formats de date proposés dans la liste rapide sont au format ISO (2026-10-14) ; le format français jj/mm/aaaa est dans « Formats ». Les dates des fichiers Excel gardent leur format. | Phase 5 (liste de formats francisée). |
 | Police par défaut Calibri : si elle n'est pas installée (iPad), le navigateur la remplace. | Affichage légèrement différent, contenu identique. |

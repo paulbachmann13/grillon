@@ -2,6 +2,19 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [0.4.0] — Phase 4 : formules et analyse — 2026-10-15
+
+### Ajouté
+- **Graphiques** (ECharts, Apache-2.0) : histogramme, barres, courbes, aires (groupés ou empilés), secteurs, nuage de points, **graphique combiné** et **axe secondaire** ; insertion depuis la sélection (Insérer → Graphique), déplacement et redimensionnement à la souris, mise à jour en direct, boîte « Modifier le graphique » (type, titre, légende, titres d'axes, couleur et type de chaque série, axe secondaire, suppression).
+- Graphiques **enregistrés dans le .xlsx** (DrawingML : s'ouvrent dans Excel et LibreOffice) et **relus** depuis les fichiers Excel.
+- **Tableau croisé dynamique** simple : lignes, colonnes, valeurs (somme, nombre, moyenne, min, max), filtres, totaux et total général, dans une nouvelle feuille ; Actualiser et Modifier (Données → Tableau croisé dynamique).
+- **Valeur cible** (Données).
+- Formules : **Gestionnaire de noms**, **Repérer les antécédents / les dépendants** (liste cliquable).
+- Fonctions **ISO.CEILING** et **TRIMRANGE** ; documentation de la couverture des fonctions (docs/FONCTIONS.md).
+
+### Corrigé
+- Serveur de développement sous Windows : le worker de calcul n'était pas trouvé dans certains dossiers redirigés.
+
 ## [0.3.0] — Phase 3 : onglet Données — 2026-10-14
 
 ### Ajouté

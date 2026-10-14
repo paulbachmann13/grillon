@@ -28,7 +28,7 @@ Une fois installée, l'application fonctionne sans connexion.
 | Ajouter un CSV comme nouvelle feuille | Fichier → Importer un CSV… |
 | Exporter la feuille en CSV | Fichier → Exporter la feuille en CSV (séparateur « ; », virgule décimale, UTF-8 avec BOM, comme Excel en français) |
 
-Voir [docs/FONCTIONNALITES.md](docs/FONCTIONNALITES.md) pour la liste des fonctionnalités et des limites connues.
+Voir [docs/FONCTIONNALITES.md](docs/FONCTIONNALITES.md) pour la liste des fonctionnalités et des limites connues, et [docs/FONCTIONS.md](docs/FONCTIONS.md) pour les fonctions de formule.
 
 ## Développement
 
