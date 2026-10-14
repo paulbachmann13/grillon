@@ -2,6 +2,19 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [0.3.0] — Phase 3 : onglet Données — 2026-10-14
+
+### Ajouté
+- Données : **Supprimer les doublons** (choix des colonnes, en-têtes, insensible à la casse), **Convertir** (texte en colonnes avec séparateurs, guillemets, nombres et dates reconnus), **Remplissage instantané** (bouton et Ctrl+E), **Filtre avancé** (zone de critères ET/OU, jokers, sur place ou copie, sans doublon) et « Afficher tout ».
+- Données : **Plan** (grouper/dissocier lignes et colonnes, masquer/afficher le détail) et **Sous-total** (à chaque changement de…, fonctions Somme/Nombre/Moyenne/Max/Min/Produit, total général, niveaux de plan).
+- **Tableaux structurés** (plugin Univer open source) : « Mettre sous forme de tableau », **ligne de totaux** (SUBTOTAL), références structurées dans les formules (`Ventes[Prix]`).
+- Données : « À partir d'un CSV ».
+- Import/export .xlsx : **validations de données** (liste, nombre entier/décimal, date, longueur de texte, formule, messages d'aide et d'erreur, listes pointant vers une plage, format x14 d'Excel), **filtres automatiques avec leurs critères** (lignes filtrées masquées comme dans Excel), **tableaux** (nom, style, ligne de totaux), **niveaux de plan**, option « Interrompre si vrai » des MFC.
+- Une couche de lecture/écriture XML (JSZip + fast-xml-parser, MIT) complète ExcelJS ; les validations sur des colonnes entières ne sont plus dépliées cellule par cellule.
+
+### Corrigé
+- Format Standard : au plus 11 caractères, comme Excel (10/3 → 3,333333333).
+
 ## [0.2.0] — Phase 2 : onglet Démarrer complet — 2026-10-14
 
 ### Ajouté
