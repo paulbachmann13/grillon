@@ -95,10 +95,14 @@ export function download(bytes: Uint8Array | string, name: string, mime: string)
   const a = document.createElement('a');
   a.href = url;
   a.download = name;
+  a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  // Retirer le lien (ou révoquer l'URL) trop tôt peut annuler le téléchargement dans certains navigateurs.
+  setTimeout(() => {
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, 30_000);
 }
 
 export const MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';

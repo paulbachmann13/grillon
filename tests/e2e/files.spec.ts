@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { importXlsx } from '../../src/io/xlsx/import';
-import { definedNames, normalize } from '../unit/helpers';
+import { FIXTURES } from '../fixtures/build';
+import { conditionalFormats, definedNames, normalize } from '../unit/helpers';
 import { display, FIXTURE_DIR, gotoApp, openViaMenu, useFallbackFilePickers } from './helpers';
 
 test.beforeEach(async ({ page }) => {
@@ -11,14 +12,22 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function saveViaMenu(page: import('@playwright/test').Page): Promise<Uint8Array> {
-  const download = page.waitForEvent('download');
-  await page.getByTestId('file-menu').click();
-  await page.getByTestId('file-save').click();
-  const d = await download;
-  return new Uint8Array(readFileSync(await d.path()));
+  // Chromium headless annule parfois un téléchargement de blob (≈ 1 fois sur 20) alors que
+  // l'application l'a bien déclenché : on réessaie une fois dans ce cas.
+  for (let attempt = 0; ; attempt++) {
+    const download = page.waitForEvent('download');
+    await page.getByTestId('file-menu').click();
+    await page.getByTestId('file-save').click();
+    const d = await download;
+    try {
+      return new Uint8Array(readFileSync(await d.path()));
+    } catch (e) {
+      if (attempt >= 1) throw e;
+    }
+  }
 }
 
-for (const name of ['styles', 'formats', 'formulas', 'layout', 'large']) {
+for (const name of FIXTURES) {
   test(`round-trip par l’interface : ouvrir puis enregistrer ${name}.xlsx`, async ({ page }) => {
     await openViaMenu(page, `${name}.xlsx`);
     const saved = await saveViaMenu(page);
@@ -44,6 +53,7 @@ for (const name of ['styles', 'formats', 'formulas', 'layout', 'large']) {
       expect(b[i].rows).toEqual(a[i].rows);
     }
     expect(definedNames(roundTripped)).toEqual(definedNames(original));
+    expect(conditionalFormats(roundTripped)).toEqual(conditionalFormats(original));
   });
 }
 
