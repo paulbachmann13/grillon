@@ -6,6 +6,7 @@ import { t } from '../i18n';
 import { openFile, saveAs, writeToHandle } from '../io/files';
 import type { IWorkbookData } from '../model/univer-types';
 import { installFrenchDisplay } from '../univer/french-display';
+import { installHomeRibbon } from '../univer/home-ribbon';
 import { LOCALE_FR } from '../model/univer-types';
 import { clearAutosave, loadAutosave, saveAutosave } from '../storage/autosave';
 
@@ -31,6 +32,7 @@ export class DocumentController {
   handle: FileSystemFileHandle | undefined;
   dirty = false;
   private loading = false;
+  private ribbonReady = false;
   private autosaveTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
@@ -62,6 +64,10 @@ export class DocumentController {
       if (current) this.api.disposeUnit(current.getId());
       this.api.createWorkbook({ locale: LOCALE_FR as IWorkbookData['locale'], ...data, name: fileName.replace(/\.[^.]+$/, '') });
       installFrenchDisplay(this.api);
+      if (!this.ribbonReady) {
+        installHomeRibbon(this.api);
+        this.ribbonReady = true;
+      }
       this.fileName = fileName;
       this.handle = handle;
       this.dirty = dirty;

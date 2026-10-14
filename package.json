@@ -1,7 +1,7 @@
 {
   "name": "grillon",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Grillon — tableur local gratuit, type Excel (PWA)",
   "license": "Apache-2.0",
   "type": "module",
@@ -15,6 +15,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@univerjs/icons": "^1.43.1",
     "@univerjs/preset-sheets-conditional-formatting": "^1.0.4",
     "@univerjs/preset-sheets-core": "^1.0.4",
     "@univerjs/preset-sheets-data-validation": "^1.0.4",
@@ -35,6 +36,7 @@
     "@playwright/test": "^1.64.1",
     "@types/node": "^26.6.5",
     "@types/papaparse": "^5.5.2",
+    "@types/react": "^18.3.31",
     "@vite-pwa/assets-generator": "^2.0.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
