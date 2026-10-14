@@ -314,3 +314,76 @@ body,
   font: inherit;
   cursor: pointer;
 }
+
+/* --- Graphiques --- */
+.g-chart {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  background: var(--grillon-bg);
+  border: 1px solid var(--grillon-border);
+  border-radius: 4px;
+}
+
+.g-chart-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.g-chart-edit {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--grillon-border);
+  border-radius: 4px;
+  background: var(--grillon-bg);
+  color: var(--grillon-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.g-chart:hover .g-chart-edit,
+.g-chart-edit:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .g-chart-edit {
+    opacity: 1;
+  }
+}
+
+.g-series-row {
+  display: grid;
+  grid-template-columns: 1fr 36px 1fr;
+  gap: 6px;
+  align-items: center;
+}
+
+.g-series-row .g-check {
+  grid-column: 1 / -1;
+}
+
+.g-series-row input[type='color'] {
+  width: 36px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--grillon-border);
+  border-radius: 6px;
+}
+
+.g-danger {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 1px solid var(--grillon-error);
+  border-radius: 6px;
+  background: none;
+  color: var(--grillon-error);
+  font: inherit;
+  cursor: pointer;
+}

@@ -6,6 +6,7 @@ import { t } from '../i18n';
 import { openFile, saveAs, writeToHandle } from '../io/files';
 import type { IWorkbookData } from '../model/univer-types';
 import { installFrenchDisplay } from '../univer/french-display';
+import { installCharts } from '../charts/chart-view';
 import { installDataRibbon } from '../univer/data-ribbon';
 import { installFormulasRibbon } from '../univer/formulas-ribbon';
 import { installHomeRibbon } from '../univer/home-ribbon';
@@ -70,6 +71,7 @@ export class DocumentController {
         installHomeRibbon(this.api);
         installDataRibbon(this.api, this);
         installFormulasRibbon(this.api);
+        installCharts(this.api);
         this.ribbonReady = true;
       }
       this.fileName = fileName;

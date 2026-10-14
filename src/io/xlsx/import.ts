@@ -20,6 +20,7 @@ import {
   type IWorksheetData,
 } from '../../model/univer-types';
 import { FILTER_RESOURCE, readAutoFilter, type UniverAutoFilter, type UniverFilterResource } from './auto-filter';
+import { chartsToDrawingResource, DRAWING_RESOURCE, readSheetCharts, type DrawingResource, type SheetChart } from './charts';
 import { parseThemeColors } from './colors';
 import { CF_RESOURCE, importConditionalFormats, type UniverCfResource } from './conditional-formatting';
 import { DV_RESOURCE, readDataValidations, type UniverDvResource, type UniverDvRule } from './data-validation';
@@ -236,6 +237,7 @@ export interface SheetExtras {
   autoFilter: UniverAutoFilter | null;
   tables: UniverTable[];
   cfStopIfTrue: Set<number>;
+  charts: SheetChart[];
 }
 
 function readCfStopIfTrue(sheetXml: string): Set<number> {
@@ -265,6 +267,7 @@ async function preprocess(data: ArrayBuffer | Uint8Array): Promise<{ bytes: Arra
       autoFilter: readAutoFilter(xml),
       tables: await readTables(zip, sheet.path),
       cfStopIfTrue: readCfStopIfTrue(xml),
+      charts: await readSheetCharts(zip, sheet.path),
     });
     const stripped = removeWorksheetElement(xml, 'dataValidations');
     if (stripped.removed) {
@@ -293,6 +296,8 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
   const dv: UniverDvResource = {};
   const filters: UniverFilterResource = {};
   const tables: UniverTableResource = {};
+  const drawings: DrawingResource = {};
+  const unitId = options.id ?? newId('wb');
   wb.eachSheet((ws) => {
     const sheet = convertWorksheet(ws, registry);
     sheets[sheet.id] = sheet;
@@ -319,6 +324,7 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
       }
     }
     if (extra?.tables.length) tables[sheet.id] = { tables: extra.tables, tableFilteredOutRows: [] };
+    if (extra?.charts.length) drawings[sheet.id] = chartsToDrawingResource(unitId, sheet.id, sheet, extra.charts);
   });
 
   if (!sheetOrder.length) {
@@ -345,9 +351,10 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
   if (Object.keys(dv).length) resources.push({ name: DV_RESOURCE, data: JSON.stringify(dv) });
   if (Object.keys(filters).length) resources.push({ name: FILTER_RESOURCE, data: JSON.stringify(filters) });
   if (Object.keys(tables).length) resources.push({ name: TABLE_RESOURCE, data: JSON.stringify(tables) });
+  if (Object.keys(drawings).length) resources.push({ name: DRAWING_RESOURCE, data: JSON.stringify(drawings) });
 
   return {
-    id: options.id ?? newId('wb'),
+    id: unitId,
     name: options.name ?? 'Classeur',
     appVersion: '1.0.0',
     locale: LOCALE_FR as IWorkbookData['locale'],

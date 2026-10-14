@@ -61,3 +61,22 @@ describe.skipIf(!soffice)('LibreOffice ouvre les exports Grillon', () => {
     });
   }
 });
+
+describe.skipIf(!soffice)('LibreOffice ouvre les graphiques Grillon', () => {
+  it('histogramme combiné et secteurs : conversion sans perte de graphiques', async () => {
+    const { chartWorkbook, COLUMN, PIE } = await import('../fixtures/charts');
+    const { readSheetCharts } = await import('../../src/io/xlsx/charts');
+    const JSZip = (await import('jszip')).default;
+    const dir = mkdtempSync(join(tmpdir(), 'grillon-lo-'));
+    const ours = join(dir, 'charts.xlsx');
+    writeFileSync(ours, await exportXlsx(chartWorkbook([COLUMN, PIE])));
+    const outDir = join(dir, 'out');
+    execFileSync(soffice!, ['--headless', '--norestore', '--convert-to', 'xlsx', '--outdir', outDir, ours], { timeout: 120_000 });
+    const zip = await JSZip.loadAsync(readFileSync(join(outDir, 'charts.xlsx')));
+    const charts = await readSheetCharts(zip, 'xl/worksheets/sheet1.xml');
+    expect(charts.map((c) => [c.spec.type, c.spec.series.length])).toEqual([
+      ['column', 3],
+      ['pie', 1],
+    ]);
+  });
+});

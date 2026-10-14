@@ -4,6 +4,7 @@
  */
 import ExcelJS from 'exceljs';
 import { buildAutoFilterXml, FILTER_RESOURCE, type UniverAutoFilter, type UniverFilterResource } from './auto-filter';
+import { chartsOfSheet, DRAWING_RESOURCE, writeSheetCharts, type DrawingResource, type SheetChart } from './charts';
 import { DV_RESOURCE, exportDataValidations, type UniverDvResource } from './data-validation';
 import { insertWorksheetElement, listSheets, loadZip, zipToBytes } from './ooxml';
 import { TABLE_RESOURCE, writeTables, type TableToWrite, type UniverTable, type UniverTableResource } from './tables';
@@ -192,6 +193,8 @@ interface StoredDefinedName {
 
 /** Ce qu'il reste à écrire directement dans le XML de chaque feuille, après ExcelJS. */
 interface SheetPostProcess {
+  name: string;
+  charts: SheetChart[];
   autoFilter?: UniverAutoFilter;
   tables: TableToWrite[];
   stopIfTruePriorities: number[];
@@ -277,6 +280,7 @@ function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: Sheet
   const dv = readResource<UniverDvResource>(wb, DV_RESOURCE) ?? {};
   const filters = readResource<UniverFilterResource>(wb, FILTER_RESOURCE) ?? {};
   const tables = readResource<UniverTableResource>(wb, TABLE_RESOURCE) ?? {};
+  const drawings = readResource<DrawingResource>(wb, DRAWING_RESOURCE);
   const post: SheetPostProcess[] = [];
   for (const id of wb.sheetOrder) {
     const sheet = wb.sheets[id];
@@ -284,7 +288,7 @@ function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: Sheet
     const name = sanitizeSheetName(sheet.name ?? '', used);
     const filter = filters[id];
     const ws = writeSheet(wb, xlWb, sheet, name, filter?.cachedFilteredOut);
-    const p: SheetPostProcess = { tables: [], stopIfTruePriorities: [] };
+    const p: SheetPostProcess = { name, charts: chartsOfSheet(drawings, id), tables: [], stopIfTruePriorities: [] };
     if (cf[id]?.length) {
       exportConditionalFormats(ws, cf[id]);
       cf[id].forEach((entry, i) => entry.stopIfTrue && p.stopIfTruePriorities.push(i + 1));
@@ -342,21 +346,24 @@ function addStopIfTrue(sheetXml: string, priorities: number[]): string {
 }
 
 /** Écrit dans le XML ce qu'ExcelJS ne sait pas écrire (critères de filtre, tableaux, stopIfTrue). */
-async function postProcess(bytes: Uint8Array, post: SheetPostProcess[]): Promise<Uint8Array> {
-  if (!post.some((p) => p.autoFilter || p.tables.length || p.stopIfTruePriorities.length)) return bytes;
+async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPostProcess[]): Promise<Uint8Array> {
+  const needed = (p: SheetPostProcess) => p.autoFilter || p.tables.length || p.stopIfTruePriorities.length || p.charts.length;
+  if (!post.some(needed)) return bytes;
   const zip = await loadZip(bytes);
   const sheets = await listSheets(zip);
   let tableId = 0;
+  const counters = { drawing: 0, chart: 0 };
   const usedTableNames = new Set<string>();
   for (let i = 0; i < sheets.length && i < post.length; i++) {
     const p = post[i];
-    if (!p.autoFilter && !p.tables.length && !p.stopIfTruePriorities.length) continue;
+    if (!needed(p)) continue;
     const file = zip.file(sheets[i].path);
     if (!file) continue;
     let xml = await file.async('string');
     if (p.autoFilter) xml = insertWorksheetElement(xml, 'autoFilter', buildAutoFilterXml(p.autoFilter));
     if (p.stopIfTruePriorities.length) xml = addStopIfTrue(xml, p.stopIfTruePriorities);
     if (p.tables.length) xml = await writeTables(zip, sheets[i].path, xml, p.tables, () => ++tableId, usedTableNames);
+    if (p.charts.length) xml = await writeSheetCharts(zip, wb, p.name, sheets[i].path, xml, p.charts, counters);
     zip.file(sheets[i].path, xml);
   }
   return zipToBytes(zip);
@@ -365,5 +372,5 @@ async function postProcess(bytes: Uint8Array, post: SheetPostProcess[]): Promise
 export async function exportXlsx(wb: IWorkbookData): Promise<Uint8Array> {
   const { xlWb, post } = buildWorkbook(wb);
   const buf = await xlWb.xlsx.writeBuffer();
-  return postProcess(new Uint8Array(buf as ArrayBuffer), post);
+  return postProcess(wb, new Uint8Array(buf as ArrayBuffer), post);
 }
