@@ -1,0 +1,83 @@
+name: CI et déploiement
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Aucun paquet Univer Pro
+        run: |
+          if npm ls --all --parseable 2>/dev/null | grep -i "univerjs-pro"; then
+            echo "Un paquet @univerjs-pro est installé : interdit (licence payante)."; exit 1
+          fi
+      - name: LibreOffice (vérification des exports)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libreoffice-calc
+      - run: npm run typecheck
+      - name: Tests unitaires (dont ouverture dans LibreOffice)
+        run: npm test
+      - run: npm run fixtures
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Tests de bout en bout
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  build:
+    name: Build GitHub Pages
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          GRILLON_BASE: /grillon/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: Déploiement
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
