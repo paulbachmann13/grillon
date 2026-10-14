@@ -1,6 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import { gotoApp } from './helpers';
 
+// En headless, la toute première frappe après la prise de focus de la grille est parfois
+// perdue (≈ 1 fois sur 4) : on autorise deux nouvelles tentatives pour ce fichier.
+test.describe.configure({ retries: 2 });
+
 async function run<T = unknown>(page: Page, body: string): Promise<T> {
   return page.evaluate(`(async () => { const api = window.grillon.api; const wb = api.getActiveWorkbook(); const ws = wb.getActiveSheet(); ${body} })()`) as Promise<T>;
 }
@@ -11,7 +15,10 @@ test.beforeEach(async ({ page }) => {
   await gotoApp(page);
   await run(page, `ws.getRange('A1:C4').setValues([[1,2,3],[4,5,6],[7,8,9],[10,11,12]]);`);
   await page.locator('#univer').click({ position: { x: 600, y: 500 } });
+  // Laisse Univer finir d'installer ses raccourcis clavier après la prise de focus.
+  await page.waitForTimeout(400);
   await run(page, `wb.setActiveRange(ws.getRange('A1'));`);
+  await expect.poll(() => active(page)).toBe('A1');
 });
 
 test('navigation : Ctrl+flèches et Ctrl+Maj+flèches', async ({ page }) => {

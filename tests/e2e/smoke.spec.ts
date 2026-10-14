@@ -24,3 +24,23 @@ test('saisie d’une formule et recalcul', async ({ page }) => {
   await expect.poll(() => display(page, 'A3')).toBe('100');
   await expect(page.getByTestId('doc-title')).toHaveText(/•$/);
 });
+
+test('mode sombre (Vue) et impression / PDF (Fichier)', async ({ page }) => {
+  await gotoApp(page);
+  await page.evaluate(() => {
+    const ws = (window as any).grillon.api.getActiveWorkbook().getActiveSheet();
+    ws.getRange('A1:B2').setValues([['Nom', 'Montant'], ['Café', 1.5]]);
+  });
+  await page.getByRole('tab', { name: 'Vue', exact: true }).click();
+  await page.locator('[data-u-command="grillon.view.dark"]').first().click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.locator('[data-u-command="grillon.view.dark"]').first().click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+
+  await page.getByTestId('file-menu').click();
+  await page.getByTestId('file-print').click();
+  await page.getByTestId('dialog-print').getByRole('button', { name: 'Imprimer…' }).click();
+  const frame = page.frameLocator('iframe[aria-hidden="true"]');
+  await expect(frame.locator('td', { hasText: 'Café' })).toHaveCount(1);
+  await expect(frame.locator('td', { hasText: '1,5' })).toHaveCount(1);
+});

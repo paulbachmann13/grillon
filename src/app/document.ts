@@ -10,6 +10,8 @@ import { installCharts } from '../charts/chart-view';
 import { installDataRibbon } from '../univer/data-ribbon';
 import { installFormulasRibbon } from '../univer/formulas-ribbon';
 import { installGridShortcuts } from '../univer/grid-shortcuts';
+import { installViewRibbon } from '../univer/view-ribbon';
+import { printDialog } from './print';
 import { installPivot } from '../univer/pivot-ui';
 import { installHomeRibbon } from '../univer/home-ribbon';
 import { LOCALE_FR } from '../model/univer-types';
@@ -18,7 +20,7 @@ import { clearAutosave, loadAutosave, saveAutosave } from '../storage/autosave';
 /** CommandType.COMMAND = 0 : actions de l'utilisateur (les mutations internes, comme le calcul des formules, sont ignorées). */
 const COMMAND = 0;
 /** Commandes qui ne modifient pas le contenu du classeur. */
-const NON_CONTENT_COMMANDS = /^doc\.|copy|scroll|selection|zoom|find|search|activate|editor|preview|show|hide-panel|open|close/i;
+const NON_CONTENT_COMMANDS = /^doc\.|^grillon\.|copy|scroll|selection|zoom|find|search|activate|editor|preview|show|hide-panel|open|close/i;
 
 const AUTOSAVE_DELAY_MS = 1500;
 
@@ -29,8 +31,6 @@ export interface DocumentEvents {
   onChange: () => void;
 }
 
-/** Chargement paresseux du convertisseur (ExcelJS pèse ~1 Mo). */
-const loadXlsx = () => Promise.all([import('../io/xlsx/import'), import('../io/xlsx/export')]);
 
 export class DocumentController {
   fileName = `${t('app.untitled')}.xlsx`;
@@ -76,6 +76,7 @@ export class DocumentController {
         installCharts(this.api);
         installPivot(this.api);
         installGridShortcuts(this.api);
+        installViewRibbon(this.api, () => this.print());
         this.ribbonReady = true;
       }
       this.fileName = fileName;
@@ -111,8 +112,8 @@ export class DocumentController {
     this.events.onStatus(t('status.loading', { name }));
     try {
       if (/\.xlsx$/i.test(name)) {
-        const [{ importXlsx }] = await loadXlsx();
-        const data = await importXlsx(bytes, { name });
+        const { importXlsxAsync } = await import('../io/xlsx/xlsx-client');
+        const data = await importXlsxAsync(bytes, { name });
         this.load(data, name, handle);
       } else if (/\.(csv|txt|tsv)$/i.test(name)) {
         const { csvToWorkbook } = await import('../io/csv');
@@ -132,8 +133,9 @@ export class DocumentController {
   }
 
   async exportXlsxBytes(): Promise<Uint8Array> {
-    const [, { exportXlsx }] = await loadXlsx();
-    return exportXlsx(this.snapshot());
+    // Conversion dans un Web Worker (ExcelJS pèse ~1 Mo et un gros classeur figerait la page).
+    const { exportXlsxAsync } = await import('../io/xlsx/xlsx-client');
+    return exportXlsxAsync(this.snapshot());
   }
 
   async save(): Promise<void> {
@@ -238,6 +240,11 @@ export class DocumentController {
     } catch (e) {
       console.warn('Sauvegarde automatique impossible', e);
     }
+  }
+
+  /** Impression / export PDF de la feuille active. */
+  print(): Promise<void> {
+    return printDialog(this.api);
   }
 
   /** Restaure la session précédente. Renvoie true si un classeur a été restauré. */

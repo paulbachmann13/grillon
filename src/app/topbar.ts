@@ -62,6 +62,7 @@ export class Topbar {
       { id: 'save-as', label: t('file.saveAs'), shortcut: isMac ? '⇧⌘S' : 'Ctrl+Maj+S', run: () => doc.saveAs() },
       { id: 'import-csv', label: t('file.importCsv'), run: () => doc.importCsv(), separatorBefore: true },
       { id: 'export-csv', label: t('file.exportCsv'), run: () => doc.exportCsv() },
+      { id: 'print', label: t('file.print'), shortcut: `${mod}P`, run: () => doc.print(), separatorBefore: true },
     ];
     for (const item of items) {
       if (item.separatorBefore) {

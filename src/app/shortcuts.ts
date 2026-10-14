@@ -15,6 +15,10 @@ export function installShortcuts(doc: DocumentController): void {
         e.preventDefault();
         e.stopPropagation();
         void (e.shiftKey ? doc.saveAs() : doc.save());
+      } else if (key === 'p' && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        void doc.print();
       } else if (key === 'o' && !e.shiftKey) {
         e.preventDefault();
         e.stopPropagation();
