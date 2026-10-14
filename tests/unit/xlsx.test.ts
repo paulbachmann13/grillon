@@ -32,6 +32,18 @@ describe('import xlsx — styles', () => {
     expect(s('C3')).toMatchObject({ bg: { rgb: '#00B050' } });
     expect(sheetByName(wb, 'Styles').columnData?.[1]?.w).toBe(215);
   });
+
+  it('lit le texte enrichi (styles par morceau, sauts de ligne)', async () => {
+    const wb = await load('styles');
+    const cell = cellAt(wb, 'Styles', 'A7')!;
+    expect(cell.v).toBe('Gras rouge normal\nligne 2');
+    const body = cell.p!.body as { dataStream: string; textRuns: { st: number; ed: number; ts: object }[] };
+    expect(body.dataStream).toBe('Gras rouge normal\rligne 2\r\n');
+    expect(body.textRuns).toEqual([
+      { st: 0, ed: 5, ts: { ff: 'Calibri', fs: 12, bl: 1 } },
+      { st: 5, ed: 10, ts: { ff: 'Calibri', fs: 12, cl: { rgb: '#FF0000' } } },
+    ]);
+  });
 });
 
 describe('import xlsx — types et formats', () => {
