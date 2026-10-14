@@ -71,6 +71,25 @@ Le modèle de référence est celui d'Univer, `IWorkbookData` :
 Les éléments qui n'ont pas encore de représentation (graphiques, mises en forme conditionnelles…)
 seront ajoutés dans les phases suivantes, chacun avec son test de round-trip.
 
+## Compléments au-dessus d'ExcelJS
+
+-  : accès direct au paquet (JSZip + fast-xml-parser) pour ce qu'ExcelJS ignore :
+  critères de filtre, tableaux structurés, « Interrompre si vrai » des MFC, graphiques et images
+  (DrawingML), validations sur de grandes plages (lues sans être dépliées cellule par cellule).
+  Les éléments sont insérés dans la feuille dans l'ordre exigé par le schéma OOXML.
+-  : la conversion tourne dans un Web Worker (repli dans la page si besoin).
+
+## Fonctionnalités maison
+
+| Module | Rôle |
+|---|---|
+|  | Graphiques ECharts dans des « DOM flottants » Univer (sauvegardés avec le classeur) |
+|  | Logique pure et testée : doublons, convertir, remplissage instantané, sous-totaux, filtre avancé, plan, TCD, valeur cible, références de formules |
+|  | Ajouts au ruban (Démarrer, Données, Formules, Vue), commandes annulables |
+|  | Affichage à la française du format Standard et des booléens |
+|  | Fonctions ajoutées au moteur (worker et page) |
+|  | Impression / PDF |
+
 ## Moteur de formules — choix
 
 Univer embarque son propre moteur de formules (`@univerjs/engine-formula`, Apache-2.0), branché

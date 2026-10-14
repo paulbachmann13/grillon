@@ -2,6 +2,18 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.0.0] — Phase 5 : finitions — 2026-10-15
+
+### Ajouté
+- **Mode sombre** (Vue → Mode sombre ; suit le réglage du système par défaut, choix mémorisé).
+- **Impression / export PDF** (Fichier → Imprimer, Ctrl/⌘+P, ou Vue) : feuille active ou sélection, portrait/paysage, quadrillage, ajustement à la largeur ; mise en forme, fusions, graphiques et images inclus. Le PDF s'obtient avec « Enregistrer au format PDF ».
+- **Images** et **notes** (commentaires) enregistrées dans le .xlsx et relues depuis Excel.
+- Raccourcis **Ctrl+;** (date du jour) et **Ctrl+:** (heure) ; les autres raccourcis Excel (Ctrl+C/V/X/Z/Y/B/I/U, F2, F4, Ctrl+flèches, Ctrl+Maj+flèches, Ctrl+E, Ctrl+S/O/P…) sont vérifiés par des tests.
+- **Performances** : ouverture et enregistrement des .xlsx dans un Web Worker (100 000 lignes sans figer l'interface) ; grille virtualisée et calcul des formules en arrière-plan (Univer).
+
+### Corrigé
+- Les commandes d'interface (mode sombre, audit…) ne marquent plus le classeur comme modifié.
+
 ## [0.4.0] — Phase 4 : formules et analyse — 2026-10-15
 
 ### Ajouté

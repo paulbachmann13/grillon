@@ -1,6 +1,6 @@
 # Fonctionnalités et limites connues
 
-État à la fin de la **phase 4** (formules et analyse).
+État à la fin de la **phase 5** (version 1.0).
 
 ## Fonctionnalités
 
@@ -46,26 +46,32 @@
   nombre, plusieurs feuilles, feuilles masquées, couleur d'onglet, quadrillage masqué, volets figés,
   noms définis, liens, **mises en forme conditionnelles**, **validations de données**, **filtres
   automatiques avec critères**, **tableaux structurés** (style, ligne de totaux), **plan** (groupes),
-  **graphiques**.
+  **graphiques**, **images**, **notes**.
 - **CSV** : ouverture (séparateur et décimales détectés), import dans une nouvelle feuille,
   export de la feuille active au format Excel français.
 - **Ouvrir/enregistrer** : File System Access API (Chrome/Edge : Ctrl+S réécrit le fichier),
   sinon sélecteur de fichier + téléchargement (Safari, iOS, Firefox). Glisser-déposer.
 - **Sauvegarde automatique** dans IndexedDB, restauration à la réouverture.
 
+### Affichage, impression, raccourcis
+- Vue : figer les volets, zoom, quadrillage, plein écran (Univer), **mode sombre**.
+- **Impression / export PDF** (Ctrl/⌘+P) : feuille ou sélection, portrait/paysage, quadrillage, ajustement à la largeur.
+- Insérer : images, liens, notes, listes déroulantes, graphiques, tableau croisé dynamique.
+- Raccourcis Excel : Ctrl+C/V/X, Ctrl+Z/Y, Ctrl+B/I/U, F2, F4, Ctrl+flèches, Ctrl+Maj+flèches, Ctrl+D (recopier vers le bas), Alt+= (somme auto), Ctrl+E, Ctrl+; (date), Ctrl+: (heure), Ctrl+F (rechercher), Ctrl+S/O/P.
+
 ### PWA
 - Installable, fonctionne hors ligne (tout est mis en cache, y compris le convertisseur xlsx).
 - Une fois installée sur Chrome/Edge, Grillon peut ouvrir les .xlsx depuis le système.
 
 ### Performance
-- 50 000 lignes × 6 colonnes : ouverture ≈ 2 s, enregistrement ≈ 2 s (Chrome, PC portable).
-- Recalcul des formules dans un Web Worker (l'interface ne se fige pas).
+- 50 000 lignes × 6 colonnes : ouverture ≈ 2 s, enregistrement ≈ 2 s ; 100 000 lignes : ≈ 7 s chacun (Chrome, PC portable).
+- Lecture/écriture des .xlsx et recalcul des formules dans des Web Workers : l'interface ne se fige pas ; grille virtualisée (défilement fluide).
 
 ## Limites connues
 
 | Limite | Contournement / plan |
 |---|---|
-| Commentaires/notes et images ne sont pas encore lus/écrits dans le .xlsx (ils fonctionnent dans l'application). | Phase 5. |
+| Notes : texte seul (pas de mise en forme ni de taille de bulle) ; les commentaires en fil de discussion des versions récentes d'Excel ne sont pas importés (seules les notes le sont). Formes (rectangles, flèches…) non prises en charge. | — |
 | Graphiques : pas de graphiques 3D, radar, boursiers, en cascade, entonnoir, cartes ; un graphique Excel de ce type n'est pas importé. Étiquettes de données, courbes de tendance et mises en forme fines (dégradés, ombres) ne sont pas conservées. Les secteurs reprennent la palette par défaut. | Alternative : ECharts couvre l'essentiel ; types supplémentaires possibles plus tard. |
 | Tableau croisé dynamique : calculé par Grillon et écrit en valeurs. Dans le .xlsx il devient un tableau de valeurs (pas un TCD Excel) ; sa définition est conservée dans le classeur Grillon (sauvegarde automatique) mais pas dans le .xlsx. Pas de glisser-déposer des champs, pas de groupement de dates. Les TCD des fichiers Excel sont importés en valeurs. | Implémentation maison, Univer Pro étant payant. |
 | Sparklines et « Analyse rapide » non disponibles. | Optionnels ; à envisager plus tard. |
@@ -74,12 +80,14 @@
 | Mise en forme conditionnelle : un seuil de barre de données ou de jeu d'icônes défini par une formule est remplacé par sa valeur numérique. | — |
 | Les noms définis par une formule (et non une plage) ne sont pas importés. | Limite d'ExcelJS. |
 | Motifs de remplissage (hachures) et dégradés : remplacés par une couleur unie. | Univer n'affiche que des fonds unis. |
-| Les formats de date proposés dans la liste rapide sont au format ISO (2026-10-14) ; le format français jj/mm/aaaa est dans « Formats ». Les dates des fichiers Excel gardent leur format. | Phase 5 (liste de formats francisée). |
+| Les formats de date proposés dans la liste rapide sont au format ISO (2026-10-14) ; le format français jj/mm/aaaa est dans « Formats ». Les dates des fichiers Excel gardent leur format. | — |
 | Police par défaut Calibri : si elle n'est pas installée (iPad), le navigateur la remplace. | Affichage légèrement différent, contenu identique. |
 | Plan : pas de boutons +/− ni de niveaux 1-2-3 dans la marge de la grille (Univer ne les propose pas) ; on utilise Données → Plan → Masquer/Afficher le détail. | — |
 | Filtres : les filtres par couleur, « 10 premiers » et dynamiques d'un fichier Excel ne sont pas importés (le filtre lui-même l'est). Les filtres propres à un tableau structuré ne sont pas enregistrés dans le .xlsx. | — |
 | Tableaux : la ligne de totaux est une ligne ordinaire sous le tableau dans Grillon (Univer ne gère pas encore les totaux) ; elle est réécrite comme vraie ligne de totaux dans le .xlsx. Les styles de tableau d'Excel sont conservés à l'export mais affichés avec les styles Univer. | — |
 | Validation : le type « case à cocher » d'Univer n'existe pas dans Excel et n'est pas exporté. | — |
 | Les fichiers protégés par mot de passe, .xls (ancien format) et .xlsb ne sont pas pris en charge. | Les réenregistrer en .xlsx depuis Excel/LibreOffice. |
-| Sur Safari/iOS, « Enregistrer » télécharge une copie (pas de réécriture du fichier d'origine). | Limite du navigateur ; l'app Tauri (phase 5) le permettra sur Mac. |
+| Sur Safari/iOS, « Enregistrer » télécharge une copie (pas de réécriture du fichier d'origine). | Limite du navigateur ; une app Mac (Tauri) le permettrait (voir README). |
+| Impression : mise en page simple (pas d'en-têtes/pieds de page, de zones d'impression ni de sauts de page manuels) ; la mise en page d'impression des fichiers Excel n'est ni lue ni conservée. | — |
+| iPhone : ruban complet, défilable horizontalement ; pas d'interface dédiée au téléphone. | Version simplifiée suffisante pour consulter et saisir. |
 | Le collage depuis le presse-papiers demande l'autorisation du navigateur la première fois. | — |

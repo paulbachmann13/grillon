@@ -60,6 +60,14 @@ après passage des tests.
 
 Détails : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+## Application Mac (Tauri) — non réalisée
+
+L'emballage Tauri était optionnel ; il n'a pas été fait. L'architecture le permet : l'app est un
+ensemble de fichiers statiques (`npm run build` → `dist/`), sans serveur, et l'accès aux fichiers est isolé
+dans `src/io/files.ts`. Il suffirait de créer un projet Tauri pointant sur `dist/` et d'ajouter dans
+`files.ts` une variante utilisant les API fichiers de Tauri (réécriture du fichier d'origine avec Cmd+S).
+En attendant, la PWA installée depuis Chrome ou Safari (« Ajouter au Dock ») fonctionne hors ligne sur Mac.
+
 ## Licence
 
 Apache-2.0.
