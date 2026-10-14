@@ -1,7 +1,12 @@
 /**
- * Export IWorkbookData (modèle Univer) → .xlsx via ExcelJS.
+ * Export IWorkbookData (modèle Univer) → .xlsx via ExcelJS, puis post-traitement XML
+ * pour ce qu'ExcelJS ne sait pas écrire (critères de filtre, tableaux, stopIfTrue).
  */
 import ExcelJS from 'exceljs';
+import { buildAutoFilterXml, FILTER_RESOURCE, type UniverAutoFilter, type UniverFilterResource } from './auto-filter';
+import { DV_RESOURCE, exportDataValidations, type UniverDvResource } from './data-validation';
+import { insertWorksheetElement, listSheets, loadZip, zipToBytes } from './ooxml';
+import { TABLE_RESOURCE, writeTables, type TableToWrite, type UniverTable, type UniverTableResource } from './tables';
 import {
   CellValueType,
   DEFINED_NAME_RESOURCE,
@@ -52,7 +57,13 @@ function cellValue(cell: ICellData): ExcelJS.CellValue {
   return typeof v === 'boolean' ? v : v;
 }
 
-function writeSheet(wb: IWorkbookData, xlWb: ExcelJS.Workbook, sheet: Partial<IWorksheetData>, name: string): ExcelJS.Worksheet {
+function writeSheet(
+  wb: IWorkbookData,
+  xlWb: ExcelJS.Workbook,
+  sheet: Partial<IWorksheetData>,
+  name: string,
+  filteredOutRows: number[] = [],
+): ExcelJS.Worksheet {
   const defaultColWidth = sheet.defaultColumnWidth ? pxToExcelWidth(sheet.defaultColumnWidth) : EXCEL_DEFAULT_COL_WIDTH;
   const defaultRowHeight = sheet.defaultRowHeight ? pxToPt(sheet.defaultRowHeight) : EXCEL_DEFAULT_ROW_HEIGHT_PT;
 
@@ -94,6 +105,8 @@ function writeSheet(wb: IWorkbookData, xlWb: ExcelJS.Workbook, sheet: Partial<IW
     const st = styleFromUniver(resolveStyle(wb, rd.s));
     if (st) (row as unknown as { style: Partial<ExcelJS.Style> }).style = st;
   }
+  // Excel ne réapplique pas les filtres à l'ouverture : les lignes filtrées doivent être masquées.
+  for (const r of filteredOutRows) ws.getRow(r + 1).hidden = true;
 
   // Cache des styles convertis (beaucoup de cellules partagent un même identifiant).
   const styleCache = new Map<string, Partial<ExcelJS.Style> | null>();
@@ -155,18 +168,73 @@ interface StoredDefinedName {
   formulaOrRefString: string;
 }
 
-export function univerToWorkbook(wb: IWorkbookData): ExcelJS.Workbook {
+/** Ce qu'il reste à écrire directement dans le XML de chaque feuille, après ExcelJS. */
+interface SheetPostProcess {
+  autoFilter?: UniverAutoFilter;
+  tables: TableToWrite[];
+  stopIfTruePriorities: number[];
+}
+
+/** Texte d'une cellule d'en-tête de tableau. */
+function headerText(cell: ICellData | undefined): string {
+  if (!cell) return '';
+  if (cell.v !== undefined && cell.v !== null && cell.v !== '') return String(cell.v);
+  return cell.p ? documentToPlainText(cell.p) : '';
+}
+
+/**
+ * Prépare les tableaux d'une feuille : Excel exige que le nom de chaque colonne soit
+ * exactement le texte (unique, non vide) de la cellule d'en-tête.
+ */
+function prepareTables(ws: ExcelJS.Worksheet, sheet: Partial<IWorksheetData>, tables: UniverTable[]): TableToWrite[] {
+  return tables.map((table) => {
+    const names: string[] = [];
+    const seen = new Set<string>();
+    for (let c = table.range.startColumn; c <= table.range.endColumn; c++) {
+      const i = c - table.range.startColumn;
+      let name = table.options.showHeader !== false ? headerText(sheet.cellData?.[table.range.startRow]?.[c]).trim() : '';
+      if (!name) name = table.columns[i]?.displayName || `Colonne${i + 1}`;
+      let unique = name;
+      for (let k = 2; seen.has(unique.toLowerCase()); k++) unique = `${name}${k}`;
+      seen.add(unique.toLowerCase());
+      names.push(unique);
+      if (table.options.showHeader !== false) {
+        const xc = ws.getRow(table.range.startRow + 1).getCell(c + 1);
+        if (xc.value !== unique) xc.value = unique;
+      }
+    }
+    return { table, headerNames: names };
+  });
+}
+
+function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: SheetPostProcess[] } {
   const xlWb = new ExcelJS.Workbook();
   xlWb.creator = 'Grillon';
   xlWb.created = new Date();
   const used = new Set<string>();
   const cf = readResource<UniverCfResource>(wb, CF_RESOURCE) ?? {};
+  const dv = readResource<UniverDvResource>(wb, DV_RESOURCE) ?? {};
+  const filters = readResource<UniverFilterResource>(wb, FILTER_RESOURCE) ?? {};
+  const tables = readResource<UniverTableResource>(wb, TABLE_RESOURCE) ?? {};
+  const post: SheetPostProcess[] = [];
   for (const id of wb.sheetOrder) {
     const sheet = wb.sheets[id];
     if (!sheet) continue;
     const name = sanitizeSheetName(sheet.name ?? '', used);
-    const ws = writeSheet(wb, xlWb, sheet, name);
-    if (cf[id]?.length) exportConditionalFormats(ws, cf[id]);
+    const filter = filters[id];
+    const ws = writeSheet(wb, xlWb, sheet, name, filter?.cachedFilteredOut);
+    const p: SheetPostProcess = { tables: [], stopIfTruePriorities: [] };
+    if (cf[id]?.length) {
+      exportConditionalFormats(ws, cf[id]);
+      cf[id].forEach((entry, i) => entry.stopIfTrue && p.stopIfTruePriorities.push(i + 1));
+    }
+    if (dv[id]?.length) exportDataValidations(ws, dv[id]);
+    if (filter?.ref) {
+      ws.autoFilter = rangeToA1(filter.ref);
+      if (filter.filterColumns?.length) p.autoFilter = filter;
+    }
+    if (tables[id]?.tables?.length) p.tables = prepareTables(ws, sheet, tables[id].tables);
+    post.push(p);
   }
 
   const res = wb.resources?.find((r) => r.name === DEFINED_NAME_RESOURCE);
@@ -194,11 +262,47 @@ export function univerToWorkbook(wb: IWorkbookData): ExcelJS.Workbook {
       /* ressource illisible : ignorée */
     }
   }
-  return xlWb;
+  return { xlWb, post };
+}
+
+/** Classeur ExcelJS équivalent (sans les éléments écrits en post-traitement XML). */
+export function univerToWorkbook(wb: IWorkbookData): ExcelJS.Workbook {
+  return buildWorkbook(wb).xlWb;
+}
+
+/** Ajoute stopIfTrue="1" aux règles de MFC dont la priorité est listée. */
+function addStopIfTrue(sheetXml: string, priorities: number[]): string {
+  const set = new Set(priorities);
+  return sheetXml.replace(/<cfRule\b[^>]*>/g, (tag) => {
+    const p = /\bpriority="(\d+)"/.exec(tag);
+    if (!p || !set.has(Number(p[1])) || /stopIfTrue=/.test(tag)) return tag;
+    return tag.replace(/<cfRule\b/, '<cfRule stopIfTrue="1"');
+  });
+}
+
+/** Écrit dans le XML ce qu'ExcelJS ne sait pas écrire (critères de filtre, tableaux, stopIfTrue). */
+async function postProcess(bytes: Uint8Array, post: SheetPostProcess[]): Promise<Uint8Array> {
+  if (!post.some((p) => p.autoFilter || p.tables.length || p.stopIfTruePriorities.length)) return bytes;
+  const zip = await loadZip(bytes);
+  const sheets = await listSheets(zip);
+  let tableId = 0;
+  const usedTableNames = new Set<string>();
+  for (let i = 0; i < sheets.length && i < post.length; i++) {
+    const p = post[i];
+    if (!p.autoFilter && !p.tables.length && !p.stopIfTruePriorities.length) continue;
+    const file = zip.file(sheets[i].path);
+    if (!file) continue;
+    let xml = await file.async('string');
+    if (p.autoFilter) xml = insertWorksheetElement(xml, 'autoFilter', buildAutoFilterXml(p.autoFilter));
+    if (p.stopIfTruePriorities.length) xml = addStopIfTrue(xml, p.stopIfTruePriorities);
+    if (p.tables.length) xml = await writeTables(zip, sheets[i].path, xml, p.tables, () => ++tableId, usedTableNames);
+    zip.file(sheets[i].path, xml);
+  }
+  return zipToBytes(zip);
 }
 
 export async function exportXlsx(wb: IWorkbookData): Promise<Uint8Array> {
-  const xlWb = univerToWorkbook(wb);
+  const { xlWb, post } = buildWorkbook(wb);
   const buf = await xlWb.xlsx.writeBuffer();
-  return new Uint8Array(buf as ArrayBuffer);
+  return postProcess(new Uint8Array(buf as ArrayBuffer), post);
 }

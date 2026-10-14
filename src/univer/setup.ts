@@ -21,6 +21,8 @@ import { UniverSheetsHyperLinkPreset } from '@univerjs/preset-sheets-hyper-link'
 import linkFr from '@univerjs/preset-sheets-hyper-link/locales/fr-FR';
 import { UniverSheetsDrawingPreset } from '@univerjs/preset-sheets-drawing';
 import drawingFr from '@univerjs/preset-sheets-drawing/locales/fr-FR';
+import { UniverSheetsTablePreset } from '@univerjs/preset-sheets-table';
+import tableFr from '@univerjs/preset-sheets-table/locales/fr-FR';
 
 import '@univerjs/preset-sheets-core/lib/index.css';
 import '@univerjs/preset-sheets-conditional-formatting/lib/index.css';
@@ -31,6 +33,7 @@ import '@univerjs/preset-sheets-find-replace/lib/index.css';
 import '@univerjs/preset-sheets-note/lib/index.css';
 import '@univerjs/preset-sheets-hyper-link/lib/index.css';
 import '@univerjs/preset-sheets-drawing/lib/index.css';
+import '@univerjs/preset-sheets-table/lib/index.css';
 
 export function setupUniver(container: HTMLElement): FUniver {
   const { univerAPI } = createUniver({
@@ -38,7 +41,7 @@ export function setupUniver(container: HTMLElement): FUniver {
     // Annuler/rétablir sans limite (Univer en garde 50 par défaut).
     undoRedoHistoryLimit: Number.POSITIVE_INFINITY,
     locales: {
-      [LocaleType.FR_FR]: mergeLocales(sheetsCoreFr, cfFr, dvFr, filterFr, sortFr, findFr, noteFr, linkFr, drawingFr),
+      [LocaleType.FR_FR]: mergeLocales(sheetsCoreFr, cfFr, dvFr, filterFr, sortFr, findFr, noteFr, linkFr, drawingFr, tableFr),
     },
     presets: [
       UniverSheetsCorePreset({
@@ -55,6 +58,7 @@ export function setupUniver(container: HTMLElement): FUniver {
       UniverSheetsNotePreset(),
       UniverSheetsHyperLinkPreset(),
       UniverSheetsDrawingPreset(),
+      UniverSheetsTablePreset(),
     ],
   });
   return univerAPI;

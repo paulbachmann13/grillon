@@ -98,7 +98,7 @@ describe('mises en forme conditionnelles créées dans Grillon', () => {
     expect(got.map((r) => r.rule)).toEqual(
       rules.map((r) => ({ ...r.rule, ...('style' in r.rule ? { style: { bg: { rgb: '#FFEB9C' } } } : {}) })),
     );
-    // « Interrompre si vrai » n'est pas géré par ExcelJS (limite connue).
-    expect(got[1].stopIfTrue).toBe(false);
+    // « Interrompre si vrai » : écrit et relu directement dans le XML (ExcelJS l'ignore).
+    expect(got.map((r) => r.stopIfTrue)).toEqual(rules.map((r) => r.stopIfTrue));
   });
 });

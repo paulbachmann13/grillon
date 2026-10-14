@@ -18,8 +18,12 @@ import {
   type IWorkbookData,
   type IWorksheetData,
 } from '../../model/univer-types';
+import { FILTER_RESOURCE, readAutoFilter, type UniverAutoFilter, type UniverFilterResource } from './auto-filter';
 import { parseThemeColors } from './colors';
 import { CF_RESOURCE, importConditionalFormats, type UniverCfResource } from './conditional-formatting';
+import { DV_RESOURCE, readDataValidations, type UniverDvResource, type UniverDvRule } from './data-validation';
+import { listSheets, loadZip, removeWorksheetElement, zipToBytes } from './ooxml';
+import { readTables, TABLE_RESOURCE, type UniverTable, type UniverTableResource } from './tables';
 import { richTextToDocument } from './rich-text';
 import { styleToUniver } from './styles';
 import { dateToSerial, EXCEL_DEFAULT_COL_WIDTH, EXCEL_DEFAULT_ROW_HEIGHT_PT, excelWidthToPx, fromA1, ptToPx, rangeFromA1 } from './units';
@@ -223,13 +227,59 @@ interface DefinedNameModel {
   localSheetId?: number;
 }
 
-export async function importXlsx(data: ArrayBuffer | Uint8Array, options: ImportOptions = {}): Promise<IWorkbookData> {
-  const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(data as ArrayBuffer);
-  return workbookToUniver(wb, options);
+/** Éléments lus directement dans le XML d'une feuille (ce qu'ExcelJS ignore ou lit mal). */
+export interface SheetExtras {
+  dataValidations: UniverDvRule[];
+  autoFilter: UniverAutoFilter | null;
+  tables: UniverTable[];
+  cfStopIfTrue: Set<number>;
 }
 
-export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = {}): IWorkbookData {
+function readCfStopIfTrue(sheetXml: string): Set<number> {
+  const out = new Set<number>();
+  for (const m of sheetXml.matchAll(/<(?:\w+:)?cfRule\b[^>]*>/g)) {
+    if (!/\bstopIfTrue="(1|true)"/.test(m[0])) continue;
+    const p = /\bpriority="(\d+)"/.exec(m[0]);
+    if (p) out.add(Number(p[1]));
+  }
+  return out;
+}
+
+/**
+ * Lit les extras de chaque feuille et retire du XML les validations de données avant de
+ * passer le fichier à ExcelJS (qui déplierait chaque plage cellule par cellule).
+ */
+async function preprocess(data: ArrayBuffer | Uint8Array): Promise<{ bytes: ArrayBuffer | Uint8Array; extras: Map<string, SheetExtras> }> {
+  const extras = new Map<string, SheetExtras>();
+  const zip = await loadZip(data);
+  let modified = false;
+  for (const sheet of await listSheets(zip)) {
+    const file = zip.file(sheet.path);
+    if (!file) continue;
+    const xml = await file.async('string');
+    extras.set(sheet.name, {
+      dataValidations: readDataValidations(xml, ''),
+      autoFilter: readAutoFilter(xml),
+      tables: await readTables(zip, sheet.path),
+      cfStopIfTrue: readCfStopIfTrue(xml),
+    });
+    const stripped = removeWorksheetElement(xml, 'dataValidations');
+    if (stripped.removed) {
+      zip.file(sheet.path, stripped.xml);
+      modified = true;
+    }
+  }
+  return { bytes: modified ? await zipToBytes(zip) : data, extras };
+}
+
+export async function importXlsx(data: ArrayBuffer | Uint8Array, options: ImportOptions = {}): Promise<IWorkbookData> {
+  const { bytes, extras } = await preprocess(data);
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(bytes as ArrayBuffer);
+  return workbookToUniver(wb, options, extras);
+}
+
+export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = {}, extras = new Map<string, SheetExtras>()): IWorkbookData {
   const themes = (wb as unknown as { _themes?: Record<string, string> })._themes;
   const theme = parseThemeColors(themes?.theme1);
   const registry = new StyleRegistry(theme);
@@ -237,12 +287,35 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
   const sheets: Record<string, Partial<IWorksheetData>> = {};
   const sheetOrder: string[] = [];
   const cf: UniverCfResource = {};
+  const dv: UniverDvResource = {};
+  const filters: UniverFilterResource = {};
+  const tables: UniverTableResource = {};
   wb.eachSheet((ws) => {
     const sheet = convertWorksheet(ws, registry);
     sheets[sheet.id] = sheet;
     sheetOrder.push(sheet.id);
-    const rules = importConditionalFormats(ws, sheet.id, theme);
+    const extra = extras.get(ws.name);
+    const rules = importConditionalFormats(ws, sheet.id, theme, extra?.cfStopIfTrue);
     if (rules.length) cf[sheet.id] = rules;
+    if (extra?.dataValidations.length) {
+      dv[sheet.id] = extra.dataValidations.map((r) => ({ ...r, ranges: r.ranges.map((rg) => ({ ...rg, sheetId: sheet.id })) }));
+    }
+    if (extra?.autoFilter) {
+      filters[sheet.id] = extra.autoFilter;
+      // Les lignes masquées par le filtre sont recalculées par Univer : on ne les garde pas
+      // comme lignes masquées « à la main », sinon elles le resteraient après « Effacer le filtre ».
+      if (extra.autoFilter.filterColumns?.length) {
+        const { startRow, endRow } = extra.autoFilter.ref;
+        for (let r = startRow + 1; r <= endRow; r++) {
+          const rd = sheet.rowData?.[r];
+          if (rd?.hd) {
+            delete rd.hd;
+            if (!Object.keys(rd).length) delete sheet.rowData[r];
+          }
+        }
+      }
+    }
+    if (extra?.tables.length) tables[sheet.id] = { tables: extra.tables, tableFilteredOutRows: [] };
   });
 
   if (!sheetOrder.length) {
@@ -266,6 +339,9 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
   }
 
   if (Object.keys(cf).length) resources.push({ name: CF_RESOURCE, data: JSON.stringify(cf) });
+  if (Object.keys(dv).length) resources.push({ name: DV_RESOURCE, data: JSON.stringify(dv) });
+  if (Object.keys(filters).length) resources.push({ name: FILTER_RESOURCE, data: JSON.stringify(filters) });
+  if (Object.keys(tables).length) resources.push({ name: TABLE_RESOURCE, data: JSON.stringify(tables) });
 
   return {
     id: options.id ?? newId('wb'),

@@ -3,8 +3,9 @@
  * Utilisé par les tests Vitest (en mémoire) et par scripts/make-fixtures.ts (sur disque, pour Playwright).
  */
 import ExcelJS from 'exceljs';
+import JSZip from 'jszip';
 
-export type FixtureName = 'styles' | 'formats' | 'formulas' | 'layout' | 'conditional' | 'large';
+export type FixtureName = 'styles' | 'formats' | 'formulas' | 'layout' | 'conditional' | 'data' | 'large';
 
 const thin = { style: 'thin' as const, color: { argb: 'FF000000' } };
 
@@ -189,8 +190,82 @@ export async function buildLarge(rows = 50_000): Promise<ExcelJS.Workbook> {
   return wb;
 }
 
+/**
+ * Validations, filtre automatique avec critères et tableau structuré.
+ * ExcelJS n'écrit pas les critères de filtre : on les ajoute dans le XML, comme le ferait Excel.
+ */
+export async function buildData(): Promise<Uint8Array> {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Données');
+  ws.addRow(['Nom', 'Ville', 'Montant', 'Date', 'Code', 'Catégorie']);
+  const villes = ['Lyon', 'Paris', 'Nîmes'];
+  for (let i = 0; i < 10; i++) {
+    ws.addRow([`Client ${i + 1}`, villes[i % 3], (i + 1) * 10, new Date(Date.UTC(2026, 0, 1 + i)), `C${i}`, i % 2 ? 'A' : 'B']);
+  }
+  ws.getColumn(4).numFmt = 'dd/mm/yyyy';
+  ws.getCell('H1').value = 'A';
+  ws.getCell('H2').value = 'B';
+  ws.getCell('H3').value = 'C';
+  const dv = (ws as unknown as { dataValidations: { add(a: string, v: ExcelJS.DataValidation): void } }).dataValidations;
+  dv.add('B2:B11', { type: 'list', allowBlank: true, formulae: ['"Lyon,Paris,Nîmes"'], showErrorMessage: true, errorTitle: 'Ville', error: 'Choisir une ville de la liste' });
+  dv.add('C2:C11', {
+    type: 'whole',
+    operator: 'between',
+    formulae: [0, 1000],
+    showInputMessage: true,
+    promptTitle: 'Montant',
+    prompt: 'Entier entre 0 et 1000',
+    showErrorMessage: true,
+    errorStyle: 'warning',
+    error: 'Hors limites',
+  });
+  dv.add('D2:D11', { type: 'date', operator: 'greaterThanOrEqual', formulae: [new Date(Date.UTC(2026, 0, 1))], showErrorMessage: true });
+  dv.add('E2:E11', { type: 'textLength', operator: 'lessThanOrEqual', formulae: [5] });
+  dv.add('F2:F11', { type: 'list', formulae: ['$H$1:$H$3'] });
+  dv.add('A2:A11', { type: 'custom', formulae: ['LEN(A2)>3'] });
+  // Validation sur une colonne entière (ExcelJS la déplierait en un million de cellules).
+  dv.add('J1:J1048576', { type: 'decimal', operator: 'greaterThan', formulae: [0] });
+  ws.autoFilter = 'A1:F11';
+
+  const t = wb.addWorksheet('Tableau');
+  t.addTable({
+    name: 'Ventes',
+    ref: 'A1',
+    headerRow: true,
+    totalsRow: true,
+    style: { theme: 'TableStyleMedium9', showRowStripes: true },
+    columns: [
+      { name: 'Produit', totalsRowLabel: 'Total', filterButton: true },
+      { name: 'Qté', totalsRowFunction: 'sum', filterButton: true },
+      { name: 'Prix', totalsRowFunction: 'average', filterButton: true },
+    ],
+    rows: [
+      ['Café', 2, 3.5],
+      ['Thé', 5, 2],
+      ['Jus', 1, 4],
+    ],
+  } as ExcelJS.TableProperties);
+  t.getCell('E1').value = 'Somme des prix';
+  t.getCell('F1').value = { formula: 'SUM(Ventes[Prix])', result: 9.5 };
+
+  const bytes = new Uint8Array((await wb.xlsx.writeBuffer()) as ArrayBuffer);
+  // Critères de filtre : Ville ∈ {Lyon, Paris} et Montant > 20 ; les lignes exclues sont masquées.
+  const zip = await JSZip.loadAsync(bytes);
+  const path = 'xl/worksheets/sheet1.xml';
+  let xml = await zip.file(path)!.async('string');
+  xml = xml.replace(
+    /<autoFilter ref="A1:F11"\s*\/>/,
+    '<autoFilter ref="A1:F11"><filterColumn colId="1"><filters><filter val="Lyon"/><filter val="Paris"/></filters></filterColumn>' +
+      '<filterColumn colId="2"><customFilters><customFilter operator="greaterThan" val="20"/></customFilters></filterColumn></autoFilter>',
+  );
+  for (const row of [2, 3, 4, 7, 10]) xml = xml.replace(new RegExp(`<row r="${row}"`), `<row r="${row}" hidden="1"`);
+  zip.file(path, xml);
+  return zip.generateAsync({ type: 'uint8array' });
+}
+
 export async function buildFixture(name: FixtureName): Promise<Uint8Array> {
-  const builders: Record<FixtureName, () => Promise<ExcelJS.Workbook>> = {
+  if (name === 'data') return buildData();
+  const builders: Record<Exclude<FixtureName, 'data'>, () => Promise<ExcelJS.Workbook>> = {
     styles: buildStyles,
     formats: buildFormats,
     formulas: buildFormulas,
@@ -202,4 +277,4 @@ export async function buildFixture(name: FixtureName): Promise<Uint8Array> {
   return new Uint8Array((await wb.xlsx.writeBuffer()) as ArrayBuffer);
 }
 
-export const FIXTURES: FixtureName[] = ['styles', 'formats', 'formulas', 'layout', 'conditional', 'large'];
+export const FIXTURES: FixtureName[] = ['styles', 'formats', 'formulas', 'layout', 'conditional', 'data', 'large'];

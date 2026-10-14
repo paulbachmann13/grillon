@@ -298,7 +298,13 @@ function ruleToUniver(rule: ExcelRule, topLeft: string, theme: string[]): Univer
 }
 
 /** Mises en forme conditionnelles d'une feuille ExcelJS → règles Univer. */
-export function importConditionalFormats(ws: ExcelJS.Worksheet, sheetId: string, theme: string[]): UniverCfEntry[] {
+export function importConditionalFormats(
+  ws: ExcelJS.Worksheet,
+  sheetId: string,
+  theme: string[],
+  /** Priorités des règles marquées « Interrompre si vrai » (lues dans le XML, ExcelJS les ignore). */
+  stopIfTrue: Set<number> = new Set(),
+): UniverCfEntry[] {
   const groups = (ws as unknown as { conditionalFormattings?: { ref: string; rules: ExcelRule[] }[] }).conditionalFormattings ?? [];
   const collected: { priority: number; entry: UniverCfEntry }[] = [];
   let seq = 0;
@@ -315,7 +321,7 @@ export function importConditionalFormats(ws: ExcelJS.Worksheet, sheetId: string,
       if (!converted) continue;
       collected.push({
         priority: rule.priority ?? 1_000_000 + seq,
-        entry: { cfId: newCfId(), ranges, stopIfTrue: !!rule.stopIfTrue, rule: converted },
+        entry: { cfId: newCfId(), ranges, stopIfTrue: !!rule.stopIfTrue || (rule.priority !== undefined && stopIfTrue.has(rule.priority)), rule: converted },
       });
     }
   }
