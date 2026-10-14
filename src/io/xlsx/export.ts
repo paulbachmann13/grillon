@@ -10,6 +10,7 @@ import { TABLE_RESOURCE, writeTables, type TableToWrite, type UniverTable, type 
 import {
   CellValueType,
   DEFINED_NAME_RESOURCE,
+  GRILLON_CUSTOM_KEY,
   type ICellData,
   type IStyleData,
   type IWorkbookData,
@@ -20,6 +21,12 @@ import { CF_RESOURCE, exportConditionalFormats, type UniverCfResource } from './
 import { documentToPlainText, documentToRichText } from './rich-text';
 import { styleFromUniver } from './styles';
 import { EXCEL_DEFAULT_COL_WIDTH, EXCEL_DEFAULT_ROW_HEIGHT_PT, pxToExcelWidth, pxToPt, rangeToA1 } from './units';
+
+/** Niveau de plan stocké dans les métadonnées d'une ligne ou colonne. */
+function outlineLevel(custom: Record<string, unknown> | null | undefined | void): number {
+  const level = (custom?.[GRILLON_CUSTOM_KEY] as { outline?: number } | undefined)?.outline;
+  return typeof level === 'number' && level > 0 ? Math.min(7, Math.round(level)) : 0;
+}
 
 /** Résout un style Univer (objet ou identifiant dans workbook.styles). */
 function resolveStyle(wb: IWorkbookData, s: ICellData['s']): IStyleData | null {
@@ -86,12 +93,20 @@ function writeSheet(
     state: sheet.hidden ? 'hidden' : 'visible',
   });
 
-  // Colonnes : largeur, masquage, style de colonne.
+  let maxRowLevel = 0;
+  let maxColLevel = 0;
+
+  // Colonnes : largeur, masquage, niveau de plan, style de colonne.
   for (const [k, cd] of Object.entries(sheet.columnData ?? {})) {
     if (!cd) continue;
     const col = ws.getColumn(Number(k) + 1);
     if (cd.w !== undefined) col.width = pxToExcelWidth(cd.w);
     if (cd.hd) col.hidden = true;
+    const colLevel = outlineLevel(cd.custom);
+    if (colLevel) {
+      col.outlineLevel = colLevel;
+      maxColLevel = Math.max(maxColLevel, colLevel);
+    }
     const st = styleFromUniver(resolveStyle(wb, cd.s));
     if (st) col.style = st as ExcelJS.Style;
   }
@@ -102,11 +117,18 @@ function writeSheet(
     const row = ws.getRow(Number(k) + 1);
     if (rd.h !== undefined && rd.h !== sheet.defaultRowHeight) row.height = pxToPt(rd.h);
     if (rd.hd) row.hidden = true;
+    const rowLevel = outlineLevel(rd.custom);
+    if (rowLevel) {
+      row.outlineLevel = rowLevel;
+      maxRowLevel = Math.max(maxRowLevel, rowLevel);
+    }
     const st = styleFromUniver(resolveStyle(wb, rd.s));
     if (st) (row as unknown as { style: Partial<ExcelJS.Style> }).style = st;
   }
   // Excel ne réapplique pas les filtres à l'ouverture : les lignes filtrées doivent être masquées.
   for (const r of filteredOutRows) ws.getRow(r + 1).hidden = true;
+  if (maxRowLevel) ws.properties.outlineLevelRow = maxRowLevel;
+  if (maxColLevel) ws.properties.outlineLevelCol = maxColLevel;
 
   // Cache des styles convertis (beaucoup de cellules partagent un même identifiant).
   const styleCache = new Map<string, Partial<ExcelJS.Style> | null>();
@@ -186,8 +208,47 @@ function headerText(cell: ICellData | undefined): string {
  * Prépare les tableaux d'une feuille : Excel exige que le nom de chaque colonne soit
  * exactement le texte (unique, non vide) de la cellule d'en-tête.
  */
+/** Fonctions de la ligne de totaux d'Excel, par numéro de SUBTOTAL. */
+const TOTALS_FUNCTIONS: Record<number, string> = {
+  101: 'average',
+  102: 'countNums',
+  103: 'count',
+  104: 'max',
+  105: 'min',
+  107: 'stdDev',
+  109: 'sum',
+  110: 'var',
+};
+
+/**
+ * Univer ne connaît pas la ligne de totaux : on la reconnaît à la ligne juste sous le tableau
+ * qui contient des SUBTOTAL(…, Tableau[Colonne]) (créée par Grillon ou venant d'Excel).
+ */
+function withTotalsRow(sheet: Partial<IWorksheetData>, table: UniverTable): UniverTable {
+  if (table.meta?.excel?.totalsRowCount) return table;
+  const row = sheet.cellData?.[table.range.endRow + 1];
+  if (!row) return table;
+  const name = table.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`^=SUBTOTAL\\((\\d+),\\s*${name}\\[`, 'i');
+  let found = false;
+  const columns = table.columns.map((col, i) => {
+    const cell = row[table.range.startColumn + i];
+    const m = typeof cell?.f === 'string' ? re.exec(cell.f) : null;
+    if (m) {
+      found = true;
+      const fn = TOTALS_FUNCTIONS[Number(m[1])];
+      return fn ? { ...col, totalsRowFunction: fn } : col;
+    }
+    if (cell && cell.v !== undefined && cell.v !== null && cell.v !== '' && !cell.f) return { ...col, totalsRowLabel: String(cell.v) };
+    return col;
+  });
+  if (!found) return table;
+  return { ...table, columns, meta: { ...(table.meta ?? {}), excel: { ...(table.meta?.excel ?? {}), totalsRowCount: 1 } } };
+}
+
 function prepareTables(ws: ExcelJS.Worksheet, sheet: Partial<IWorksheetData>, tables: UniverTable[]): TableToWrite[] {
-  return tables.map((table) => {
+  return tables.map((original) => {
+    const table = withTotalsRow(sheet, original);
     const names: string[] = [];
     const seen = new Set<string>();
     for (let c = table.range.startColumn; c <= table.range.endColumn; c++) {

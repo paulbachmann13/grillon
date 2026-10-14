@@ -10,6 +10,7 @@ import {
   DEFAULT_COLUMN_COUNT,
   DEFAULT_ROW_COUNT,
   DEFINED_NAME_RESOURCE,
+  GRILLON_CUSTOM_KEY,
   LOCALE_FR,
   type ICellData,
   type IColumnData,
@@ -136,6 +137,7 @@ function convertWorksheet(ws: ExcelJS.Worksheet, registry: StyleRegistry): IWork
     const rd: Partial<IRowData> = {};
     if (row.height && Math.abs(ptToPx(row.height) - defaultRowHeightPx) > 0) rd.h = ptToPx(row.height);
     if (row.hidden) rd.hd = 1;
+    if (row.outlineLevel) rd.custom = { [GRILLON_CUSTOM_KEY]: { outline: row.outlineLevel } };
     // Style de ligne entière (rare) : seulement s'il est défini sur la ligne elle-même.
     const rowStyle = (row as unknown as { _style?: Partial<ExcelJS.Style> })._style ?? undefined;
     if (rowStyle && Object.keys(rowStyle).length) {
@@ -173,6 +175,7 @@ function convertWorksheet(ws: ExcelJS.Worksheet, registry: StyleRegistry): IWork
       if (px !== defaultColWidthPx) cd.w = px;
     }
     if (col.hidden) cd.hd = 1;
+    if (col.outlineLevel) cd.custom = { [GRILLON_CUSTOM_KEY]: { outline: col.outlineLevel } };
     const colStyle = (col as unknown as { style?: Partial<ExcelJS.Style> }).style;
     if (colStyle && Object.keys(colStyle).length) {
       const s = registry.idFor(colStyle);

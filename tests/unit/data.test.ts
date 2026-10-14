@@ -90,6 +90,65 @@ describe('validation de données, filtres, tableaux — import', () => {
   });
 });
 
+describe('tableau créé dans Grillon', () => {
+  it('une ligne de SUBTOTAL sous le tableau devient sa ligne de totaux Excel', async () => {
+    const sheetId = 's1';
+    const wb: IWorkbookData = {
+      id: 'w',
+      name: 'w',
+      appVersion: '1',
+      locale: 'frFR' as IWorkbookData['locale'],
+      styles: {},
+      sheetOrder: [sheetId],
+      sheets: {
+        [sheetId]: {
+          id: sheetId,
+          name: 'F',
+          cellData: {
+            0: { 0: { v: 'Produit', t: 1 }, 1: { v: 'Qte', t: 1 } },
+            1: { 0: { v: 'Café', t: 1 }, 1: { v: 2, t: 2 } },
+            2: { 0: { v: 'Thé', t: 1 }, 1: { v: 5, t: 2 } },
+            3: { 0: { v: 'Total', t: 1 }, 1: { f: '=SUBTOTAL(109,Tableau1[Qte])', v: 7, t: 2 } },
+          },
+        },
+      },
+      resources: [
+        {
+          name: 'SHEET_TABLE_PLUGIN',
+          data: JSON.stringify({
+            [sheetId]: {
+              tables: [
+                {
+                  id: 't1',
+                  name: 'Tableau1',
+                  range: { startRow: 0, endRow: 2, startColumn: 0, endColumn: 1 },
+                  options: { showHeader: true, showAutoFilter: true },
+                  filters: { tableColumnFilterList: [] },
+                  columns: [
+                    { id: 'a', displayName: 'Produit', dataType: 'string', formula: '', showFilterButton: true, meta: {}, style: {} },
+                    { id: 'b', displayName: 'Qte', dataType: 'string', formula: '', showFilterButton: true, meta: {}, style: {} },
+                  ],
+                },
+              ],
+              tableFilteredOutRows: [],
+            },
+          }),
+        },
+      ],
+    };
+    const zip = await JSZip.loadAsync(await exportXlsx(wb));
+    const table = await zip.file('xl/tables/table1.xml')!.async('string');
+    expect(table).toContain('ref="A1:B4"');
+    expect(table).toContain('totalsRowCount="1"');
+    expect(table).toContain('<tableColumn id="1" name="Produit" totalsRowLabel="Total"/>');
+    expect(table).toContain('<tableColumn id="2" name="Qte" totalsRowFunction="sum"/>');
+    const back = await importXlsx(await zip.generateAsync({ type: 'uint8array' }));
+    const t = dataResources(back).tables.F[0] as unknown as { range: object; meta: { excel: { totalsRowCount: number } } };
+    expect(t.range).toEqual({ startRow: 0, endRow: 2, startColumn: 0, endColumn: 1 });
+    expect(t.meta.excel.totalsRowCount).toBe(1);
+  });
+});
+
 describe('validation de données, filtres, tableaux — round-trip', () => {
   it('conserve validations, critères de filtre, tableaux et cellules', async () => {
     const first = await importXlsx(await buildFixture('data'));

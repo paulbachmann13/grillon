@@ -95,6 +95,8 @@ describe('import xlsx — mise en page', () => {
     expect(a.rowData?.[5]?.hd).toBe(1);
     expect(wb.sheetOrder.map((id) => wb.sheets[id]!.name)).toEqual(['Mise en page', 'Deuxième feuille', 'Masquée', 'Sans quadrillage']);
     expect(sheetByName(wb, 'Masquée').hidden).toBe(1);
+    expect([7, 8, 9, 10, 11, 12].map((r) => (a.rowData?.[r]?.custom as { grillon?: { outline?: number } })?.grillon?.outline)).toEqual([1, 2, 2, 1, 1, undefined]);
+    expect((a.columnData?.[5]?.custom as { grillon?: { outline?: number } })?.grillon?.outline).toBe(1);
     expect(sheetByName(wb, 'Sans quadrillage').showGridlines).toBe(0);
   });
 });

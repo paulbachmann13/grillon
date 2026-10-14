@@ -134,6 +134,10 @@ export async function buildLayout(): Promise<ExcelJS.Workbook> {
   a.getCell('A6').value = 'Ligne masquée';
   a.getRow(6).hidden = true;
   for (let r = 7; r <= 30; r++) a.getCell(r, 1).value = `Ligne ${r}`;
+  // Plan : lignes 8 à 12 groupées, 9 et 10 groupées une seconde fois ; colonnes F:G groupées.
+  for (let r = 8; r <= 12; r++) a.getRow(r).outlineLevel = r === 9 || r === 10 ? 2 : 1;
+  a.getColumn(6).outlineLevel = 1;
+  a.getColumn(7).outlineLevel = 1;
 
   const b = wb.addWorksheet('Deuxième feuille');
   b.getCell('A1').value = 'Feuille 2';
