@@ -28,7 +28,14 @@ export function normalize(wb: IWorkbookData) {
     for (const [r, cols] of Object.entries(s.cellData ?? {})) {
       for (const [c, cell] of Object.entries(cols ?? {}) as [string, ICellData | undefined][]) {
         if (!cell) continue;
-        cells[toA1(Number(r), Number(c))] = { v: cell.v, t: cell.t, f: cell.f, s: styleOf(wb, cell), custom: cell.custom };
+        cells[toA1(Number(r), Number(c))] = {
+          v: cell.v,
+          t: cell.t,
+          f: cell.f,
+          s: styleOf(wb, cell),
+          custom: cell.custom,
+          p: cell.p ? { text: cell.p.body?.dataStream, runs: (cell.p.body as { textRuns?: unknown[] })?.textRuns } : undefined,
+        };
       }
     }
     return {
@@ -53,4 +60,21 @@ export function definedNames(wb: IWorkbookData): { name: string; ref: string }[]
   return Object.values(JSON.parse(res.data) as Record<string, { name: string; formulaOrRefString: string }>)
     .map((n) => ({ name: n.name, ref: n.formulaOrRefString }))
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Mises en forme conditionnelles par nom de feuille, sans identifiants. */
+export function conditionalFormats(wb: IWorkbookData): Record<string, unknown[]> {
+  const res = wb.resources?.find((r) => r.name === 'SHEET_CONDITIONAL_FORMATTING_PLUGIN');
+  if (!res) return {};
+  const data = JSON.parse(res.data) as Record<string, { ranges: Record<string, unknown>[]; stopIfTrue: boolean; rule: unknown }[]>;
+  const out: Record<string, unknown[]> = {};
+  for (const [sheetId, rules] of Object.entries(data)) {
+    const name = wb.sheets[sheetId]?.name ?? sheetId;
+    out[name] = rules.map((r) => ({
+      ranges: r.ranges.map(({ startRow, endRow, startColumn, endColumn }) => ({ startRow, endRow, startColumn, endColumn })),
+      stopIfTrue: r.stopIfTrue,
+      rule: r.rule,
+    }));
+  }
+  return out;
 }

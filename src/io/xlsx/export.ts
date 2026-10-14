@@ -11,6 +11,8 @@ import {
   type IWorksheetData,
 } from '../../model/univer-types';
 import { cssToArgb } from './colors';
+import { CF_RESOURCE, exportConditionalFormats, type UniverCfResource } from './conditional-formatting';
+import { documentToPlainText, documentToRichText } from './rich-text';
 import { styleFromUniver } from './styles';
 import { EXCEL_DEFAULT_COL_WIDTH, EXCEL_DEFAULT_ROW_HEIGHT_PT, pxToExcelWidth, pxToPt, rangeToA1 } from './units';
 
@@ -50,14 +52,7 @@ function cellValue(cell: ICellData): ExcelJS.CellValue {
   return typeof v === 'boolean' ? v : v;
 }
 
-/** Univer garde parfois du texte enrichi (p) sans v : on en tire le texte brut. */
-function plainTextFromDoc(cell: ICellData): string | undefined {
-  const body = cell.p?.body?.dataStream;
-  if (!body) return undefined;
-  return body.replace(/\r\n$/, '').replace(/[\r\n]+$/, '').replace(/\r/g, '\n');
-}
-
-function writeSheet(wb: IWorkbookData, xlWb: ExcelJS.Workbook, sheet: Partial<IWorksheetData>, name: string): void {
+function writeSheet(wb: IWorkbookData, xlWb: ExcelJS.Workbook, sheet: Partial<IWorksheetData>, name: string): ExcelJS.Worksheet {
   const defaultColWidth = sheet.defaultColumnWidth ? pxToExcelWidth(sheet.defaultColumnWidth) : EXCEL_DEFAULT_COL_WIDTH;
   const defaultRowHeight = sheet.defaultRowHeight ? pxToPt(sheet.defaultRowHeight) : EXCEL_DEFAULT_ROW_HEIGHT_PT;
 
@@ -119,10 +114,13 @@ function writeSheet(wb: IWorkbookData, xlWb: ExcelJS.Workbook, sheet: Partial<IW
       const xc = row.getCell(Number(ck) + 1);
       const f = typeof cell.f === 'string' && cell.f.startsWith('=') ? cell.f.slice(1) : undefined;
       let v = cellValue(cell);
-      if (v === null && cell.p) v = plainTextFromDoc(cell) ?? null;
+      if (v === null && cell.p) v = documentToPlainText(cell.p) || null;
+      const rich = !f && cell.p ? documentToRichText(cell.p) : null;
       const link = typeof cell.custom?.link === 'string' ? (cell.custom.link as string) : undefined;
       if (f) {
         xc.value = { formula: f, result: v ?? undefined } as ExcelJS.CellFormulaValue;
+      } else if (rich) {
+        xc.value = { richText: rich };
       } else if (link) {
         xc.value = { text: String(v ?? link), hyperlink: link };
       } else if (v !== null) {
@@ -137,6 +135,18 @@ function writeSheet(wb: IWorkbookData, xlWb: ExcelJS.Workbook, sheet: Partial<IW
     if (m.endRow === m.startRow && m.endColumn === m.startColumn) continue;
     ws.mergeCells(rangeToA1(m));
   }
+  return ws;
+}
+
+/** Lit une ressource de plugin Univer (JSON). */
+function readResource<T>(wb: IWorkbookData, name: string): T | undefined {
+  const data = wb.resources?.find((r) => r.name === name)?.data;
+  if (!data) return undefined;
+  try {
+    return JSON.parse(data) as T;
+  } catch {
+    return undefined;
+  }
 }
 
 interface StoredDefinedName {
@@ -150,13 +160,13 @@ export function univerToWorkbook(wb: IWorkbookData): ExcelJS.Workbook {
   xlWb.creator = 'Grillon';
   xlWb.created = new Date();
   const used = new Set<string>();
-  const renamed = new Map<string, string>();
+  const cf = readResource<UniverCfResource>(wb, CF_RESOURCE) ?? {};
   for (const id of wb.sheetOrder) {
     const sheet = wb.sheets[id];
     if (!sheet) continue;
     const name = sanitizeSheetName(sheet.name ?? '', used);
-    if (sheet.name && name !== sheet.name) renamed.set(sheet.name, name);
-    writeSheet(wb, xlWb, sheet, name);
+    const ws = writeSheet(wb, xlWb, sheet, name);
+    if (cf[id]?.length) exportConditionalFormats(ws, cf[id]);
   }
 
   const res = wb.resources?.find((r) => r.name === DEFINED_NAME_RESOURCE);

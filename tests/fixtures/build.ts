@@ -4,7 +4,7 @@
  */
 import ExcelJS from 'exceljs';
 
-export type FixtureName = 'styles' | 'formats' | 'formulas' | 'layout' | 'large';
+export type FixtureName = 'styles' | 'formats' | 'formulas' | 'layout' | 'conditional' | 'large';
 
 const thin = { style: 'thin' as const, color: { argb: 'FF000000' } };
 
@@ -36,6 +36,15 @@ export async function buildStyles(): Promise<ExcelJS.Workbook> {
   // Cellule vide mais stylée (fond) : doit survivre.
   ws.getCell('C3').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF00B050' } };
   ws.getColumn(2).width = 30;
+  // Texte enrichi : plusieurs styles dans une cellule, avec un saut de ligne.
+  ws.getCell('A7').value = {
+    richText: [
+      { text: 'Gras ', font: { bold: true, size: 12, name: 'Calibri' } },
+      { text: 'rouge', font: { color: { argb: 'FFFF0000' }, size: 12, name: 'Calibri' } },
+      { text: ' normal\nligne 2' },
+    ],
+  };
+  ws.getCell('A7').alignment = { wrapText: true };
   return wb;
 }
 
@@ -134,6 +143,36 @@ export async function buildLayout(): Promise<ExcelJS.Workbook> {
   return wb;
 }
 
+export async function buildConditional(): Promise<ExcelJS.Workbook> {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('MFC');
+  ws.addRow(['Note', 'Nom', 'Date', 'Barre', 'Échelle', 'Icônes']);
+  const noms = ['Alice', 'Bob', 'alice', 'Chloé', 'Bob', 'David', 'Émile', 'Fanny', 'Gaël', 'Hugo'];
+  for (let i = 0; i < 10; i++) {
+    ws.addRow([i * 2, noms[i], new Date(Date.UTC(2026, 9, 10 + i)), i * 10, i, i * 11]);
+  }
+  ws.getColumn(3).numFmt = 'dd/mm/yyyy';
+  const red = { font: { color: { argb: 'FF9C0006' } }, fill: { type: 'pattern' as const, pattern: 'solid' as const, bgColor: { argb: 'FFFFC7CE' } } };
+  const green = { font: { color: { argb: 'FF006100' } }, fill: { type: 'pattern' as const, pattern: 'solid' as const, bgColor: { argb: 'FFC6EFCE' } } };
+  ws.addConditionalFormatting({ ref: 'A2:A11', rules: [
+    { type: 'cellIs', operator: 'greaterThan', formulae: ['10'], priority: 1, style: red },
+    { type: 'cellIs', operator: 'between', formulae: ['2', '6'], priority: 2, style: green },
+  ] });
+  ws.addConditionalFormatting({ ref: 'A2:A11', rules: [{ type: 'top10', rank: 3, percent: false, bottom: false, priority: 3, style: { font: { bold: true } } }] });
+  ws.addConditionalFormatting({ ref: 'A2:A11', rules: [{ type: 'aboveAverage', aboveAverage: false, priority: 4, style: { font: { italic: true } } }] });
+  ws.addConditionalFormatting({ ref: 'B2:B11', rules: [
+    { type: 'containsText', operator: 'containsText', text: 'li', priority: 5, style: red } as ExcelJS.ConditionalFormattingRule,
+    { type: 'expression', formulae: ['COUNTIF($B$2:$B$11,B2)>1'], priority: 6, style: { font: { underline: true } } },
+    { type: 'expression', formulae: ['LEFT(B2,LEN("G"))="G"'], priority: 7, style: green },
+  ] });
+  ws.addConditionalFormatting({ ref: 'C2:C11', rules: [{ type: 'timePeriod', timePeriod: 'today', priority: 8, style: green } as ExcelJS.ConditionalFormattingRule] });
+  ws.addConditionalFormatting({ ref: 'D2:D11', rules: [{ type: 'dataBar', priority: 9, cfvo: [{ type: 'min' }, { type: 'max' }], color: { argb: 'FF638EC6' }, gradient: true } as unknown as ExcelJS.ConditionalFormattingRule] });
+  ws.addConditionalFormatting({ ref: 'E2:E11', rules: [{ type: 'colorScale', priority: 10, cfvo: [{ type: 'min' }, { type: 'percentile', value: 50 }, { type: 'max' }], color: [{ argb: 'FFF8696B' }, { argb: 'FFFFEB84' }, { argb: 'FF63BE7B' }] } as unknown as ExcelJS.ConditionalFormattingRule] });
+  ws.addConditionalFormatting({ ref: 'F2:F11', rules: [{ type: 'iconSet', priority: 11, iconSet: '3Arrows', cfvo: [{ type: 'percent', value: 0 }, { type: 'percent', value: 33 }, { type: 'percent', value: 67 }] } as unknown as ExcelJS.ConditionalFormattingRule] });
+  ws.addConditionalFormatting({ ref: 'A13:A20 C13:C20', rules: [{ type: 'expression', formulae: ['MOD(ROW(),2)=0'], priority: 12, style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFDDEBF7' } } } }] });
+  return wb;
+}
+
 export async function buildLarge(rows = 50_000): Promise<ExcelJS.Workbook> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Gros volume');
@@ -156,10 +195,11 @@ export async function buildFixture(name: FixtureName): Promise<Uint8Array> {
     formats: buildFormats,
     formulas: buildFormulas,
     layout: buildLayout,
+    conditional: buildConditional,
     large: () => buildLarge(),
   };
   const wb = await builders[name]();
   return new Uint8Array((await wb.xlsx.writeBuffer()) as ArrayBuffer);
 }
 
-export const FIXTURES: FixtureName[] = ['styles', 'formats', 'formulas', 'layout', 'large'];
+export const FIXTURES: FixtureName[] = ['styles', 'formats', 'formulas', 'layout', 'conditional', 'large'];

@@ -19,6 +19,8 @@ import {
   type IWorksheetData,
 } from '../../model/univer-types';
 import { parseThemeColors } from './colors';
+import { CF_RESOURCE, importConditionalFormats, type UniverCfResource } from './conditional-formatting';
+import { richTextToDocument } from './rich-text';
 import { styleToUniver } from './styles';
 import { dateToSerial, EXCEL_DEFAULT_COL_WIDTH, EXCEL_DEFAULT_ROW_HEIGHT_PT, excelWidthToPx, fromA1, ptToPx, rangeFromA1 } from './units';
 
@@ -38,7 +40,7 @@ class StyleRegistry {
   private readonly byKey = new Map<string, string>();
   private readonly cache = new WeakMap<object, string | null>();
 
-  constructor(private readonly theme: string[]) {}
+  constructor(readonly theme: string[]) {}
 
   /** ExcelJS partage souvent le même objet style entre cellules : on met le résultat en cache. */
   idFor(style: Partial<ExcelJS.Style> | undefined): string | null {
@@ -101,6 +103,9 @@ function convertCell(cell: ExcelJS.Cell, registry: StyleRegistry): ICellData | n
   } else {
     const conv = convertValue(value);
     if (conv) Object.assign(out, conv);
+    // Texte enrichi : on garde les styles de chaque morceau dans un document Univer.
+    const rich = value && typeof value === 'object' && 'richText' in value ? value.richText : undefined;
+    if (rich?.length && rich.some((r) => r.font && Object.keys(r.font).length)) out.p = richTextToDocument(rich, registry.theme);
   }
   const hyperlink = cell.hyperlink;
   if (hyperlink) out.custom = { link: hyperlink };
@@ -231,10 +236,13 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
 
   const sheets: Record<string, Partial<IWorksheetData>> = {};
   const sheetOrder: string[] = [];
+  const cf: UniverCfResource = {};
   wb.eachSheet((ws) => {
     const sheet = convertWorksheet(ws, registry);
     sheets[sheet.id] = sheet;
     sheetOrder.push(sheet.id);
+    const rules = importConditionalFormats(ws, sheet.id, theme);
+    if (rules.length) cf[sheet.id] = rules;
   });
 
   if (!sheetOrder.length) {
@@ -256,6 +264,8 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
     }
     if (Object.keys(map).length) resources.push({ name: DEFINED_NAME_RESOURCE, data: JSON.stringify(map) });
   }
+
+  if (Object.keys(cf).length) resources.push({ name: CF_RESOURCE, data: JSON.stringify(cf) });
 
   return {
     id: options.id ?? newId('wb'),
