@@ -1,0 +1,286 @@
+/**
+ * Import .xlsx → IWorkbookData (modèle Univer).
+ *
+ * Lecture via ExcelJS (MIT). Ne dépend ni du DOM ni d'Univer à l'exécution :
+ * fonctionne dans Node (tests), dans le navigateur et dans un Web Worker.
+ */
+import ExcelJS from 'exceljs';
+import {
+  CellValueType,
+  DEFAULT_COLUMN_COUNT,
+  DEFAULT_ROW_COUNT,
+  DEFINED_NAME_RESOURCE,
+  LOCALE_FR,
+  type ICellData,
+  type IColumnData,
+  type IRowData,
+  type IStyleData,
+  type IWorkbookData,
+  type IWorksheetData,
+} from '../../model/univer-types';
+import { parseThemeColors } from './colors';
+import { styleToUniver } from './styles';
+import { dateToSerial, EXCEL_DEFAULT_COL_WIDTH, EXCEL_DEFAULT_ROW_HEIGHT_PT, excelWidthToPx, fromA1, ptToPx, rangeFromA1 } from './units';
+
+/** Police par défaut d'Excel (les cellules sans police explicite l'utilisent). */
+export const EXCEL_DEFAULT_FONT = { ff: 'Calibri', fs: 11 } as const;
+
+export interface ImportOptions {
+  /** Nom du classeur (sinon « Classeur »). */
+  name?: string;
+  /** Identifiant du classeur (sinon généré). */
+  id?: string;
+}
+
+/** Registre des styles : dédoublonne les IStyleData et renvoie un identifiant. */
+class StyleRegistry {
+  readonly styles: Record<string, IStyleData> = {};
+  private readonly byKey = new Map<string, string>();
+  private readonly cache = new WeakMap<object, string | null>();
+
+  constructor(private readonly theme: string[]) {}
+
+  /** ExcelJS partage souvent le même objet style entre cellules : on met le résultat en cache. */
+  idFor(style: Partial<ExcelJS.Style> | undefined): string | null {
+    if (!style || typeof style !== 'object') return null;
+    const cached = this.cache.get(style);
+    if (cached !== undefined) return cached;
+    const u = styleToUniver(style, this.theme);
+    let id: string | null = null;
+    if (u) {
+      const key = JSON.stringify(u);
+      id = this.byKey.get(key) ?? null;
+      if (!id) {
+        id = `s${this.byKey.size + 1}`;
+        this.byKey.set(key, id);
+        this.styles[id] = u;
+      }
+    }
+    this.cache.set(style, id);
+    return id;
+  }
+}
+
+function newId(prefix: string): string {
+  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** Valeur ExcelJS → (v, t) Univer. */
+function convertValue(value: ExcelJS.CellValue): Pick<ICellData, 'v' | 't'> | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number') return { v: value, t: CellValueType.NUMBER };
+  if (typeof value === 'string') return { v: value, t: CellValueType.STRING };
+  if (typeof value === 'boolean') return { v: value ? 1 : 0, t: CellValueType.BOOLEAN };
+  if (value instanceof Date) return { v: dateToSerial(value), t: CellValueType.NUMBER };
+  if (typeof value === 'object') {
+    if ('richText' in value && Array.isArray(value.richText)) {
+      return { v: value.richText.map((r) => r.text).join(''), t: CellValueType.STRING };
+    }
+    if ('error' in value && value.error) return { v: String(value.error), t: CellValueType.STRING };
+    if ('text' in value && 'hyperlink' in value) {
+      const text = value.text as unknown;
+      if (typeof text === 'string') return { v: text, t: CellValueType.STRING };
+      if (text && typeof text === 'object' && 'richText' in text) {
+        return { v: (text as ExcelJS.CellRichTextValue).richText.map((r) => r.text).join(''), t: CellValueType.STRING };
+      }
+    }
+  }
+  return null;
+}
+
+function convertCell(cell: ExcelJS.Cell, registry: StyleRegistry): ICellData | null {
+  const out: ICellData = {};
+  const value = cell.value;
+  const isFormula = cell.type === ExcelJS.ValueType.Formula;
+  if (isFormula) {
+    const f = cell.formula;
+    if (f) out.f = `=${f}`;
+    const result = (value as ExcelJS.CellFormulaValue).result;
+    const conv = convertValue(result as ExcelJS.CellValue);
+    if (conv) Object.assign(out, conv);
+  } else {
+    const conv = convertValue(value);
+    if (conv) Object.assign(out, conv);
+  }
+  const hyperlink = cell.hyperlink;
+  if (hyperlink) out.custom = { link: hyperlink };
+  const s = registry.idFor(cell.style);
+  if (s) out.s = s;
+  if (out.v === undefined && out.f === undefined && out.s === undefined) return null;
+  return out;
+}
+
+function convertWorksheet(ws: ExcelJS.Worksheet, registry: StyleRegistry): IWorksheetData {
+  const id = newId('sheet');
+  const cellData: Record<number, Record<number, ICellData>> = {};
+  const rowData: Record<number, Partial<IRowData>> = {};
+  const columnData: Record<number, Partial<IColumnData>> = {};
+  let maxRow = 0;
+  let maxCol = 0;
+
+  const props = ws.properties ?? ({} as ExcelJS.WorksheetProperties);
+  const defaultColWidthPx = excelWidthToPx(props.defaultColWidth ?? EXCEL_DEFAULT_COL_WIDTH);
+  const defaultRowHeightPx = ptToPx(props.defaultRowHeight ?? EXCEL_DEFAULT_ROW_HEIGHT_PT);
+
+  ws.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+    const r = rowNumber - 1;
+    const rd: Partial<IRowData> = {};
+    if (row.height && Math.abs(ptToPx(row.height) - defaultRowHeightPx) > 0) rd.h = ptToPx(row.height);
+    if (row.hidden) rd.hd = 1;
+    // Style de ligne entière (rare) : seulement s'il est défini sur la ligne elle-même.
+    const rowStyle = (row as unknown as { _style?: Partial<ExcelJS.Style> })._style ?? undefined;
+    if (rowStyle && Object.keys(rowStyle).length) {
+      const s = registry.idFor(rowStyle);
+      if (s) rd.s = s;
+    }
+    if (Object.keys(rd).length) rowData[r] = rd;
+
+    const cells = (row as unknown as { _cells: (ExcelJS.Cell | undefined)[] })._cells ?? [];
+    for (let c = 0; c < cells.length; c++) {
+      const cell = cells[c];
+      if (!cell) continue;
+      // Les cellules fusionnées « esclaves » sont ignorées : seule la cellule maître porte la valeur.
+      if (cell.isMerged && cell.master !== cell) {
+        const s = registry.idFor(cell.style);
+        if (!s) continue;
+        (cellData[r] ??= {})[c] = { s };
+        continue;
+      }
+      const data = convertCell(cell, registry);
+      if (!data) continue;
+      (cellData[r] ??= {})[c] = data;
+      if (r > maxRow) maxRow = r;
+      if (c > maxCol) maxCol = c;
+    }
+  });
+
+  const columns = (ws as unknown as { _columns?: ExcelJS.Column[] })._columns ?? [];
+  columns.forEach((col, i) => {
+    if (!col) return;
+    const cd: Partial<IColumnData> = {};
+    const w = col.width;
+    if (w !== undefined && w !== null) {
+      const px = excelWidthToPx(w);
+      if (px !== defaultColWidthPx) cd.w = px;
+    }
+    if (col.hidden) cd.hd = 1;
+    const colStyle = (col as unknown as { style?: Partial<ExcelJS.Style> }).style;
+    if (colStyle && Object.keys(colStyle).length) {
+      const s = registry.idFor(colStyle);
+      if (s) cd.s = s;
+    }
+    if (Object.keys(cd).length) columnData[i] = cd;
+  });
+
+  const merges = ((ws.model as unknown as { merges?: string[] }).merges ?? []).map(rangeFromA1);
+  for (const m of merges) {
+    maxRow = Math.max(maxRow, m.endRow);
+    maxCol = Math.max(maxCol, m.endColumn);
+  }
+
+  const view = ws.views?.[0] as Partial<ExcelJS.WorksheetViewFrozen & ExcelJS.WorksheetViewCommon> | undefined;
+  let freeze = { xSplit: 0, ySplit: 0, startRow: -1, startColumn: -1 };
+  if (view && view.state === 'frozen' && ((view.xSplit ?? 0) > 0 || (view.ySplit ?? 0) > 0)) {
+    const xSplit = view.xSplit ?? 0;
+    const ySplit = view.ySplit ?? 0;
+    freeze = { xSplit, ySplit, startRow: ySplit, startColumn: xSplit };
+  }
+
+  const tabArgb = (props.tabColor as { argb?: string } | undefined)?.argb;
+
+  return {
+    id,
+    name: ws.name,
+    tabColor: tabArgb ? `#${tabArgb.slice(-6)}` : '',
+    hidden: ws.state === 'hidden' || ws.state === 'veryHidden' ? 1 : 0,
+    freeze,
+    rowCount: Math.max(DEFAULT_ROW_COUNT, maxRow + 1 + 100),
+    columnCount: Math.max(DEFAULT_COLUMN_COUNT, maxCol + 1 + 5),
+    zoomRatio: view?.zoomScale ? view.zoomScale / 100 : 1,
+    scrollTop: 0,
+    scrollLeft: 0,
+    defaultColumnWidth: defaultColWidthPx,
+    defaultRowHeight: defaultRowHeightPx,
+    mergeData: merges,
+    cellData,
+    rowData,
+    columnData,
+    rowHeader: { width: 46, hidden: 0 },
+    columnHeader: { height: 20, hidden: 0 },
+    showGridlines: view?.showGridLines === false ? 0 : 1,
+    rightToLeft: view?.rightToLeft ? 1 : 0,
+  } as IWorksheetData;
+}
+
+interface DefinedNameModel {
+  name: string;
+  ranges: string[];
+  localSheetId?: number;
+}
+
+export async function importXlsx(data: ArrayBuffer | Uint8Array, options: ImportOptions = {}): Promise<IWorkbookData> {
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(data as ArrayBuffer);
+  return workbookToUniver(wb, options);
+}
+
+export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = {}): IWorkbookData {
+  const themes = (wb as unknown as { _themes?: Record<string, string> })._themes;
+  const theme = parseThemeColors(themes?.theme1);
+  const registry = new StyleRegistry(theme);
+
+  const sheets: Record<string, Partial<IWorksheetData>> = {};
+  const sheetOrder: string[] = [];
+  wb.eachSheet((ws) => {
+    const sheet = convertWorksheet(ws, registry);
+    sheets[sheet.id] = sheet;
+    sheetOrder.push(sheet.id);
+  });
+
+  if (!sheetOrder.length) {
+    const id = newId('sheet');
+    sheets[id] = { id, name: 'Feuil1', cellData: {} };
+    sheetOrder.push(id);
+  }
+
+  const resources: IWorkbookData['resources'] = [];
+  const names = (wb.definedNames.model ?? []) as DefinedNameModel[];
+  if (names.length) {
+    const map: Record<string, { id: string; name: string; formulaOrRefString: string; localSheetId?: string }> = {};
+    for (const n of names) {
+      // Les noms internes d'Excel (_xlnm.Print_Area, filtres…) ne sont pas des noms utilisateur.
+      if (!n.name || n.name.startsWith('_xlnm.')) continue;
+      const id = newId('name');
+      const refs = n.ranges.map(normalizeSheetRef);
+      map[id] = { id, name: n.name, formulaOrRefString: refs.join(',') };
+    }
+    if (Object.keys(map).length) resources.push({ name: DEFINED_NAME_RESOURCE, data: JSON.stringify(map) });
+  }
+
+  return {
+    id: options.id ?? newId('wb'),
+    name: options.name ?? 'Classeur',
+    appVersion: '1.0.0',
+    locale: LOCALE_FR as IWorkbookData['locale'],
+    styles: registry.styles,
+    defaultStyle: { ...EXCEL_DEFAULT_FONT },
+    sheetOrder,
+    sheets,
+    resources,
+  };
+}
+
+/** ExcelJS renvoie parfois « 'Feuil 1'!$A$1:$B$2 » ou « Feuil1!A1 » : on garde ce format Excel tel quel. */
+function normalizeSheetRef(ref: string): string {
+  const bang = ref.lastIndexOf('!');
+  if (bang < 0) return ref;
+  const sheet = ref.slice(0, bang);
+  const cells = ref.slice(bang + 1);
+  // Validation légère : on s'assure que la partie cellule est bien une référence A1.
+  try {
+    cells.split(':').forEach((p) => fromA1(p));
+  } catch {
+    return ref;
+  }
+  return `${sheet}!${cells}`;
+}
