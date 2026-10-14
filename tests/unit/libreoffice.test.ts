@@ -41,12 +41,19 @@ describe.skipIf(!soffice)('LibreOffice ouvre les exports Grillon', () => {
       const a = normalize(original);
       const b = normalize(reread);
       expect(b.map((s) => s.name)).toEqual(a.map((s) => s.name));
+      // LibreOffice réécrit les constantes logiques en fonctions : FALSE → FALSE(), et une cellule VRAI en =TRUE().
+      const sameFormula = (f?: string) => f?.replace(/\b(TRUE|FALSE)\(\)/g, '$1');
       for (let i = 0; i < a.length; i++) {
-        for (const [ref, cell] of Object.entries(a[i].cells) as [string, { v?: unknown; f?: string }][]) {
-          const other = b[i].cells[ref] as { v?: unknown; f?: string } | undefined;
-          if (cell.v !== undefined && typeof cell.v !== 'number') expect(other?.v, `${a[i].name}!${ref}`).toEqual(cell.v);
-          if (typeof cell.v === 'number') expect(other?.v as number, `${a[i].name}!${ref}`).toBeCloseTo(cell.v, 6);
-          if (cell.f) expect(other?.f, `${a[i].name}!${ref}`).toBe(cell.f);
+        for (const [ref, cell] of Object.entries(a[i].cells) as [string, { v?: unknown; t?: number; f?: string }][]) {
+          const other = b[i].cells[ref] as { v?: unknown; t?: number; f?: string } | undefined;
+          const where = `${a[i].name}!${ref}`;
+          if (cell.t === 3 && !cell.f && other?.f) {
+            expect(sameFormula(other.f), where).toBe(cell.v ? '=TRUE' : '=FALSE');
+            continue;
+          }
+          if (cell.v !== undefined && typeof cell.v !== 'number') expect(other?.v, where).toEqual(cell.v);
+          if (typeof cell.v === 'number') expect(other?.v as number, where).toBeCloseTo(cell.v, 6);
+          if (cell.f) expect(sameFormula(other?.f), where).toBe(cell.f);
         }
         expect(b[i].merges).toEqual(a[i].merges);
       }
