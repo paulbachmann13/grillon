@@ -169,3 +169,132 @@ body,
     display: none;
   }
 }
+
+/* --- Boîtes de dialogue Grillon --- */
+.g-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 25%);
+}
+
+.g-dialog {
+  width: min(460px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 18px 20px 16px;
+  background: var(--grillon-menu-bg);
+  color: var(--grillon-fg);
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgb(0 0 0 / 22%);
+  font-size: 13px;
+}
+
+.g-dialog h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.g-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.g-dialog-body p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.g-dialog fieldset {
+  margin: 0;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--grillon-border);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.g-dialog legend {
+  padding: 0 4px;
+  color: var(--grillon-muted);
+}
+
+.g-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.g-field > span {
+  color: var(--grillon-muted);
+}
+
+.g-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.g-dialog input[type='text'],
+.g-dialog select {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--grillon-border);
+  border-radius: 6px;
+  background: var(--grillon-bg);
+  color: inherit;
+  font: inherit;
+}
+
+.g-dialog input[type='text']:focus-visible,
+.g-dialog select:focus-visible {
+  outline: 2px solid var(--grillon-accent);
+  outline-offset: -1px;
+}
+
+.g-dialog-error {
+  min-height: 1em;
+  margin: 8px 0 0;
+  color: var(--grillon-error);
+}
+
+.g-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.g-dialog-actions button {
+  min-width: 88px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--grillon-border);
+  border-radius: 6px;
+  background: var(--grillon-bg);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.g-dialog-actions button.primary {
+  border-color: var(--grillon-accent);
+  background: var(--grillon-accent);
+  color: #fff;
+}
+
+.g-dialog-actions button:focus-visible {
+  outline: 2px solid var(--grillon-accent);
+  outline-offset: 2px;
+}

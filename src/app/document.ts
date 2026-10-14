@@ -6,6 +6,7 @@ import { t } from '../i18n';
 import { openFile, saveAs, writeToHandle } from '../io/files';
 import type { IWorkbookData } from '../model/univer-types';
 import { installFrenchDisplay } from '../univer/french-display';
+import { installDataRibbon } from '../univer/data-ribbon';
 import { installHomeRibbon } from '../univer/home-ribbon';
 import { LOCALE_FR } from '../model/univer-types';
 import { clearAutosave, loadAutosave, saveAutosave } from '../storage/autosave';
@@ -66,6 +67,7 @@ export class DocumentController {
       installFrenchDisplay(this.api);
       if (!this.ribbonReady) {
         installHomeRibbon(this.api);
+        installDataRibbon(this.api, this);
         this.ribbonReady = true;
       }
       this.fileName = fileName;
