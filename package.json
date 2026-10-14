@@ -1,0 +1,47 @@
+{
+  "name": "grillon",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Grillon — tableur local gratuit, type Excel (PWA)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "fixtures": "node --experimental-strip-types scripts/make-fixtures.ts",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@univerjs/preset-sheets-conditional-formatting": "^1.0.4",
+    "@univerjs/preset-sheets-core": "^1.0.4",
+    "@univerjs/preset-sheets-data-validation": "^1.0.4",
+    "@univerjs/preset-sheets-drawing": "^1.0.4",
+    "@univerjs/preset-sheets-filter": "^1.0.4",
+    "@univerjs/preset-sheets-find-replace": "^1.0.4",
+    "@univerjs/preset-sheets-hyper-link": "^1.0.4",
+    "@univerjs/preset-sheets-note": "^1.0.4",
+    "@univerjs/preset-sheets-sort": "^1.0.4",
+    "@univerjs/presets": "^1.0.4",
+    "exceljs": "^4.4.0",
+    "papaparse": "^5.7.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "@types/papaparse": "^5.5.2",
+    "@vite-pwa/assets-generator": "^2.0.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.0.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

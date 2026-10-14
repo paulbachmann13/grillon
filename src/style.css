@@ -1,0 +1,171 @@
+:root {
+  --grillon-accent: #1f7a4d;
+  --grillon-accent-hover: #186340;
+  --grillon-bg: #ffffff;
+  --grillon-fg: #1f2328;
+  --grillon-muted: #5f6b76;
+  --grillon-border: #e3e6ea;
+  --grillon-menu-bg: #ffffff;
+  --grillon-menu-hover: #eef4f0;
+  --grillon-error: #b42318;
+  --grillon-success: #1f7a4d;
+  color-scheme: light;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  background: var(--grillon-bg);
+  color: var(--grillon-fg);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  /* iOS : la barre d'adresse change la hauteur visible. */
+  height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+  box-sizing: border-box;
+}
+
+#univer {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.topbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 36px;
+  padding: 0 12px 0 0;
+  border-bottom: 1px solid var(--grillon-border);
+  font-size: 13px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.topbar-file {
+  height: 100%;
+  padding: 0 18px;
+  border: 0;
+  background: var(--grillon-accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.topbar-file:hover,
+.topbar-file[aria-expanded='true'] {
+  background: var(--grillon-accent-hover);
+}
+
+.topbar-file:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: -4px;
+}
+
+.topbar-brand {
+  font-weight: 700;
+  color: var(--grillon-accent);
+}
+
+.topbar-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.topbar-status {
+  margin-left: auto;
+  color: var(--grillon-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.topbar-status[data-kind='error'] {
+  color: var(--grillon-error);
+}
+
+.topbar-status[data-kind='success'] {
+  color: var(--grillon-success);
+}
+
+.topbar-action {
+  border: 1px solid var(--grillon-accent);
+  border-radius: 4px;
+  background: none;
+  color: var(--grillon-accent);
+  font: inherit;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.file-menu {
+  position: absolute;
+  top: 36px;
+  left: 0;
+  z-index: 2000;
+  min-width: 260px;
+  padding: 6px 0;
+  background: var(--grillon-menu-bg);
+  border: 1px solid var(--grillon-border);
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+.file-menu button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  padding: 8px 16px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.file-menu button:hover,
+.file-menu button:focus-visible {
+  background: var(--grillon-menu-hover);
+  outline: none;
+}
+
+.file-menu kbd {
+  font: inherit;
+  color: var(--grillon-muted);
+}
+
+.file-menu-sep {
+  height: 1px;
+  margin: 6px 0;
+  background: var(--grillon-border);
+}
+
+@media (max-width: 600px) {
+  .topbar-brand {
+    display: none;
+  }
+  .file-menu {
+    min-width: 0;
+    right: 0;
+    border-radius: 0 0 8px 8px;
+  }
+  .file-menu kbd {
+    display: none;
+  }
+}
