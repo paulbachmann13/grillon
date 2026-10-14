@@ -23,6 +23,7 @@ import { UniverSheetsDrawingPreset } from '@univerjs/preset-sheets-drawing';
 import drawingFr from '@univerjs/preset-sheets-drawing/locales/fr-FR';
 import { UniverSheetsTablePreset } from '@univerjs/preset-sheets-table';
 import tableFr from '@univerjs/preset-sheets-table/locales/fr-FR';
+import { CUSTOM_FUNCTION_DESCRIPTIONS, CUSTOM_FUNCTIONS } from './custom-functions';
 
 import '@univerjs/preset-sheets-core/lib/index.css';
 import '@univerjs/preset-sheets-conditional-formatting/lib/index.css';
@@ -48,6 +49,7 @@ export function setupUniver(container: HTMLElement): FUniver {
         container,
         // Ruban en grille : groupes sur deux rangées, comme le ruban d'Excel.
         ribbonType: 'grid',
+        formula: { function: CUSTOM_FUNCTIONS as never, description: CUSTOM_FUNCTION_DESCRIPTIONS },
         workerURL: new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }),
       }),
       UniverSheetsConditionalFormattingPreset(),

@@ -298,3 +298,19 @@ body,
   outline: 2px solid var(--grillon-accent);
   outline-offset: 2px;
 }
+
+.g-ref-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.g-ref-list button {
+  padding: 4px 10px;
+  border: 1px solid var(--grillon-border);
+  border-radius: 999px;
+  background: var(--grillon-bg);
+  color: var(--grillon-accent);
+  font: inherit;
+  cursor: pointer;
+}

@@ -8,6 +8,9 @@ export default defineConfig({
   base,
   build: { target: 'es2022', chunkSizeWarningLimit: 8000 },
   worker: { format: 'es' },
+  // Sous Windows, certains dossiers sont redirigés (chemin « réel » différent) : sans cette
+  // option, le serveur de développement ne trouve plus le worker de calcul des formules.
+  resolve: { preserveSymlinks: true },
   plugins: [
     VitePWA({
       registerType: 'prompt',

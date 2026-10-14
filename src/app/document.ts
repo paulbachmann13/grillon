@@ -7,6 +7,7 @@ import { openFile, saveAs, writeToHandle } from '../io/files';
 import type { IWorkbookData } from '../model/univer-types';
 import { installFrenchDisplay } from '../univer/french-display';
 import { installDataRibbon } from '../univer/data-ribbon';
+import { installFormulasRibbon } from '../univer/formulas-ribbon';
 import { installHomeRibbon } from '../univer/home-ribbon';
 import { LOCALE_FR } from '../model/univer-types';
 import { clearAutosave, loadAutosave, saveAutosave } from '../storage/autosave';
@@ -68,6 +69,7 @@ export class DocumentController {
       if (!this.ribbonReady) {
         installHomeRibbon(this.api);
         installDataRibbon(this.api, this);
+        installFormulasRibbon(this.api);
         this.ribbonReady = true;
       }
       this.fileName = fileName;
