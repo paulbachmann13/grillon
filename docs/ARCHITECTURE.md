@@ -73,22 +73,22 @@ seront ajoutés dans les phases suivantes, chacun avec son test de round-trip.
 
 ## Compléments au-dessus d'ExcelJS
 
--  : accès direct au paquet (JSZip + fast-xml-parser) pour ce qu'ExcelJS ignore :
+- `src/io/xlsx/ooxml.ts` : accès direct au paquet (JSZip + fast-xml-parser) pour ce qu'ExcelJS ignore :
   critères de filtre, tableaux structurés, « Interrompre si vrai » des MFC, graphiques et images
   (DrawingML), validations sur de grandes plages (lues sans être dépliées cellule par cellule).
   Les éléments sont insérés dans la feuille dans l'ordre exigé par le schéma OOXML.
--  : la conversion tourne dans un Web Worker (repli dans la page si besoin).
+- `src/io/xlsx/xlsx-worker.ts` : la conversion tourne dans un Web Worker (repli dans la page si besoin).
 
 ## Fonctionnalités maison
 
 | Module | Rôle |
 |---|---|
-|  | Graphiques ECharts dans des « DOM flottants » Univer (sauvegardés avec le classeur) |
-|  | Logique pure et testée : doublons, convertir, remplissage instantané, sous-totaux, filtre avancé, plan, TCD, valeur cible, références de formules |
-|  | Ajouts au ruban (Démarrer, Données, Formules, Vue), commandes annulables |
-|  | Affichage à la française du format Standard et des booléens |
-|  | Fonctions ajoutées au moteur (worker et page) |
-|  | Impression / PDF |
+| `src/charts/` | Graphiques ECharts dans des « DOM flottants » Univer (sauvegardés avec le classeur) |
+| `src/data/` | Logique pure et testée : doublons, convertir, remplissage instantané, sous-totaux, filtre avancé, plan, TCD, valeur cible, références de formules |
+| `src/univer/*-ribbon.ts` | Ajouts au ruban (Démarrer, Données, Formules, Vue), commandes annulables |
+| `src/univer/french-display.ts` | Affichage à la française du format Standard et des booléens |
+| `src/univer/custom-functions.ts` | Fonctions ajoutées au moteur (worker et page) |
+| `src/app/print.ts` | Impression / PDF |
 
 ## Moteur de formules — choix
 
