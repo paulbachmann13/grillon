@@ -74,7 +74,7 @@ describe.skipIf(!soffice)('LibreOffice ouvre les graphiques Grillon', () => {
     execFileSync(soffice!, ['--headless', '--norestore', '--convert-to', 'xlsx', '--outdir', outDir, ours], { timeout: 120_000 });
     const zip = await JSZip.loadAsync(readFileSync(join(outDir, 'charts.xlsx')));
     const charts = await readSheetCharts(zip, 'xl/worksheets/sheet1.xml');
-    expect(charts.map((c) => [c.spec.type, c.spec.series.length])).toEqual([
+    expect(charts.map((c) => [c.spec?.type, c.spec?.series.length])).toEqual([
       ['column', 3],
       ['pie', 1],
     ]);

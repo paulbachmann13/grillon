@@ -9,7 +9,7 @@ import { chartWorkbook, COLUMN, PIE, S, SCATTER, STACKED_BAR } from '../fixtures
 function chartsOf(wb: IWorkbookData): ChartSpec[] {
   const res = JSON.parse(wb.resources!.find((r) => r.name === 'SHEET_DRAWING_PLUGIN')!.data);
   const sheet = Object.values(res)[0] as { data: Record<string, { data: { spec: ChartSpec } }>; order: string[] };
-  return sheet.order.map((id) => sheet.data[id].data.spec);
+  return sheet.order.map((id) => sheet.data[id]).filter((d) => d.data?.spec).map((d) => d.data.spec);
 }
 
 describe('graphiques — séries depuis une plage', () => {
@@ -64,5 +64,35 @@ describe('graphiques — .xlsx', () => {
     expect(types).toContain('/xl/charts/chart1.xml');
     expect(types).toContain('/xl/drawings/drawing1.xml');
     expect(await zip.file('xl/drawings/_rels/drawing1.xml.rels')!.async('string')).toContain('../charts/chart1.xml');
+  });
+});
+
+describe('images et notes — .xlsx', () => {
+  it('round-trip d’une image ancrée et d’une note de cellule', async () => {
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR4nGP4z8DwHwqZYBwAX5wF+0zQ2ewAAAAASUVORK5CYII=';
+    const wb = chartWorkbook([COLUMN]);
+    const drawing = JSON.parse(wb.resources![0].data);
+    drawing.s1.data.img = {
+      drawingId: 'img',
+      drawingType: 0,
+      imageSourceType: 'URL',
+      source: `data:image/png;base64,${png}`,
+      sheetTransform: { from: { column: 1, columnOffset: 0, row: 8, rowOffset: 0 }, to: { column: 2, columnOffset: 10, row: 10, rowOffset: 5 } },
+      transform: { left: 0, top: 0, width: 100, height: 50 },
+    };
+    drawing.s1.order.push('img');
+    wb.resources = [
+      { name: 'SHEET_DRAWING_PLUGIN', data: JSON.stringify(drawing) },
+      { name: 'SHEET_NOTE_PLUGIN', data: JSON.stringify({ s1: { 1: { 2: { note: 'À vérifier', width: 200, height: 100 } } } }) },
+    ];
+    const back = await importXlsx(await exportXlsx(wb));
+    const res = JSON.parse(back.resources!.find((r) => r.name === 'SHEET_DRAWING_PLUGIN')!.data);
+    const sheet = Object.values(res)[0] as { data: Record<string, { drawingType: number; source?: string; sheetTransform: object }>; order: string[] };
+    const image = sheet.order.map((id) => sheet.data[id]).find((d) => d.drawingType === 0)!;
+    expect(image.source).toBe(`data:image/png;base64,${png}`);
+    expect(image.sheetTransform).toEqual({ from: { column: 1, columnOffset: 0, row: 8, rowOffset: 0 }, to: { column: 2, columnOffset: 10, row: 10, rowOffset: 5 } });
+    expect(chartsOf(back)).toHaveLength(1);
+    const notes = JSON.parse(back.resources!.find((r) => r.name === 'SHEET_NOTE_PLUGIN')!.data);
+    expect((Object.values(notes)[0] as Record<number, Record<number, { note: string }>>)[1][2].note).toBe('À vérifier');
   });
 });

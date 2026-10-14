@@ -6,6 +6,7 @@ import ExcelJS from 'exceljs';
 import { buildAutoFilterXml, FILTER_RESOURCE, type UniverAutoFilter, type UniverFilterResource } from './auto-filter';
 import { chartsOfSheet, DRAWING_RESOURCE, writeSheetCharts, type DrawingResource, type SheetChart } from './charts';
 import { DV_RESOURCE, exportDataValidations, type UniverDvResource } from './data-validation';
+import { exportNotes, NOTE_RESOURCE, type UniverNoteResource } from './notes';
 import { insertWorksheetElement, listSheets, loadZip, zipToBytes } from './ooxml';
 import { TABLE_RESOURCE, writeTables, type TableToWrite, type UniverTable, type UniverTableResource } from './tables';
 import {
@@ -281,6 +282,7 @@ function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: Sheet
   const filters = readResource<UniverFilterResource>(wb, FILTER_RESOURCE) ?? {};
   const tables = readResource<UniverTableResource>(wb, TABLE_RESOURCE) ?? {};
   const drawings = readResource<DrawingResource>(wb, DRAWING_RESOURCE);
+  const notes = readResource<UniverNoteResource>(wb, NOTE_RESOURCE) ?? {};
   const post: SheetPostProcess[] = [];
   for (const id of wb.sheetOrder) {
     const sheet = wb.sheets[id];
@@ -294,6 +296,7 @@ function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: Sheet
       cf[id].forEach((entry, i) => entry.stopIfTrue && p.stopIfTruePriorities.push(i + 1));
     }
     if (dv[id]?.length) exportDataValidations(ws, dv[id]);
+    exportNotes(ws, notes[id]);
     if (filter?.ref) {
       ws.autoFilter = rangeToA1(filter.ref);
       if (filter.filterColumns?.length) p.autoFilter = filter;

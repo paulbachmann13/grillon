@@ -14,6 +14,10 @@ import { addContentTypeOverride, addRelationship, attrs, escapeXml, extractAll, 
 export const DRAWING_RESOURCE = 'SHEET_DRAWING_PLUGIN';
 export const CHART_COMPONENT_KEY = 'GrillonChart';
 const DRAWING_DOM_TYPE = 8;
+const DRAWING_IMAGE_TYPE = 0;
+const REL_IMAGE = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image';
+const IMAGE_TYPES: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', svg: 'image/svg+xml' };
+const mimeOf = (path: string) => IMAGE_TYPES[path.split('.').pop()?.toLowerCase() ?? ''] ?? 'image/png';
 const EMU_PER_PX = 9525;
 const REL_DRAWING = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing';
 const REL_CHART = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart';
@@ -39,13 +43,17 @@ interface DrawingItem {
   axisAlignSheetTransform?: { from: CellAnchor; to: CellAnchor };
   transform: { left: number; top: number; width: number; height: number };
   data?: { chartId?: string; spec?: ChartSpec };
+  imageSourceType?: string;
+  source?: string;
   allowTransform?: boolean;
 }
 
 export type DrawingResource = Record<string, { data: Record<string, DrawingItem>; order: string[] }>;
 
+/** Graphique (spec) ou image (data URL) ancré dans la feuille. */
 export interface SheetChart {
-  spec: ChartSpec;
+  spec?: ChartSpec;
+  image?: string;
   from: CellAnchor;
   to: CellAnchor;
 }
@@ -190,13 +198,21 @@ export async function readSheetCharts(zip: JSZip, sheetPath: string): Promise<Sh
     const drawingRels = await readRelationships(zip, drawingPath);
     const relById = new Map(drawingRels.map((r) => [r.Id, r]));
     for (const anchor of [...extractAll(xml, 'twoCellAnchor'), ...extractAll(xml, 'oneCellAnchor')]) {
+      let spec: ChartSpec | null = null;
+      let image: string | undefined;
       const chartRef = /<c:chart\b[^>]*\br:id="([^"]+)"/.exec(anchor.xml)?.[1];
-      if (!chartRef) continue;
-      const chartRel = relById.get(chartRef);
-      const chartFile = chartRel && zip.file(resolveRelTarget(drawingPath, chartRel.Target));
-      if (!chartFile) continue;
-      const spec = parseChartXml(await chartFile.async('string'));
-      if (!spec) continue;
+      const blipRef = /<a:blip\b[^>]*\br:embed="([^"]+)"/.exec(anchor.xml)?.[1];
+      if (chartRef) {
+        const chartRel = relById.get(chartRef);
+        const chartFile = chartRel && zip.file(resolveRelTarget(drawingPath, chartRel.Target));
+        if (chartFile) spec = parseChartXml(await chartFile.async('string'));
+      } else if (blipRef) {
+        const rel = relById.get(blipRef);
+        const target = rel ? resolveRelTarget(drawingPath, rel.Target) : undefined;
+        const media = target ? zip.file(target) : null;
+        if (target && media) image = `data:${mimeOf(target)};base64,${await media.async('base64')}`;
+      }
+      if (!spec && !image) continue;
       const pos = (tag: string): CellAnchor | null => {
         const el = extractElement(anchor.xml, tag);
         if (!el) return null;
@@ -213,7 +229,7 @@ export async function readSheetCharts(zip: JSZip, sheetPath: string): Promise<Sh
         const h = ext ? Number(ext[2]) / EMU_PER_PX : 288;
         to = { column: from.column + Math.max(1, Math.round(w / 64)), columnOffset: 0, row: from.row + Math.max(1, Math.round(h / 20)), rowOffset: 0 };
       }
-      out.push({ spec, from, to });
+      out.push(spec ? { spec, from, to } : { image, from, to });
     }
   }
   return out;
@@ -227,6 +243,21 @@ export function chartsToDrawingResource(unitId: string, sheetId: string, sheet: 
     const id = `chart${Date.now().toString(36)}${i}`;
     const a = anchorToPx(sheet, c.from);
     const b = anchorToPx(sheet, c.to);
+    if (c.image) {
+      data[id] = {
+        unitId,
+        subUnitId: sheetId,
+        drawingId: id,
+        drawingType: DRAWING_IMAGE_TYPE,
+        imageSourceType: 'URL',
+        source: c.image,
+        sheetTransform: { from: c.from, to: c.to },
+        axisAlignSheetTransform: { from: c.from, to: c.to },
+        transform: { left: a.x, top: a.y, width: Math.max(1, b.x - a.x), height: Math.max(1, b.y - a.y) },
+      } as DrawingItem;
+      order.push(id);
+      return;
+    }
     data[id] = {
       unitId,
       subUnitId: sheetId,
@@ -388,8 +419,22 @@ export function chartsOfSheet(resource: DrawingResource | undefined, sheetId: st
   if (!sheet) return [];
   return (sheet.order ?? Object.keys(sheet.data ?? {}))
     .map((id) => sheet.data?.[id])
-    .filter((d): d is DrawingItem => !!d && d.componentKey === CHART_COMPONENT_KEY && !!d.data?.spec)
-    .map((d) => ({ spec: d.data!.spec!, from: d.sheetTransform.from, to: d.sheetTransform.to }));
+    .filter(
+      (d): d is DrawingItem =>
+        !!d && !!d.sheetTransform && ((d.componentKey === CHART_COMPONENT_KEY && !!d.data?.spec) || (d.drawingType === DRAWING_IMAGE_TYPE && !!d.source?.startsWith('data:image/'))),
+    )
+    .map((d) => (d.drawingType === DRAWING_IMAGE_TYPE ? { image: d.source, from: d.sheetTransform.from, to: d.sheetTransform.to } : { spec: d.data!.spec!, from: d.sheetTransform.from, to: d.sheetTransform.to }));
+}
+
+const EXTENSIONS: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpeg', 'image/gif': 'gif', 'image/bmp': 'bmp', 'image/webp': 'webp', 'image/svg+xml': 'svg' };
+
+async function addDefaultContentType(zip: JSZip, ext: string, contentType: string): Promise<void> {
+  const file = zip.file('[Content_Types].xml');
+  if (!file) return;
+  let xml = await file.async('string');
+  if (new RegExp(`Extension="${ext}"`, 'i').test(xml)) return;
+  xml = xml.replace(/<Types\b[^>]*>/, (m) => `${m}<Default Extension="${ext}" ContentType="${contentType}"/>`);
+  zip.file('[Content_Types].xml', xml);
 }
 
 /**
@@ -403,13 +448,31 @@ export async function writeSheetCharts(
   sheetPath: string,
   sheetXml: string,
   charts: SheetChart[],
-  counters: { drawing: number; chart: number },
+  counters: { drawing: number; chart: number; image?: number },
 ): Promise<string> {
   if (!charts.length) return sheetXml;
   const drawingIndex = ++counters.drawing;
   const drawingPath = `xl/drawings/drawing${drawingIndex}.xml`;
   const anchors: string[] = [];
   for (const [i, c] of charts.entries()) {
+    if (c.image) {
+      // Image : fichier xl/media/imageN.ext + <xdr:pic>.
+      const m = /^data:([^;]+);base64,(.*)$/.exec(c.image);
+      if (!m) continue;
+      const ext = EXTENSIONS[m[1]] ?? 'png';
+      const n = (counters.image = (counters.image ?? 0) + 1);
+      zip.file(`xl/media/image${n}.${ext}`, m[2], { base64: true });
+      await addDefaultContentType(zip, ext, m[1]);
+      const rid = await addRelationship(zip, drawingPath, REL_IMAGE, `../media/image${n}.${ext}`);
+      anchors.push(
+        `<xdr:twoCellAnchor editAs="oneCell">${anchorXml('from', c.from)}${anchorXml('to', c.to)}` +
+          `<xdr:pic><xdr:nvPicPr><xdr:cNvPr${attrs({ id: i + 2, name: `Image ${i + 1}` })}/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>` +
+          `<xdr:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>` +
+          '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:twoCellAnchor>',
+      );
+      continue;
+    }
+    if (!c.spec) continue;
     const chartIndex = ++counters.chart;
     const chartPath = `xl/charts/chart${chartIndex}.xml`;
     zip.file(chartPath, buildChartXml(wb, c.spec, sheetName));

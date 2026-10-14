@@ -9,6 +9,7 @@ import { installFrenchDisplay } from '../univer/french-display';
 import { installCharts } from '../charts/chart-view';
 import { installDataRibbon } from '../univer/data-ribbon';
 import { installFormulasRibbon } from '../univer/formulas-ribbon';
+import { installGridShortcuts } from '../univer/grid-shortcuts';
 import { installPivot } from '../univer/pivot-ui';
 import { installHomeRibbon } from '../univer/home-ribbon';
 import { LOCALE_FR } from '../model/univer-types';
@@ -74,6 +75,7 @@ export class DocumentController {
         installFormulasRibbon(this.api);
         installCharts(this.api);
         installPivot(this.api);
+        installGridShortcuts(this.api);
         this.ribbonReady = true;
       }
       this.fileName = fileName;

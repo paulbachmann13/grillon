@@ -24,6 +24,7 @@ import { chartsToDrawingResource, DRAWING_RESOURCE, readSheetCharts, type Drawin
 import { parseThemeColors } from './colors';
 import { CF_RESOURCE, importConditionalFormats, type UniverCfResource } from './conditional-formatting';
 import { DV_RESOURCE, readDataValidations, type UniverDvResource, type UniverDvRule } from './data-validation';
+import { importNotes, NOTE_RESOURCE, type UniverNoteResource } from './notes';
 import { listSheets, loadZip, removeWorksheetElement, zipToBytes } from './ooxml';
 import { readTables, TABLE_RESOURCE, type UniverTable, type UniverTableResource } from './tables';
 import { richTextToDocument } from './rich-text';
@@ -297,12 +298,15 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
   const filters: UniverFilterResource = {};
   const tables: UniverTableResource = {};
   const drawings: DrawingResource = {};
+  const notes: UniverNoteResource = {};
   const unitId = options.id ?? newId('wb');
   wb.eachSheet((ws) => {
     const sheet = convertWorksheet(ws, registry);
     sheets[sheet.id] = sheet;
     sheetOrder.push(sheet.id);
     const extra = extras.get(ws.name);
+    const sheetNotes = importNotes(ws);
+    if (Object.keys(sheetNotes).length) notes[sheet.id] = sheetNotes;
     const rules = importConditionalFormats(ws, sheet.id, theme, extra?.cfStopIfTrue);
     if (rules.length) cf[sheet.id] = rules;
     if (extra?.dataValidations.length) {
@@ -351,6 +355,7 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
   if (Object.keys(dv).length) resources.push({ name: DV_RESOURCE, data: JSON.stringify(dv) });
   if (Object.keys(filters).length) resources.push({ name: FILTER_RESOURCE, data: JSON.stringify(filters) });
   if (Object.keys(tables).length) resources.push({ name: TABLE_RESOURCE, data: JSON.stringify(tables) });
+  if (Object.keys(notes).length) resources.push({ name: NOTE_RESOURCE, data: JSON.stringify(notes) });
   if (Object.keys(drawings).length) resources.push({ name: DRAWING_RESOURCE, data: JSON.stringify(drawings) });
 
   return {
