@@ -44,12 +44,13 @@ function icon(path: string): ComponentType<Record<string, unknown>> {
     createElement('svg', { viewBox: '0 0 16 16', width: '1em', height: '1em', fill: 'none', stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round', strokeLinejoin: 'round', ...props }, createElement('path', { d: path }));
 }
 
-export function installViewRibbon(api: FUniver, print: () => unknown): void {
+export function installViewRibbon(api: FUniver, print: () => unknown, pageSetup: () => unknown): void {
   const injector = (api as unknown as { _injector: { get<T>(id: unknown): T } })._injector;
   const commands = injector.get<ICommandService>(ICommandService);
   injector.get<IconManager>(IconManager).register({
     GrillonDarkIcon: icon('M13.5 9.5A5.5 5.5 0 016.5 2.5a5.5 5.5 0 107 7z'),
     GrillonOverflowIcon: icon('M2 3v10M2 8h9M8 5l3 3-3 3M14 3v10'),
+    GrillonPageIcon: icon('M4 2h6l3 3v9H4zM10 2v3h3M6.5 8h4M6.5 10.5h4'),
     GrillonPrintIcon: icon('M4 6V2h8v4M4 12H2.5V7h11v5H12M4 10h8v4H4z'),
   } as never);
   applyTheme(api);
@@ -65,8 +66,10 @@ export function installViewRibbon(api: FUniver, print: () => unknown): void {
     applyTheme(api, next);
   });
   register('grillon.view.print', print);
+  register('grillon.view.page-setup', pageSetup);
   register('grillon.view.text-overflow', () => setTextOverflow(api, !textOverflowEnabled()));
   api.createMenu({ id: 'grillon.view.dark', icon: 'GrillonDarkIcon', title: t('view.darkMode'), tooltip: t('view.darkMode'), action: 'grillon.view.dark' }).appendTo(['ribbon.view', 'ribbon.view.display']);
   api.createMenu({ id: 'grillon.view.text-overflow', icon: 'GrillonOverflowIcon', title: t('view.textOverflow'), tooltip: t('view.textOverflowTip'), action: 'grillon.view.text-overflow' }).appendTo(['ribbon.view', 'ribbon.view.display']);
+  api.createMenu({ id: 'grillon.view.page-setup', icon: 'GrillonPageIcon', title: t('view.pageSetup'), tooltip: t('view.pageSetup'), action: 'grillon.view.page-setup' }).appendTo(['ribbon.view', 'ribbon.view.others']);
   api.createMenu({ id: 'grillon.view.print', icon: 'GrillonPrintIcon', title: t('view.print'), tooltip: t('view.print'), action: 'grillon.view.print' }).appendTo(['ribbon.view', 'ribbon.view.others']);
 }

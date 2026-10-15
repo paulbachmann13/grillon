@@ -2,6 +2,16 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.3.0] — 2026-10-15
+
+### Ajouté
+- **Graphiques façon Excel** : boîte « Tous les graphiques » (sous-types, aperçu en direct) et boîte « Format du graphique » à six onglets (Type, Données, Éléments, Axes, Séries, Mise en forme). Nouveaux types : anneau, bulles, radar, courbes empilées, secteurs, nuage lissé… ; étiquettes de données, quadrillage secondaire, tableau de données, axes (minimum, maximum, unité, logarithmique, ordre inverse, format de nombre), courbes de tendance (équation, R²), barres d'erreur, marqueurs, lissage, couleurs de points, palettes, arrière-plan, taille du texte. Tout est enregistré dans le .xlsx et relu.
+- **Mise en page** (Fichier, Vue) : papier, orientation, échelle / ajustement, marges, centrage, zone d'impression, lignes à répéter, quadrillage, en-têtes et pieds de page ; appliquée à l'impression et lue / écrite dans le .xlsx.
+- **Mini-graphiques** (courbes, histogramme, positif/négatif), **formes et zones de texte**, **Analyse rapide** et **Symbole**.
+
+### Corrigé
+- Les cellules de lignes masquées ne sont plus tracées dans les graphiques (comme Excel).
+
 ## [1.2.0] — 2026-10-15
 
 ### Ajouté

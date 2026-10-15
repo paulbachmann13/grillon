@@ -23,6 +23,8 @@ import { CF_RESOURCE, exportConditionalFormats, type UniverCfResource } from './
 import { documentToPlainText, documentToRichText } from './rich-text';
 import { styleFromUniver } from './styles';
 import { EXCEL_DEFAULT_COL_WIDTH, EXCEL_DEFAULT_ROW_HEIGHT_PT, pxToExcelWidth, pxToPt, rangeToA1 } from './units';
+import { toExcelPageSetup, type PageSetup } from '../../data/page-setup';
+import { sparklinesOfSheet, writeSparklines, type SheetSparkline } from './sparklines';
 
 /** Niveau de plan stocké dans les métadonnées d'une ligne ou colonne. */
 function outlineLevel(custom: Record<string, unknown> | null | undefined | void): number {
@@ -94,6 +96,14 @@ function writeSheet(
     views: [view],
     state: sheet.hidden ? 'hidden' : 'visible',
   });
+
+  // Mise en page (papier, marges, échelle, zone d'impression, en-têtes et pieds de page).
+  const page = (sheet.custom as { grillon?: { page?: PageSetup } } | undefined)?.grillon?.page;
+  if (page) {
+    const x = toExcelPageSetup(page);
+    ws.pageSetup = x.pageSetup as unknown as ExcelJS.PageSetup;
+    if (x.oddHeader || x.oddFooter) ws.headerFooter = { oddHeader: x.oddHeader, oddFooter: x.oddFooter };
+  }
 
   let maxRowLevel = 0;
   let maxColLevel = 0;
@@ -196,6 +206,7 @@ interface StoredDefinedName {
 interface SheetPostProcess {
   name: string;
   charts: SheetChart[];
+  sparklines: SheetSparkline[];
   autoFilter?: UniverAutoFilter;
   tables: TableToWrite[];
   stopIfTruePriorities: number[];
@@ -290,7 +301,7 @@ function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: Sheet
     const name = sanitizeSheetName(sheet.name ?? '', used);
     const filter = filters[id];
     const ws = writeSheet(wb, xlWb, sheet, name, filter?.cachedFilteredOut);
-    const p: SheetPostProcess = { name, charts: chartsOfSheet(drawings, id), tables: [], stopIfTruePriorities: [] };
+    const p: SheetPostProcess = { name, charts: chartsOfSheet(drawings, id), sparklines: sparklinesOfSheet(drawings, id), tables: [], stopIfTruePriorities: [] };
     if (cf[id]?.length) {
       exportConditionalFormats(ws, cf[id]);
       cf[id].forEach((entry, i) => entry.stopIfTrue && p.stopIfTruePriorities.push(i + 1));
@@ -350,7 +361,7 @@ function addStopIfTrue(sheetXml: string, priorities: number[]): string {
 
 /** Écrit dans le XML ce qu'ExcelJS ne sait pas écrire (critères de filtre, tableaux, stopIfTrue). */
 async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPostProcess[]): Promise<Uint8Array> {
-  const needed = (p: SheetPostProcess) => p.autoFilter || p.tables.length || p.stopIfTruePriorities.length || p.charts.length;
+  const needed = (p: SheetPostProcess) => p.autoFilter || p.tables.length || p.stopIfTruePriorities.length || p.charts.length || p.sparklines.length;
   if (!post.some(needed)) return bytes;
   const zip = await loadZip(bytes);
   const sheets = await listSheets(zip);
@@ -367,6 +378,7 @@ async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPost
     if (p.stopIfTruePriorities.length) xml = addStopIfTrue(xml, p.stopIfTruePriorities);
     if (p.tables.length) xml = await writeTables(zip, sheets[i].path, xml, p.tables, () => ++tableId, usedTableNames);
     if (p.charts.length) xml = await writeSheetCharts(zip, wb, p.name, sheets[i].path, xml, p.charts, counters);
+    if (p.sparklines.length) xml = writeSparklines(xml, p.sparklines);
     zip.file(sheets[i].path, xml);
   }
   return zipToBytes(zip);

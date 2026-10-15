@@ -52,4 +52,41 @@ export const COLUMN: ChartSpec = {
 };
 export const PIE: ChartSpec = { version: 1, type: 'pie', legend: 'right', series: [{ name: 'Ventes', categoriesRef: `${S}!$A$2:$A$4`, valuesRef: `${S}!$B$2:$B$4` }] };
 export const SCATTER: ChartSpec = { version: 1, type: 'scatter', legend: 'none', series: [{ nameRef: `${S}!$C$1`, categoriesRef: `${S}!$B$2:$B$4`, valuesRef: `${S}!$C$2:$C$4`, color: '#A5A5A5' }] };
-export const STACKED_BAR: ChartSpec = { version: 1, type: 'bar', stacked: true, legend: 'top', series: [COLUMN.series[0], COLUMN.series[1]] };
+export const STACKED_BAR: ChartSpec = { version: 1, type: 'bar', grouping: 'stacked', legend: 'top', series: [COLUMN.series[0], COLUMN.series[1]] };
+
+/** Graphique qui utilise presque toutes les options. */
+export const RICH: ChartSpec = {
+  version: 1,
+  type: 'column',
+  title: 'Ventes détaillées',
+  titleOverlay: true,
+  legend: 'right',
+  legendOverlay: true,
+  xAxisTitle: 'Mois',
+  yAxisTitle: 'Euros',
+  y2AxisTitle: 'Marge',
+  grouping: 'stacked',
+  gapWidth: 80,
+  fontSize: 14,
+  background: '#F2F2F2',
+  border: false,
+  dataTable: true,
+  emptyCells: 'zero',
+  plotVisibleOnly: false,
+  dataLabels: { show: true, value: true, position: 'center', numFmt: '#,##0.00', separator: ', ' },
+  axes: {
+    x: { reverse: true, labelAngle: -45, gridMajor: true, ticks: 'none' },
+    y: { min: 0, max: 300, majorUnit: 50, numFmt: '#,##0', gridMinor: true, minorTicks: true },
+    y2: { min: 0, max: 1, numFmt: '0%' },
+  },
+  series: [
+    { nameRef: `${S}!$B$1`, categoriesRef: `${S}!$A$2:$A$4`, valuesRef: `${S}!$B$2:$B$4`, color: '#4472C4', pointColors: { 1: '#FF0000' }, errorBars: { kind: 'percent', value: 10, sides: 'plus', noCap: true } },
+    { nameRef: `${S}!$C$1`, categoriesRef: `${S}!$A$2:$A$4`, valuesRef: `${S}!$C$2:$C$4`, color: '#ED7D31', trendlines: [{ type: 'polynomial', order: 3, forward: 1, backward: 0.5, showEquation: true, showR2: true }] },
+    { nameRef: `${S}!$D$1`, categoriesRef: `${S}!$A$2:$A$4`, valuesRef: `${S}!$D$2:$D$4`, color: '#70AD47', type: 'line', secondaryAxis: true, lineWidth: 4, dash: 'dash', marker: { shape: 'diamond', size: 9 }, smooth: true },
+  ],
+};
+export const BUBBLE: ChartSpec = { version: 1, type: 'bubble', legend: 'none', bubbleScale: 60, series: [{ nameRef: `${S}!$C$1`, categoriesRef: `${S}!$B$2:$B$4`, valuesRef: `${S}!$C$2:$C$4`, sizesRef: `${S}!$D$2:$D$4`, color: '#4472C4' }] };
+export const DOUGHNUT: ChartSpec = { version: 1, type: 'doughnut', legend: 'bottom', holeSize: 65, firstSliceAngle: 90, dataLabels: { show: true, percent: true, category: true }, series: [{ name: 'Ventes', categoriesRef: `${S}!$A$2:$A$4`, valuesRef: `${S}!$B$2:$B$4` }] };
+export const RADAR: ChartSpec = { version: 1, type: 'radar', legend: 'bottom', radarFilled: true, series: [{ nameRef: `${S}!$B$1`, categoriesRef: `${S}!$A$2:$A$4`, valuesRef: `${S}!$B$2:$B$4`, color: '#4472C4' }] };
+export const LINES: ChartSpec = { version: 1, type: 'line', legend: 'bottom', markers: true, smooth: true, grouping: 'percent', series: [{ nameRef: `${S}!$B$1`, categoriesRef: `${S}!$A$2:$A$4`, valuesRef: `${S}!$B$2:$B$4`, color: '#4472C4' }, { nameRef: `${S}!$C$1`, categoriesRef: `${S}!$A$2:$A$4`, valuesRef: `${S}!$C$2:$C$4`, color: '#ED7D31' }] };
+export const SCATTER_LINES: ChartSpec = { version: 1, type: 'scatter', legend: 'none', scatterStyle: 'smoothMarkers', series: [{ nameRef: `${S}!$C$1`, categoriesRef: `${S}!$B$2:$B$4`, valuesRef: `${S}!$C$2:$C$4`, color: '#A5A5A5' }] };

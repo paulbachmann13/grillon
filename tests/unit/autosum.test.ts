@@ -37,4 +37,12 @@ describe('somme automatique', () => {
   it('une ligne : le total est à droite', () => {
     expect(autoSumPlan(isNumber, { r1: 5, c1: 0, r2: 5, c2: 1 })).toEqual([{ row: 5, col: 2, formula: '=SUM(A6:B6)' }]);
   });
+
+  it("totaux à droite de chaque ligne (Analyse rapide)", () => {
+    expect(autoSumPlan(isNumber, { r1: 0, c1: 0, r2: 2, c2: 0 }, "SUM", "right")).toEqual([
+      { row: 0, col: 1, formula: "=SUM(A1)" },
+      { row: 1, col: 1, formula: "=SUM(A2)" },
+      { row: 2, col: 1, formula: "=SUM(A3)" },
+    ]);
+  });
 });

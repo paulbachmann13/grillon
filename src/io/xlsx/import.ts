@@ -30,6 +30,8 @@ import { readTables, TABLE_RESOURCE, type UniverTable, type UniverTableResource 
 import { richTextToDocument } from './rich-text';
 import { styleToUniver } from './styles';
 import { dateToSerial, EXCEL_DEFAULT_COL_WIDTH, EXCEL_DEFAULT_ROW_HEIGHT_PT, excelWidthToPx, fromA1, ptToPx, rangeFromA1 } from './units';
+import { fromExcelPageSetup, type ExcelPageSetupLike } from '../../data/page-setup';
+import { addSparklinesToResource, readSparklines, type SheetSparkline } from './sparklines';
 
 /** Police par défaut d'Excel (les cellules sans police explicite l'utilisent). */
 export const EXCEL_DEFAULT_FONT = { ff: 'Calibri', fs: 11 } as const;
@@ -201,6 +203,8 @@ function convertWorksheet(ws: ExcelJS.Worksheet, registry: StyleRegistry): IWork
   }
 
   const tabArgb = (props.tabColor as { argb?: string } | undefined)?.argb;
+  const hf = ws.headerFooter as { oddHeader?: string; oddFooter?: string } | undefined;
+  const page = fromExcelPageSetup(ws.pageSetup as unknown as ExcelPageSetupLike, hf?.oddHeader, hf?.oddFooter);
 
   return {
     id,
@@ -223,6 +227,7 @@ function convertWorksheet(ws: ExcelJS.Worksheet, registry: StyleRegistry): IWork
     columnHeader: { height: 20, hidden: 0 },
     showGridlines: view?.showGridLines === false ? 0 : 1,
     rightToLeft: view?.rightToLeft ? 1 : 0,
+    ...(page ? { custom: { [GRILLON_CUSTOM_KEY]: { page } } } : {}),
   } as IWorksheetData;
 }
 
@@ -239,6 +244,7 @@ export interface SheetExtras {
   tables: UniverTable[];
   cfStopIfTrue: Set<number>;
   charts: SheetChart[];
+  sparklines: SheetSparkline[];
 }
 
 function readCfStopIfTrue(sheetXml: string): Set<number> {
@@ -269,6 +275,7 @@ async function preprocess(data: ArrayBuffer | Uint8Array): Promise<{ bytes: Arra
       tables: await readTables(zip, sheet.path),
       cfStopIfTrue: readCfStopIfTrue(xml),
       charts: await readSheetCharts(zip, sheet.path),
+      sparklines: readSparklines(xml),
     });
     const stripped = removeWorksheetElement(xml, 'dataValidations');
     if (stripped.removed) {
@@ -329,6 +336,7 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
     }
     if (extra?.tables.length) tables[sheet.id] = { tables: extra.tables, tableFilteredOutRows: [] };
     if (extra?.charts.length) drawings[sheet.id] = chartsToDrawingResource(unitId, sheet.id, sheet, extra.charts);
+    if (extra?.sparklines.length) drawings[sheet.id] = addSparklinesToResource(unitId, sheet.id, sheet, extra.sparklines, drawings[sheet.id]);
   });
 
   if (!sheetOrder.length) {

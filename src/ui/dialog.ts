@@ -14,6 +14,8 @@ export interface DialogOptions {
   testId?: string;
   /** Boîte plus large (aperçus, tableaux). */
   wide?: boolean;
+  /** Très grande boîte (éditeur de graphique avec aperçu). */
+  xl?: boolean;
 }
 
 export function openDialog(opts: DialogOptions): Promise<boolean> {
@@ -21,7 +23,7 @@ export function openDialog(opts: DialogOptions): Promise<boolean> {
     const backdrop = document.createElement('div');
     backdrop.className = 'g-dialog-backdrop';
     const dialog = document.createElement('div');
-    dialog.className = opts.wide ? 'g-dialog g-dialog-wide' : 'g-dialog';
+    dialog.className = opts.xl ? 'g-dialog g-dialog-xl' : opts.wide ? 'g-dialog g-dialog-wide' : 'g-dialog';
     dialog.setAttribute('role', 'dialog');
     dialog.setAttribute('aria-modal', 'true');
     if (opts.testId) dialog.dataset.testid = opts.testId;
@@ -97,6 +99,13 @@ function button(label: string, kind?: 'primary'): HTMLButtonElement {
 }
 
 // --- Petits constructeurs de formulaire ---
+
+/** Bouton d'action dans une boîte de dialogue. */
+export function actionButton(label: string, onClick: () => void): HTMLButtonElement {
+  const b = button(label);
+  b.addEventListener('click', onClick);
+  return b;
+}
 
 export function field(label: string, control: HTMLElement): HTMLLabelElement {
   const l = document.createElement('label');

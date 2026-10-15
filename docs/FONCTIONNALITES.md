@@ -39,7 +39,13 @@
 - **Somme automatique** (Σ), **Afficher les formules** (aussi dans Vue, Ctrl+`).
 - **Gestionnaire de noms**, **Repérer les antécédents / les dépendants**.
 - ≈ 520 fonctions Excel (noms anglais), matrices dynamiques, LAMBDA/LET ; liste des fonctions absentes : [FONCTIONS.md](FONCTIONS.md).
-- **Graphiques** : histogramme, barres, courbes, aires (groupés/empilés), secteurs, nuage de points, combiné, axe secondaire ; titre, légende, titres d'axes, couleurs ; mise à jour en direct.
+- **Graphiques** (comme Insérer → Graphiques d'Excel) : boîte « Tous les graphiques » avec aperçu en direct ; histogramme, barres, courbes, aires (groupés, empilés, 100 % empilés), secteurs, anneau, nuage de points (marqueurs, lignes droites ou lissées), bulles, radar, combinés (courbe sur axe secondaire).
+  Réglages de la boîte « Format du graphique » : **Données** (plages des séries, ajouter / supprimer / réordonner, intervertir lignes et colonnes, cellules masquées, cellules vides) ; **Éléments** (titre, titres d'axes, légende, étiquettes de données avec valeur / catégorie / série / pourcentage, position, format de nombre et séparateur, quadrillage principal et secondaire, tableau de données) ; **Axes** (minimum, maximum, unité, échelle logarithmique, ordre inverse, format de nombre, graduations, angle des étiquettes, axe masqué) ; **Séries** (couleur, type, axe secondaire, épaisseur et style de ligne, marqueurs, lissage, opacité, étiquettes propres, **courbes de tendance** linéaire / exponentielle / logarithmique / polynomiale / puissance / moyenne mobile avec équation, R², prévision et rétrospective, **barres d'erreur** fixes / pourcentage / écart type) ; **Mise en forme** (palette, arrière-plan, bordure, taille du texte, espacement et chevauchement, trou de l'anneau, angle et éclatement des secteurs, taille des bulles).
+  Tout est enregistré dans le .xlsx (DrawingML) et relu.
+- **Mini-graphiques** (Insérer → Mini-graphique) : courbes, histogramme, positif/négatif ; points haut, bas, premier, dernier, négatifs ; enregistrés dans le .xlsx (extension Excel 2010) et relus.
+- **Formes et zones de texte** (Insérer → Formes) : rectangle, coins arrondis, ellipse, ligne, flèche, zone de texte ; texte, remplissage, contour, police ; enregistrées dans le .xlsx.
+- **Analyse rapide** : bouton ⚡ sous la sélection (mise en forme, graphiques, totaux, tableaux, mini-graphiques).
+- **Symbole** (Insérer) : grille de symboles par catégorie.
 - **Tableau croisé dynamique** (lignes, colonnes, valeurs somme/nombre/moyenne/min/max, filtres, totaux, actualisation).
 - **Valeur cible**.
 
@@ -62,6 +68,7 @@
 
 ### Affichage, impression, raccourcis
 - Vue : figer les volets, zoom, quadrillage, plein écran (Univer), **mode sombre**, **texte qui déborde**.
+- **Mise en page** (Fichier, Vue) : papier (A4, A3, A5, Lettre, Légal), orientation, échelle ou ajustement en largeur, marges (normales, étroites, larges, personnalisées), centrage, **zone d'impression**, **lignes à répéter**, quadrillage, en-têtes de lignes et de colonnes, **en-têtes et pieds de page** (&P, &N, &D, &F, &A). Réglages par feuille, lus et écrits dans le .xlsx.
 - **Impression / export PDF** (Ctrl/⌘+P) : feuille ou sélection, portrait/paysage, quadrillage, ajustement à la largeur.
 - Insérer : images, liens, notes, listes déroulantes, graphiques, tableau croisé dynamique.
 - Raccourcis Excel : Ctrl+C/V/X, Ctrl+Z/Y, Ctrl+B/I/U, F2, F4, Ctrl+flèches, Ctrl+Maj+flèches, Ctrl+Origine/Fin, Ctrl+Espace / Maj+Espace (colonne / ligne), Ctrl+D / Ctrl+R (recopier), **Alt+=** (somme automatique), Ctrl+E, Ctrl+; (date), Ctrl+: (heure), Ctrl+Maj+1 à 6 (formats nombre, heure, date, monétaire, %, scientifique), Ctrl+Maj++ / Ctrl+- (insérer / supprimer des cellules), Ctrl+` (afficher les formules), Ctrl+Maj+L (filtre), Ctrl+F (rechercher), Ctrl+S/O/P.
@@ -81,10 +88,11 @@
 
 | Limite | Contournement / plan |
 |---|---|
-| Notes : texte seul (pas de mise en forme ni de taille de bulle) ; les commentaires en fil de discussion des versions récentes d'Excel ne sont pas importés (seules les notes le sont). Formes (rectangles, flèches…) non prises en charge. | — |
-| Graphiques : pas de graphiques 3D, radar, boursiers, en cascade, entonnoir, cartes ; un graphique Excel de ce type n'est pas importé. Étiquettes de données, courbes de tendance et mises en forme fines (dégradés, ombres) ne sont pas conservées. Les secteurs reprennent la palette par défaut. | Alternative : ECharts couvre l'essentiel ; types supplémentaires possibles plus tard. |
+| Notes : texte seul (pas de mise en forme ni de taille de bulle) ; les commentaires en fil de discussion des versions récentes d'Excel ne sont pas importés (seules les notes le sont). Formes : seules les formes simples (rectangle, coins arrondis, ellipse, ligne, flèche, zone de texte) sont prises en charge ; les autres, SmartArt, WordArt et images en forme ne sont pas importés. | — |
+| Graphiques : pas de graphiques 3D, boursiers, en cascade, entonnoir, histogramme statistique, boîte à moustaches, cartes, surface ni sunburst/treemap ; un graphique Excel de ce type n'est pas importé. Les courbes de tendance et barres d'erreur ne sont pas proposées sur les barres horizontales ; les barres d'erreur sont verticales ; étiquettes d'axe « en haut / en bas » non disponibles ; dégradés, ombres, étiquettes personnalisées par point et titres liés à une cellule ne sont pas conservés. Le tableau de données n'est pas imprimé. Le rendu (ECharts) diffère légèrement de celui d'Excel. | Alternative : ECharts couvre l'essentiel ; types supplémentaires possibles plus tard. |
 | Tableau croisé dynamique : calculé par Grillon et écrit en valeurs. Dans le .xlsx il devient un tableau de valeurs (pas un TCD Excel) ; sa définition est conservée dans le classeur Grillon (sauvegarde automatique) mais pas dans le .xlsx. Pas de glisser-déposer des champs, pas de groupement de dates. Les TCD des fichiers Excel sont importés en valeurs. | Implémentation maison, Univer Pro étant payant. |
-| Sparklines et « Analyse rapide » non disponibles. | Optionnels ; à envisager plus tard. |
+| Mini-graphiques : le mini-graphique couvre la cellule sauf une bande à gauche (cliquer dans cette bande sélectionne la cellule) ; pas d'axe horizontal ni de groupes de réglages communs (chaque cellule garde les siens) ; non imprimés. Formes et mini-graphiques ne sont pas imprimés. | — |
+| Orthographe (Révision) et vérification d'accessibilité : non disponibles (aucun dictionnaire libre léger intégré). | Le correcteur du navigateur s'applique aux zones de texte de l'interface. |
 | Audit des formules : liste des antécédents/dépendants, sans flèches dessinées sur la grille. | — |
 | Mise en forme conditionnelle : les règles « doublons », « commence par », « se termine par », « ne contient pas » sont écrites sous forme de règle formule équivalente (relues correctement par Grillon). | Effet identique dans Excel. |
 | Mise en forme conditionnelle : un seuil de barre de données ou de jeu d'icônes défini par une formule est remplacé par sa valeur numérique. | — |
@@ -98,6 +106,6 @@
 | Validation : le type « case à cocher » d'Univer n'existe pas dans Excel et n'est pas exporté. | — |
 | Les fichiers protégés par mot de passe, .xls (ancien format) et .xlsb ne sont pas pris en charge. | Les réenregistrer en .xlsx depuis Excel/LibreOffice. |
 | Sur Safari/iOS, « Enregistrer » télécharge une copie (pas de réécriture du fichier d'origine). | Limite du navigateur ; une app Mac (Tauri) le permettrait (voir README). |
-| Impression : mise en page simple (pas d'en-têtes/pieds de page, de zones d'impression ni de sauts de page manuels) ; la mise en page d'impression des fichiers Excel n'est ni lue ni conservée. | — |
+| Impression : les en-têtes et pieds de page (et les numéros de page) s'impriment avec Chrome et Edge (marges de page CSS) ; Safari et Firefox les ignorent. Pas de sauts de page manuels ; « centrer verticalement » est enregistré dans le fichier mais pas appliqué à l'impression. | — |
 | iPhone : ruban complet, défilable horizontalement ; pas d'interface dédiée au téléphone. | Version simplifiée suffisante pour consulter et saisir. |
 | Le collage depuis le presse-papiers demande l'autorisation du navigateur la première fois. | — |

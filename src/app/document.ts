@@ -7,6 +7,10 @@ import { openFile, saveAs, writeToHandle } from '../io/files';
 import type { IWorkbookData } from '../model/univer-types';
 import { installFrenchDisplay } from '../univer/french-display';
 import { installCharts } from '../charts/chart-view';
+import { installShapes } from '../charts/shape-view';
+import { installSparklines } from '../charts/sparkline-view';
+import { installQuickAnalysis } from '../univer/quick-analysis';
+import { installSymbols } from '../univer/symbols';
 import { installDataRibbon } from '../univer/data-ribbon';
 import { installFormulasRibbon } from '../univer/formulas-ribbon';
 import { installGridShortcuts } from '../univer/grid-shortcuts';
@@ -79,9 +83,13 @@ export class DocumentController {
         installDataRibbon(this.api, this);
         installFormulasRibbon(this.api);
         installCharts(this.api);
+        installSparklines(this.api);
+        installSymbols(this.api);
+        installShapes(this.api);
+        installQuickAnalysis(this.api);
         installPivot(this.api);
         installGridShortcuts(this.api);
-        installViewRibbon(this.api, () => this.print());
+        installViewRibbon(this.api, () => this.print(), () => this.pageSetup());
         installGridGrowth(this.api);
         installBasics(this.api);
         this.ribbonReady = true;
@@ -236,6 +244,10 @@ export class DocumentController {
     if (handle !== null) this.events.onStatus(t('status.downloaded', { name }), 'success');
   }
 
+  markDirtyPublic(): void {
+    this.markDirty();
+  }
+
   private markDirty(): void {
     if (!this.dirty) {
       this.dirty = true;
@@ -254,9 +266,15 @@ export class DocumentController {
     }
   }
 
+  /** Boîte « Mise en page » de la feuille active. */
+  async pageSetup(): Promise<void> {
+    const { pageSetupDialog } = await import('./page-setup');
+    if (await pageSetupDialog(this.api)) this.markDirtyPublic();
+  }
+
   /** Impression / export PDF de la feuille active. */
   print(): Promise<void> {
-    return printDialog(this.api);
+    return printDialog(this.api, this.fileName);
   }
 
   /** Restaure la session précédente. Renvoie true si un classeur a été restauré. */

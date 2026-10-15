@@ -4,7 +4,7 @@ import { buildEChartsOption, resolveSeries, seriesFromRange, type ChartSpec } fr
 import { exportXlsx } from '../../src/io/xlsx/export';
 import { importXlsx } from '../../src/io/xlsx/import';
 import type { IWorkbookData } from '../../src/model/univer-types';
-import { chartWorkbook, COLUMN, PIE, S, SCATTER, STACKED_BAR } from '../fixtures/charts';
+import { BUBBLE, chartWorkbook, COLUMN, DOUGHNUT, LINES, PIE, RADAR, RICH, S, SCATTER, SCATTER_LINES, STACKED_BAR } from '../fixtures/charts';
 
 function chartsOf(wb: IWorkbookData): ChartSpec[] {
   const res = JSON.parse(wb.resources!.find((r) => r.name === 'SHEET_DRAWING_PLUGIN')!.data);
@@ -46,6 +46,13 @@ describe('graphiques — .xlsx', () => {
     const out = await exportXlsx(chartWorkbook(specs));
     const back = await importXlsx(out);
     expect(chartsOf(back)).toEqual(specs);
+  });
+
+  it('round-trip : toutes les options (axes, étiquettes, tendances, barres d’erreur, tableau de données…)', async () => {
+    const specs = [RICH, BUBBLE, DOUGHNUT, RADAR, LINES, SCATTER_LINES];
+    const back = await importXlsx(await exportXlsx(chartWorkbook(specs)));
+    const got = chartsOf(back);
+    specs.forEach((spec, i) => expect(got[i], spec.type).toEqual(spec));
   });
 
   it('écrit des parties DrawingML valides (relations, types de contenu, ancres)', async () => {

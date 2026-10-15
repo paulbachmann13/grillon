@@ -6,13 +6,16 @@
  * nuage de points, graphiques combinés et axe secondaire, titres, légende, couleurs.
  */
 import type JSZip from 'jszip';
-import type { ChartSpec, ChartType, SeriesSpec } from '../../charts/spec';
-import { DEFAULT_COLORS, parseSheetRef } from '../../charts/spec';
+import type { AxisSpec, ChartSpec, ChartType, DataLabelsSpec, ErrorBarsSpec, Grouping, LabelPosition, MarkerShape, SeriesSpec, TrendlineSpec } from '../../charts/spec';
+import { DEFAULT_COLORS, groupingOf, PALETTES, parseSheetRef } from '../../charts/spec';
+import type { ShapeSpec } from '../../charts/shape';
 import type { ICellData, IWorkbookData, IWorksheetData } from '../../model/univer-types';
+import { parseShapeAnchor, shapeXml } from './shapes';
 import { addContentTypeOverride, addRelationship, attrs, escapeXml, extractAll, extractElement, insertWorksheetElement, parseXml, readRelationships, resolveRelTarget } from './ooxml';
 
 export const DRAWING_RESOURCE = 'SHEET_DRAWING_PLUGIN';
 export const CHART_COMPONENT_KEY = 'GrillonChart';
+export const SHAPE_COMPONENT_KEY = 'GrillonShape';
 const DRAWING_DOM_TYPE = 8;
 const DRAWING_IMAGE_TYPE = 0;
 const REL_IMAGE = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image';
@@ -53,6 +56,7 @@ export type DrawingResource = Record<string, { data: Record<string, DrawingItem>
 /** Graphique (spec) ou image (data URL) ancré dans la feuille. */
 export interface SheetChart {
   spec?: ChartSpec;
+  shape?: ShapeSpec;
   image?: string;
   from: CellAnchor;
   to: CellAnchor;
@@ -120,14 +124,179 @@ const GROUP_TAGS: Record<string, ChartType> = {
   area3DChart: 'area',
   pieChart: 'pie',
   pie3DChart: 'pie',
-  doughnutChart: 'pie',
+  doughnutChart: 'doughnut',
   scatterChart: 'scatter',
+  bubbleChart: 'bubble',
+  radarChart: 'radar',
 };
+
+const val = (node: unknown): string | undefined => {
+  const v = (node as { val?: unknown } | undefined)?.val;
+  return v === undefined ? undefined : String(v);
+};
+const flag = (node: unknown): boolean => {
+  const v = val(node);
+  return v === '1' || v === 'true';
+};
+const numVal = (node: unknown): number | undefined => {
+  const v = val(node);
+  return v !== undefined && Number.isFinite(Number(v)) ? Number(v) : undefined;
+};
+
+const LABEL_POSITIONS: Record<string, LabelPosition> = { ctr: 'center', inEnd: 'insideEnd', inBase: 'insideBase', outEnd: 'outsideEnd', t: 'above', b: 'below', l: 'left', r: 'right' };
+
+function parseDataLabels(node: unknown): DataLabelsSpec | undefined {
+  const d = node as Xml | undefined;
+  if (!d || flag(d.delete)) return undefined;
+  const value = flag(d.showVal);
+  const category = flag(d.showCatName);
+  const series = flag(d.showSerName);
+  const percent = flag(d.showPercent);
+  if (!value && !category && !series && !percent) return undefined;
+  const out: DataLabelsSpec = { show: true };
+  if (value) out.value = true;
+  if (category) out.category = true;
+  if (series) out.series = true;
+  if (percent) out.percent = true;
+  const pos = LABEL_POSITIONS[val(d.dLblPos) ?? ''];
+  if (pos) out.position = pos;
+  const fmt = (d.numFmt as { formatCode?: string; sourceLinked?: unknown } | undefined);
+  if (fmt?.formatCode && fmt.formatCode !== 'General' && String(fmt.sourceLinked) !== '1') out.numFmt = fmt.formatCode;
+  if (typeof d.separator === 'string' && d.separator !== '; ') out.separator = d.separator;
+  return out;
+}
+
+const TREND_TYPES: Record<string, TrendlineSpec['type']> = { linear: 'linear', exp: 'exponential', log: 'logarithmic', poly: 'polynomial', power: 'power', movingAvg: 'movingAverage' };
+
+function parseTrendline(node: Xml): TrendlineSpec | null {
+  const type = TREND_TYPES[val(node.trendlineType) ?? ''];
+  if (!type) return null;
+  const t: TrendlineSpec = { type };
+  const order = numVal(node.order);
+  const period = numVal(node.period);
+  const forward = numVal(node.forward);
+  const backward = numVal(node.backward);
+  if (order !== undefined) t.order = order;
+  if (period !== undefined) t.period = period;
+  if (forward) t.forward = forward;
+  if (backward) t.backward = backward;
+  if (flag(node.dispEq)) t.showEquation = true;
+  if (flag(node.dispRSqr)) t.showR2 = true;
+  if (typeof node.name === 'string' && node.name) t.name = node.name;
+  return t;
+}
+
+function parseErrorBars(node: Xml): ErrorBarsSpec | undefined {
+  if (val(node.errDir) === 'x') return undefined;
+  const kind = ({ fixedVal: 'fixed', percentage: 'percent', stdDev: 'stddev' } as const)[val(node.errValType) as 'fixedVal'];
+  if (!kind) return undefined;
+  const out: ErrorBarsSpec = { kind };
+  const value = numVal(node.val);
+  if (value !== undefined) out.value = value;
+  const sides = val(node.errBarType);
+  if (sides === 'plus' || sides === 'minus') out.sides = sides;
+  if (flag(node.noEndCap)) out.noCap = true;
+  return out;
+}
+
+const SYMBOLS: Record<string, MarkerShape> = { circle: 'circle', square: 'square', diamond: 'diamond', triangle: 'triangle', none: 'none' };
+
+function parseSeries(ser: Xml, type: ChartType, palette: string[], idx: number, group: Xml): { spec: SeriesSpec; hasMarker: boolean } {
+  const tx = ser.tx as Xml | undefined;
+  const xy = type === 'scatter' || type === 'bubble';
+  const s: SeriesSpec = {
+    valuesRef: refOf(xy ? ser.yVal : ser.val) ?? '',
+    categoriesRef: refOf(xy ? ser.xVal : ser.cat),
+  };
+  if (!s.categoriesRef) delete s.categoriesRef;
+  const nameRef = refOf(tx);
+  if (nameRef) s.nameRef = nameRef;
+  else if (literalOf(tx)) s.name = literalOf(tx);
+  if (type === 'bubble') {
+    const sizes = refOf(ser.bubbleSize);
+    if (sizes) s.sizesRef = sizes;
+  }
+  const spPr = ser.spPr as Xml | undefined;
+  const color = colorOf(spPr) ?? colorOf((ser.marker as Xml | undefined)?.spPr);
+  if (color) s.color = color;
+  const ln = spPr?.ln as Xml | undefined;
+  const w = Number((ln as { w?: unknown } | undefined)?.w);
+  if (Number.isFinite(w) && w > 0 && ln?.noFill === undefined && (type === 'line' || type === 'scatter' || type === 'radar')) {
+    const pt = Math.round((w / 12700) * 100) / 100;
+    if (pt !== 2.25) s.lineWidth = pt;
+  }
+  const dash = val(ln?.prstDash);
+  if (dash === 'dash' || dash === 'lgDash' || dash === 'sysDash') s.dash = 'dash';
+  else if (dash === 'sysDot' || dash === 'dot') s.dash = 'dot';
+  const marker = ser.marker as Xml | undefined;
+  let hasMarker = false;
+  if (marker) {
+    const shape = SYMBOLS[val(marker.symbol) ?? ''];
+    const size = numVal(marker.size);
+    if (shape && shape !== 'none') hasMarker = true;
+    const m: { shape?: MarkerShape; size?: number } = {};
+    if (shape && shape !== 'circle') m.shape = shape;
+    if (size !== undefined && size !== 5 && size !== 6 && shape !== 'none') m.size = size;
+    if (Object.keys(m).length) s.marker = m;
+  }
+  if (flag(ser.smooth)) s.smooth = true;
+  if (type === 'area' || type === 'radar') {
+    const alpha = numVal(((spPr?.solidFill as Xml | undefined)?.srgbClr as Xml | undefined)?.alpha);
+    if (alpha !== undefined && alpha < 100000) s.opacity = alpha / 100000;
+  }
+  const dl = parseDataLabels(ser.dLbls) ?? undefined;
+  if (dl) s.dataLabels = dl;
+  const trendlines = arr(ser.trendline as Xml | Xml[]).map(parseTrendline).filter((x): x is TrendlineSpec => !!x);
+  if (trendlines.length) s.trendlines = trendlines;
+  const eb = arr(ser.errBars as Xml | Xml[]).map(parseErrorBars).find((x) => !!x);
+  if (eb) s.errorBars = eb;
+  const points: Record<number, string> = {};
+  for (const dPt of arr(ser.dPt as Xml | Xml[])) {
+    const index = numVal(dPt.idx);
+    const c = colorOf(dPt.spPr);
+    if (index !== undefined && c && c !== palette[index % palette.length]!.toUpperCase()) points[index] = c;
+  }
+  if (Object.keys(points).length) s.pointColors = points;
+  void idx;
+  void group;
+  return { spec: s, hasMarker };
+}
+
+function parseAxis(ax: Xml | undefined, kind: 'value' | 'category', defaultGrid = kind === 'value'): AxisSpec | undefined {
+  if (!ax) return undefined;
+  const a: AxisSpec = {};
+  const scaling = ax.scaling as Xml | undefined;
+  if (kind === 'value') {
+    const min = numVal(scaling?.min);
+    const max = numVal(scaling?.max);
+    if (min !== undefined) a.min = min;
+    if (max !== undefined) a.max = max;
+    const major = numVal(ax.majorUnit);
+    if (major !== undefined) a.majorUnit = major;
+    if (scaling?.logBase !== undefined) a.log = true;
+  }
+  if (val(scaling?.orientation) === 'maxMin') a.reverse = true;
+  const fmt = ax.numFmt as { formatCode?: string; sourceLinked?: unknown } | undefined;
+  if (fmt?.formatCode && fmt.formatCode !== 'General' && String(fmt.sourceLinked) !== '1') a.numFmt = fmt.formatCode;
+  if (val(ax.tickLblPos) === 'none') a.labels = 'none';
+  const tick = val(ax.majorTickMark);
+  if (tick === 'none' || tick === 'in' || tick === 'cross') a.ticks = tick;
+  const minor = val(ax.minorTickMark);
+  if (minor && minor !== 'none') a.minorTicks = true;
+  const hasMajor = ax.majorGridlines !== undefined;
+  if (hasMajor !== defaultGrid) a.gridMajor = hasMajor;
+  if (ax.minorGridlines !== undefined) a.gridMinor = true;
+  if (flag(ax.delete)) a.hidden = true;
+  const rot = Number(((ax.txPr as Xml | undefined)?.bodyPr as { rot?: unknown } | undefined)?.rot);
+  if (Number.isFinite(rot) && rot !== 0) a.labelAngle = Math.round(rot / 60000);
+  return Object.keys(a).length ? a : undefined;
+}
 
 /** Convertit une partie xl/charts/chartN.xml en ChartSpec (null si rien d'exploitable). */
 export function parseChartXml(xml: string): ChartSpec | null {
-  const doc = parseXml<{ chartSpace?: { chart?: Xml } }>(xml);
-  const chart = doc.chartSpace?.chart;
+  const doc = parseXml<{ chartSpace?: Xml }>(xml);
+  const space = doc.chartSpace;
+  const chart = space?.chart as Xml | undefined;
   const plot = chart?.plotArea as Xml | undefined;
   if (!plot) return null;
   // Axes : on repère l'axe de valeurs secondaire (celui qui croise au maximum / à droite).
@@ -137,45 +306,52 @@ export function parseChartXml(xml: string): ChartSpec | null {
   );
   const series: SeriesSpec[] = [];
   let mainType: ChartType | null = null;
-  let stacked = false;
+  let mainGroup: Xml | null = null;
+  let grouping: Grouping = 'standard';
+  let anyMarker = false;
+  const palette = PALETTES.office!.colors;
   for (const [tag, baseType] of Object.entries(GROUP_TAGS)) {
     for (const group of arr(plot[tag] as Xml | Xml[])) {
       let type = baseType;
       if (tag.startsWith('bar') && (group.barDir as Xml | undefined)?.val === 'bar') type = 'bar';
-      const grouping = String((group.grouping as Xml | undefined)?.val ?? '');
-      if (grouping === 'stacked' || grouping === 'percentStacked') stacked = true;
+      const g = String((group.grouping as Xml | undefined)?.val ?? '');
       const axIds = arr(group.axId as Xml | Xml[]).map((a) => String(a.val));
-      const secondary = axIds.some((id) => secondaryAxIds.has(id)) && type !== 'scatter';
-      mainType ??= secondary ? null : type;
-      for (const ser of arr(group.ser as Xml | Xml[])) {
-        const tx = ser.tx as Xml | undefined;
-        const s: SeriesSpec = {
-          valuesRef: refOf(type === 'scatter' ? ser.yVal : ser.val) ?? '',
-          categoriesRef: refOf(type === 'scatter' ? ser.xVal : ser.cat),
-        };
-        const nameRef = refOf(tx);
-        if (nameRef) s.nameRef = nameRef;
-        else if (literalOf(tx)) s.name = literalOf(tx);
-        const color = colorOf(ser.spPr) ?? colorOf((ser.marker as Xml | undefined)?.spPr);
-        if (color) s.color = color;
+      const secondary = axIds.some((id) => secondaryAxIds.has(id)) && type !== 'scatter' && type !== 'bubble';
+      if (!secondary && mainType === null) {
+        mainType = type;
+        mainGroup = group;
+        if (g === 'stacked') grouping = 'stacked';
+        else if (g === 'percentStacked') grouping = 'percent';
+      }
+      arr(group.ser as Xml | Xml[]).forEach((ser, i) => {
+        const { spec: s, hasMarker } = parseSeries(ser, type, palette, i, group);
         s.type = type;
         if (secondary) s.secondaryAxis = true;
+        if (hasMarker) anyMarker = true;
         if (s.valuesRef) series.push(s);
-      }
+      });
+      // Étiquettes définies au niveau du groupe : reprises par les séries qui n'ont pas les leurs.
+      const groupLabels = parseDataLabels(group.dLbls);
+      if (groupLabels) for (const s of series.slice(-arr(group.ser as Xml | Xml[]).length)) s.dataLabels ??= groupLabels;
     }
   }
   if (!series.length) return null;
-  const type = mainType ?? series[0].type ?? 'column';
+  const type = mainType ?? series[0]!.type ?? 'column';
   // Le type n'est gardé par série que s'il diffère du type principal (graphique combiné).
   for (const s of series) if (s.type === type) delete s.type;
   const spec: ChartSpec = { version: 1, type, series };
   const title = richText(chart?.title);
   if (title) spec.title = title;
-  if (stacked) spec.stacked = true;
-  const legendPos = ((chart?.legend as Xml | undefined)?.legendPos as Xml | undefined)?.val;
-  spec.legend = chart?.legend === undefined ? 'none' : legendPos === 't' ? 'top' : legendPos === 'r' ? 'right' : legendPos === 'l' ? 'left' : 'bottom';
+  if (flag((chart?.title as Xml | undefined)?.overlay)) spec.titleOverlay = true;
+  if (grouping !== 'standard') spec.grouping = grouping;
+  const legend = chart?.legend as Xml | undefined;
+  const legendPos = val(legend?.legendPos);
+  spec.legend = legend === undefined ? 'none' : legendPos === 't' ? 'top' : legendPos === 'r' ? 'right' : legendPos === 'l' ? 'left' : 'bottom';
+  if (legend && flag(legend.overlay)) spec.legendOverlay = true;
+
   const axisTitle = (ax: Xml | undefined) => (ax ? richText(ax.title) : undefined);
-  const catAx = arr(plot.catAx as Xml | Xml[])[0] ?? (type === 'scatter' ? valAxes[0] : undefined);
+  const xy = type === 'scatter' || type === 'bubble';
+  const catAx = arr(plot.catAx as Xml | Xml[])[0] ?? (xy ? valAxes[0] : undefined);
   const primaryVal = valAxes.find((ax) => !secondaryAxIds.has(String((ax.axId as Xml).val)) && ax !== catAx);
   const secondaryVal = valAxes.find((ax) => secondaryAxIds.has(String((ax.axId as Xml).val)));
   const x = axisTitle(catAx);
@@ -184,6 +360,69 @@ export function parseChartXml(xml: string): ChartSpec | null {
   if (x) spec.xAxisTitle = x;
   if (y) spec.yAxisTitle = y;
   if (y2) spec.y2AxisTitle = y2;
+  const axes: ChartSpec['axes'] = {};
+  const ax = parseAxis(catAx, xy ? 'value' : 'category');
+  const ay = parseAxis(primaryVal, 'value');
+  const ay2 = parseAxis(secondaryVal, 'value', false);
+  if (ax) axes.x = ax;
+  if (ay) axes.y = ay;
+  if (ay2) axes.y2 = ay2;
+  if (Object.keys(axes).length) spec.axes = axes;
+
+  // Options propres au type.
+  const g = mainGroup;
+  if (g) {
+    const gap = numVal(g.gapWidth);
+    if (gap !== undefined && gap !== 150) spec.gapWidth = gap;
+    const overlap = numVal(g.overlap);
+    if (overlap !== undefined && overlap !== (grouping === 'standard' ? 0 : 100)) spec.overlap = overlap;
+    const hole = numVal(g.holeSize);
+    if (hole !== undefined && hole !== 50) spec.holeSize = hole;
+    const first = numVal(g.firstSliceAng);
+    if (first) spec.firstSliceAngle = first;
+    const bubble = numVal(g.bubbleScale);
+    if (bubble !== undefined && bubble !== 100) spec.bubbleScale = bubble;
+    if (val(g.radarStyle) === 'filled') spec.radarFilled = true;
+    if (flag(g.varyColors) && series.length === 1 && type !== 'pie' && type !== 'doughnut') spec.varyColors = true;
+    if (type === 'scatter') {
+      const style = val(g.scatterStyle);
+      const smooth = series.some((s) => s.smooth);
+      const lines = arr(g.ser as Xml | Xml[]).some((s) => ((s.spPr as Xml | undefined)?.ln as Xml | undefined)?.noFill === undefined);
+      if (lines) spec.scatterStyle = smooth || style === 'smoothMarker' ? (anyMarker ? 'smoothMarkers' : 'smooth') : anyMarker ? 'straightMarkers' : 'straight';
+      for (const s of series) delete s.smooth;
+    }
+  }
+  if ((type === 'line' || type === 'radar') && anyMarker) spec.markers = true;
+  for (const s of series) {
+    if (s.marker?.shape === 'none' && !spec.markers) {
+      delete s.marker.shape;
+      if (!Object.keys(s.marker).length) delete s.marker;
+    }
+  }
+  if (type === 'line' && series.length && series.every((s) => s.smooth)) {
+    spec.smooth = true;
+    for (const s of series) delete s.smooth;
+  }
+
+  // Étiquettes identiques sur toutes les séries : réglage du graphique.
+  const first = series[0]?.dataLabels;
+  if (first && series.every((s) => JSON.stringify(s.dataLabels) === JSON.stringify(first))) {
+    spec.dataLabels = first;
+    for (const s of series) delete s.dataLabels;
+  }
+  if (plot.dTable !== undefined) spec.dataTable = true;
+  const blanks = val(chart?.dispBlanksAs);
+  if (blanks === 'zero') spec.emptyCells = 'zero';
+  else if (blanks === 'span') spec.emptyCells = 'connect';
+  if (val(chart?.plotVisOnly) === '0') spec.plotVisibleOnly = false;
+
+  // Mise en forme de la zone de graphique.
+  const sp = space?.spPr as Xml | undefined;
+  const bg = (sp?.solidFill as { srgbClr?: { val?: string } } | undefined)?.srgbClr?.val;
+  if (bg && bg.toUpperCase() !== 'FFFFFF') spec.background = `#${bg.toUpperCase()}`;
+  if ((sp?.ln as Xml | undefined)?.noFill !== undefined) spec.border = false;
+  const sz = Number((((space?.txPr as Xml | undefined)?.p as Xml | undefined)?.pPr as Xml | undefined)?.defRPr && ((((space?.txPr as Xml).p as Xml).pPr as Xml).defRPr as { sz?: unknown }).sz);
+  if (Number.isFinite(sz) && sz > 0 && sz !== 1200) spec.fontSize = Math.round(sz / 100);
   return spec;
 }
 
@@ -200,6 +439,7 @@ export async function readSheetCharts(zip: JSZip, sheetPath: string): Promise<Sh
     for (const anchor of [...extractAll(xml, 'twoCellAnchor'), ...extractAll(xml, 'oneCellAnchor')]) {
       let spec: ChartSpec | null = null;
       let image: string | undefined;
+      let shape: ShapeSpec | null = null;
       const chartRef = /<c:chart\b[^>]*\br:id="([^"]+)"/.exec(anchor.xml)?.[1];
       const blipRef = /<a:blip\b[^>]*\br:embed="([^"]+)"/.exec(anchor.xml)?.[1];
       if (chartRef) {
@@ -212,7 +452,8 @@ export async function readSheetCharts(zip: JSZip, sheetPath: string): Promise<Sh
         const media = target ? zip.file(target) : null;
         if (target && media) image = `data:${mimeOf(target)};base64,${await media.async('base64')}`;
       }
-      if (!spec && !image) continue;
+      if (!spec && !image) shape = parseShapeAnchor(anchor.xml);
+      if (!spec && !image && !shape) continue;
       const pos = (tag: string): CellAnchor | null => {
         const el = extractElement(anchor.xml, tag);
         if (!el) return null;
@@ -229,7 +470,7 @@ export async function readSheetCharts(zip: JSZip, sheetPath: string): Promise<Sh
         const h = ext ? Number(ext[2]) / EMU_PER_PX : 288;
         to = { column: from.column + Math.max(1, Math.round(w / 64)), columnOffset: 0, row: from.row + Math.max(1, Math.round(h / 20)), rowOffset: 0 };
       }
-      out.push(spec ? { spec, from, to } : { image, from, to });
+      out.push(spec ? { spec, from, to } : shape ? { shape, from, to } : { image, from, to });
     }
   }
   return out;
@@ -243,6 +484,22 @@ export function chartsToDrawingResource(unitId: string, sheetId: string, sheet: 
     const id = `chart${Date.now().toString(36)}${i}`;
     const a = anchorToPx(sheet, c.from);
     const b = anchorToPx(sheet, c.to);
+    if (c.shape) {
+      data[id] = {
+        unitId,
+        subUnitId: sheetId,
+        drawingId: id,
+        drawingType: DRAWING_DOM_TYPE,
+        componentKey: SHAPE_COMPONENT_KEY,
+        sheetTransform: { from: c.from, to: c.to },
+        axisAlignSheetTransform: { from: c.from, to: c.to },
+        transform: { left: a.x, top: a.y, width: Math.max(8, b.x - a.x), height: Math.max(8, b.y - a.y) },
+        data: { shapeId: `shape-${id}`, spec: c.shape } as never,
+        allowTransform: true,
+      };
+      order.push(id);
+      return;
+    }
     if (c.image) {
       data[id] = {
         unitId,
@@ -308,20 +565,74 @@ function fRef(ref: string): string {
   return escapeXml(ref.replace(/^=/, ''));
 }
 
-function richTitle(text: string, size = 1400): string {
-  return `<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="${size}" b="1"/></a:pPr><a:r><a:rPr lang="fr-FR" sz="${size}" b="1"/><a:t>${escapeXml(text)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title>`;
+function richTitle(text: string, size = 1400, overlay = false): string {
+  return `<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="${size}" b="1"/></a:pPr><a:r><a:rPr lang="fr-FR" sz="${size}" b="1"/><a:t>${escapeXml(text)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="${overlay ? 1 : 0}"/></c:title>`;
 }
 
-function solidFill(color: string): string {
-  return `<a:solidFill><a:srgbClr val="${color.replace('#', '').toUpperCase()}"/></a:solidFill>`;
+function solidFill(color: string, alpha?: number): string {
+  const hex = color.replace('#', '').toUpperCase();
+  return alpha !== undefined && alpha < 1 ? `<a:solidFill><a:srgbClr val="${hex}"><a:alpha val="${Math.round(alpha * 100000)}"/></a:srgbClr></a:solidFill>` : `<a:solidFill><a:srgbClr val="${hex}"/></a:solidFill>`;
 }
+
+const DLBL_POS: Record<string, string> = { center: 'ctr', insideEnd: 'inEnd', insideBase: 'inBase', outsideEnd: 'outEnd', above: 't', below: 'b', left: 'l', right: 'r' };
+
+/** Positions d'étiquettes acceptées par Excel selon le type de graphique (sinon le fichier est jugé corrompu). */
+function allowedLabelPositions(type: ChartType, grouping: Grouping): string[] {
+  switch (type) {
+    case 'column':
+    case 'bar':
+      return grouping === 'standard' ? ['ctr', 'inEnd', 'inBase', 'outEnd'] : ['ctr', 'inEnd', 'inBase'];
+    case 'line':
+    case 'scatter':
+    case 'bubble':
+      return ['ctr', 't', 'b', 'l', 'r'];
+    case 'pie':
+      return ['ctr', 'inEnd', 'outEnd'];
+    default:
+      return [];
+  }
+}
+
+function dLblsXml(dl: DataLabelsSpec | undefined, type: ChartType, grouping: Grouping): string {
+  if (!dl?.show) return '';
+  const value = dl.value ?? (!dl.category && !dl.series && !dl.percent);
+  const pos = DLBL_POS[dl.position ?? ''];
+  const posXml = pos && allowedLabelPositions(type, grouping).includes(pos) ? `<c:dLblPos val="${pos}"/>` : '';
+  const fmt = dl.numFmt ? `<c:numFmt formatCode="${escapeXml(dl.numFmt)}" sourceLinked="0"/>` : '';
+  const sep = dl.separator && dl.separator !== '; ' ? `<c:separator>${escapeXml(dl.separator)}</c:separator>` : '';
+  const b = (v: boolean | undefined) => (v ? 1 : 0);
+  return `<c:dLbls>${fmt}<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>${posXml}<c:showLegendKey val="0"/><c:showVal val="${b(value)}"/><c:showCatName val="${b(dl.category)}"/><c:showSerName val="${b(dl.series)}"/><c:showPercent val="${b(dl.percent && (type === 'pie' || type === 'doughnut'))}"/><c:showBubbleSize val="0"/>${sep}</c:dLbls>`;
+}
+
+const TREND_XML: Record<TrendlineSpec['type'], string> = { linear: 'linear', exponential: 'exp', logarithmic: 'log', polynomial: 'poly', power: 'power', movingAverage: 'movingAvg' };
+
+function trendlineXml(t: TrendlineSpec, color: string): string {
+  const order = t.type === 'polynomial' ? `<c:order val="${Math.min(6, Math.max(2, Math.round(t.order ?? 2)))}"/>` : '';
+  const period = t.type === 'movingAverage' ? `<c:period val="${Math.max(2, Math.round(t.period ?? 2))}"/>` : '';
+  const fwd = t.forward && t.type !== 'movingAverage' ? `<c:forward val="${t.forward}"/>` : '';
+  const bwd = t.backward && t.type !== 'movingAverage' ? `<c:backward val="${t.backward}"/>` : '';
+  const name = t.name ? `<c:name>${escapeXml(t.name)}</c:name>` : '';
+  return `<c:trendline>${name}<c:spPr><a:ln w="19050" cap="rnd">${solidFill(t.color ?? color)}<a:prstDash val="sysDash"/></a:ln></c:spPr><c:trendlineType val="${TREND_XML[t.type]}"/>${order}${period}${fwd}${bwd}<c:dispRSqr val="${t.showR2 ? 1 : 0}"/><c:dispEq val="${t.showEquation ? 1 : 0}"/></c:trendline>`;
+}
+
+function errBarsXml(e: ErrorBarsSpec, color: string): string {
+  const kind = { fixed: 'fixedVal', percent: 'percentage', stddev: 'stdDev' }[e.kind];
+  const value = e.value ?? (e.kind === 'percent' ? 5 : 1);
+  return `<c:errBars><c:errDir val="y"/><c:errBarType val="${e.sides ?? 'both'}"/><c:errValType val="${kind}"/><c:noEndCap val="${e.noCap ? 1 : 0}"/><c:val val="${value}"/><c:spPr><a:ln w="12700">${solidFill(color)}</a:ln></c:spPr></c:errBars>`;
+}
+
+const MARKER_XML: Record<MarkerShape, string> = { circle: 'circle', square: 'square', diamond: 'diamond', triangle: 'triangle', none: 'none' };
 
 /** ChartSpec → XML de partie graphique. */
 export function buildChartXml(wb: IWorkbookData, spec: ChartSpec, sheetName: string): string {
+  const palette = PALETTES[spec.palette ?? 'office']?.colors ?? DEFAULT_COLORS;
+  const grouping = groupingOf(spec);
+  const xy = spec.type === 'scatter' || spec.type === 'bubble';
+  const single = spec.type === 'pie' || spec.type === 'doughnut' || spec.type === 'radar' || xy;
   const groups = new Map<string, { type: ChartType; secondary: boolean; series: { s: SeriesSpec; idx: number }[] }>();
   spec.series.forEach((s, idx) => {
-    const type = spec.type === 'pie' || spec.type === 'scatter' ? spec.type : (s.type ?? spec.type);
-    const secondary = !!s.secondaryAxis && type !== 'pie' && type !== 'scatter';
+    const type = single ? spec.type : (s.type ?? spec.type);
+    const secondary = !!s.secondaryAxis && !single;
     const key = `${type === 'bar' ? 'column' : type}|${secondary}`;
     if (!groups.has(key)) groups.set(key, { type, secondary, series: [] });
     groups.get(key)!.series.push({ s, idx });
@@ -331,12 +642,21 @@ export function buildChartXml(wb: IWorkbookData, spec: ChartSpec, sheetName: str
   const AX = { cat: 500000001, val: 500000002, cat2: 500000003, val2: 500000004 };
 
   const serXml = (s: SeriesSpec, idx: number, type: ChartType) => {
-    const color = s.color ?? DEFAULT_COLORS[idx % DEFAULT_COLORS.length];
+    const color = s.color ?? palette[idx % palette.length]!;
+    const dlSpec = s.dataLabels ?? spec.dataLabels;
     const tx = s.nameRef
       ? `<c:tx><c:strRef><c:f>${fRef(s.nameRef)}</c:f>${strCache(readValues(wb, s.nameRef, sheetName))}</c:strRef></c:tx>`
       : `<c:tx><c:v>${escapeXml(s.name ?? `Série ${idx + 1}`)}</c:v></c:tx>`;
-    const line = type === 'line' || type === 'scatter';
-    const spPr = type === 'pie' ? '' : line ? `<c:spPr><a:ln w="28575" cap="rnd">${solidFill(color)}<a:round/></a:ln></c:spPr>` : `<c:spPr>${solidFill(color)}</c:spPr>`;
+    const lineW = Math.round((s.lineWidth ?? 2.25) * 12700);
+    const dash = s.dash === 'dash' ? '<a:prstDash val="dash"/>' : s.dash === 'dot' ? '<a:prstDash val="sysDot"/>' : '';
+    const scatterLines = type === 'scatter' && (spec.scatterStyle ?? 'markers') !== 'markers';
+    const lineType = type === 'line' || type === 'radar' || scatterLines;
+    const opacity = type === 'area' || (type === 'radar' && spec.radarFilled) ? s.opacity : undefined;
+    let spPr: string;
+    if (type === 'pie' || type === 'doughnut') spPr = '';
+    else if (type === 'scatter' && !scatterLines) spPr = '<c:spPr><a:ln w="19050"><a:noFill/></a:ln></c:spPr>';
+    else if (lineType) spPr = `<c:spPr><a:ln w="${lineW}" cap="rnd">${solidFill(color)}${dash}<a:round/></a:ln></c:spPr>`;
+    else spPr = `<c:spPr>${solidFill(color, opacity)}</c:spPr>`;
     const cats = readValues(wb, s.categoriesRef, sheetName);
     const catNumeric = cats.length > 0 && cats.every((v) => typeof v === 'number' || v === null);
     const cat = s.categoriesRef
@@ -345,30 +665,76 @@ export function buildChartXml(wb: IWorkbookData, spec: ChartSpec, sheetName: str
         : `<c:strRef><c:f>${fRef(s.categoriesRef)}</c:f>${strCache(cats)}</c:strRef>`
       : '';
     const val = `<c:numRef><c:f>${fRef(s.valuesRef)}</c:f>${numCache(readValues(wb, s.valuesRef, sheetName))}</c:numRef>`;
-    const marker = type === 'line' ? '<c:marker><c:symbol val="circle"/><c:size val="5"/></c:marker>' : type === 'scatter' ? `<c:marker><c:symbol val="circle"/><c:size val="6"/><c:spPr>${solidFill(color)}</c:spPr></c:marker>` : '';
-    if (type === 'scatter') {
-      return `<c:ser><c:idx val="${idx}"/><c:order val="${idx}"/>${tx}<c:spPr><a:ln w="19050"><a:noFill/></a:ln></c:spPr>${marker}${cat ? `<c:xVal>${cat}</c:xVal>` : ''}<c:yVal>${val}</c:yVal><c:smooth val="0"/></c:ser>`;
+    const shape = s.marker?.shape ?? (type === 'scatter' ? (spec.scatterStyle === 'straight' || spec.scatterStyle === 'smooth' ? 'none' : 'circle') : spec.markers ? 'circle' : 'none');
+    const markerSize = Math.min(72, Math.max(2, Math.round(s.marker?.size ?? (type === 'scatter' ? 6 : 5))));
+    const marker =
+      type === 'line' || type === 'scatter' || type === 'radar'
+        ? `<c:marker><c:symbol val="${MARKER_XML[shape]}"/>${shape === 'none' ? '' : `<c:size val="${markerSize}"/><c:spPr>${solidFill(color)}</c:spPr>`}</c:marker>`
+        : '';
+    const point = (i: number, c: string) => `<c:dPt><c:idx val="${i}"/>${type === 'column' || type === 'bar' ? '<c:invertIfNegative val="0"/>' : ''}<c:bubble3D val="0"/><c:spPr>${solidFill(c)}</c:spPr></c:dPt>`;
+    const paletteByIndex = (): Record<string, string> => Object.fromEntries(cats.map((_, i) => [String(i), palette[i % palette.length]!]));
+    const pointColors: Record<string, string> = spec.varyColors && spec.series.length === 1 && type !== "pie" && type !== "doughnut" ? paletteByIndex() : {};
+    const colors: Record<string, string> = { ...(type === 'pie' || type === 'doughnut' ? paletteByIndex() : {}), ...pointColors, ...(s.pointColors ?? {}) };
+    const dPts = Object.entries(colors).map(([i, c]) => point(Number(i), c)).join('');
+    const dLbls = dLblsXml(dlSpec, type, grouping);
+    const trend = (s.trendlines ?? []).filter(() => type !== 'pie' && type !== 'doughnut' && type !== 'radar').map((t) => trendlineXml(t, color)).join('');
+    const err = s.errorBars && type !== 'pie' && type !== 'doughnut' && type !== 'radar' ? errBarsXml(s.errorBars, color) : '';
+    const head = `<c:ser><c:idx val="${idx}"/><c:order val="${idx}"/>${tx}${spPr}`;
+    const explosion = (type === 'pie' || type === 'doughnut') && spec.explosion ? `<c:explosion val="${Math.round(spec.explosion)}"/>` : '';
+    const smooth = (spec.smooth || s.smooth) && (type === 'line') ? '<c:smooth val="1"/>' : type === 'line' ? '<c:smooth val="0"/>' : '';
+    switch (type) {
+      case 'scatter': {
+        const smoothed = (spec.scatterStyle ?? 'markers').startsWith('smooth');
+        return `${head}${marker}${dPts}${dLbls}${trend}${err}${cat ? `<c:xVal>${cat}</c:xVal>` : ''}<c:yVal>${val}</c:yVal><c:smooth val="${smoothed ? 1 : 0}"/></c:ser>`;
+      }
+      case 'bubble': {
+        const sizes = `<c:numRef><c:f>${fRef(s.sizesRef ?? s.valuesRef)}</c:f>${numCache(readValues(wb, s.sizesRef ?? s.valuesRef, sheetName))}</c:numRef>`;
+        return `${head}<c:invertIfNegative val="0"/>${dPts}${dLbls}${trend}${err}${cat ? `<c:xVal>${cat}</c:xVal>` : ''}<c:yVal>${val}</c:yVal><c:bubbleSize>${sizes}</c:bubbleSize><c:bubble3D val="0"/></c:ser>`;
+      }
+      case 'column':
+      case 'bar':
+        return `${head}<c:invertIfNegative val="0"/>${dPts}${dLbls}${trend}${err}${cat ? `<c:cat>${cat}</c:cat>` : ''}<c:val>${val}</c:val></c:ser>`;
+      case 'line':
+        return `${head}${marker}${dPts}${dLbls}${trend}${err}${cat ? `<c:cat>${cat}</c:cat>` : ''}<c:val>${val}</c:val>${smooth}</c:ser>`;
+      case 'area':
+        return `${head}${dPts}${dLbls}${trend}${err}${cat ? `<c:cat>${cat}</c:cat>` : ''}<c:val>${val}</c:val></c:ser>`;
+      case 'radar':
+        return `${head}${marker}${dPts}${dLbls}${cat ? `<c:cat>${cat}</c:cat>` : ''}<c:val>${val}</c:val></c:ser>`;
+      default:
+        return `${head}${explosion}${dPts}${dLbls}${cat ? `<c:cat>${cat}</c:cat>` : ''}<c:val>${val}</c:val></c:ser>`;
     }
-    return `<c:ser><c:idx val="${idx}"/><c:order val="${idx}"/>${tx}${spPr}${type === 'column' || type === 'bar' ? '<c:invertIfNegative val="0"/>' : ''}${marker}${cat ? `<c:cat>${cat}</c:cat>` : ''}<c:val>${val}</c:val>${type === 'line' ? '<c:smooth val="0"/>' : ''}</c:ser>`;
   };
 
+  const groupingXml = (g: Grouping) => (g === 'percent' ? 'percentStacked' : g);
+  const vary = spec.varyColors && spec.series.length === 1 ? 1 : 0;
   const groupXml = [...groups.values()]
     .map((g) => {
       const series = g.series.map(({ s, idx }) => serXml(s, idx, g.type)).join('');
       const axIds = g.secondary ? `<c:axId val="${AX.cat2}"/><c:axId val="${AX.val2}"/>` : `<c:axId val="${AX.cat}"/><c:axId val="${AX.val}"/>`;
-      const grouping = spec.stacked ? 'stacked' : g.type === 'line' ? 'standard' : 'clustered';
+      // L'empilement ne s'applique qu'aux séries du type principal ; les autres restent « standard ».
+      const stack = g.type === spec.type || (g.type === 'column' && spec.type === 'bar') ? groupingXml(grouping) : 'standard';
       switch (g.type) {
         case 'column':
-        case 'bar':
-          return `<c:barChart><c:barDir val="${horizontal ? 'bar' : 'col'}"/><c:grouping val="${spec.stacked ? 'stacked' : 'clustered'}"/><c:varyColors val="0"/>${series}<c:gapWidth val="150"/>${spec.stacked ? '<c:overlap val="100"/>' : ''}${axIds}</c:barChart>`;
+        case 'bar': {
+          const overlap = spec.overlap ?? (stack !== 'standard' ? 100 : undefined);
+          return `<c:barChart><c:barDir val="${horizontal ? 'bar' : 'col'}"/><c:grouping val="${stack === 'standard' ? 'clustered' : stack}"/><c:varyColors val="${vary}"/>${series}<c:gapWidth val="${Math.round(spec.gapWidth ?? 150)}"/>${overlap !== undefined ? `<c:overlap val="${Math.round(overlap)}"/>` : ''}${axIds}</c:barChart>`;
+        }
         case 'line':
-          return `<c:lineChart><c:grouping val="${spec.stacked ? 'stacked' : 'standard'}"/><c:varyColors val="0"/>${series}<c:marker val="1"/>${axIds}</c:lineChart>`;
+          return `<c:lineChart><c:grouping val="${stack}"/><c:varyColors val="0"/>${series}<c:marker val="1"/>${axIds}</c:lineChart>`;
         case 'area':
-          return `<c:areaChart><c:grouping val="${grouping === 'clustered' ? 'standard' : grouping}"/><c:varyColors val="0"/>${series}${axIds}</c:areaChart>`;
+          return `<c:areaChart><c:grouping val="${stack}"/><c:varyColors val="0"/>${series}${axIds}</c:areaChart>`;
         case 'pie':
-          return `<c:pieChart><c:varyColors val="1"/>${series}<c:firstSliceAng val="0"/></c:pieChart>`;
-        case 'scatter':
-          return `<c:scatterChart><c:scatterStyle val="lineMarker"/><c:varyColors val="0"/>${series}${axIds}</c:scatterChart>`;
+          return `<c:pieChart><c:varyColors val="1"/>${series}<c:firstSliceAng val="${Math.round(spec.firstSliceAngle ?? 0)}"/></c:pieChart>`;
+        case 'doughnut':
+          return `<c:doughnutChart><c:varyColors val="1"/>${series}<c:firstSliceAng val="${Math.round(spec.firstSliceAngle ?? 0)}"/><c:holeSize val="${Math.round(Math.min(90, Math.max(10, spec.holeSize ?? 50)))}"/></c:doughnutChart>`;
+        case 'scatter': {
+          const style = (spec.scatterStyle ?? 'markers').startsWith('smooth') ? 'smoothMarker' : 'lineMarker';
+          return `<c:scatterChart><c:scatterStyle val="${style}"/><c:varyColors val="0"/>${series}${axIds}</c:scatterChart>`;
+        }
+        case 'bubble':
+          return `<c:bubbleChart><c:varyColors val="0"/>${series}<c:bubbleScale val="${Math.round(spec.bubbleScale ?? 100)}"/><c:showNegBubbles val="0"/>${axIds}</c:bubbleChart>`;
+        case 'radar':
+          return `<c:radarChart><c:radarStyle val="${spec.radarFilled ? 'filled' : spec.markers ? 'marker' : 'standard'}"/><c:varyColors val="0"/>${series}${axIds}</c:radarChart>`;
         default:
           return '';
       }
@@ -376,35 +742,50 @@ export function buildChartXml(wb: IWorkbookData, spec: ChartSpec, sheetName: str
     .join('');
 
   const axTitle = (text?: string) => (text ? richTitle(text, 1000) : '');
-  const gridlines = '<c:majorGridlines><c:spPr><a:ln w="9525">' + solidFill('#D9D9D9') + '</a:ln></c:spPr></c:majorGridlines>';
+  const gridXml = (on: boolean) => (on ? `<c:majorGridlines><c:spPr><a:ln w="9525">${solidFill('#D9D9D9')}</a:ln></c:spPr></c:majorGridlines>` : '');
+  const minorGridXml = (on: boolean | undefined) => (on ? `<c:minorGridlines><c:spPr><a:ln w="6350">${solidFill('#EDEDED')}</a:ln></c:spPr></c:minorGridlines>` : '');
+  const scalingXml = (a: AxisSpec | undefined, value: boolean) =>
+    `<c:scaling>${value && a?.log ? '<c:logBase val="10"/>' : ''}<c:orientation val="${a?.reverse ? 'maxMin' : 'minMax'}"/>${value && a?.max !== undefined ? `<c:max val="${a.max}"/>` : ''}${value && a?.min !== undefined ? `<c:min val="${a.min}"/>` : ''}</c:scaling>`;
+  const numFmtXml = (a: AxisSpec | undefined) => (a?.numFmt ? `<c:numFmt formatCode="${escapeXml(a.numFmt)}" sourceLinked="0"/>` : '<c:numFmt formatCode="General" sourceLinked="1"/>');
+  const tickXml = (a: AxisSpec | undefined) => `<c:majorTickMark val="${a?.ticks ?? 'out'}"/><c:minorTickMark val="${a?.minorTicks ? 'out' : 'none'}"/><c:tickLblPos val="${a?.labels === 'none' ? 'none' : 'nextTo'}"/>`;
+  const txPrXml = (a: AxisSpec | undefined) =>
+    a?.labelAngle ? `<c:txPr><a:bodyPr rot="${Math.round(a.labelAngle * 60000)}" vert="horz"/><a:lstStyle/><a:p><a:pPr><a:defRPr/></a:pPr><a:endParaRPr lang="fr-FR"/></a:p></c:txPr>` : '';
+  const unitXml = (a: AxisSpec | undefined) => (a?.majorUnit ? `<c:majorUnit val="${a.majorUnit}"/>` : '');
+
+  const catAxisXml = (id: number, cross: number, pos: string, a: AxisSpec | undefined, title: string | undefined, deleted: boolean) =>
+    `<c:catAx><c:axId val="${id}"/>${scalingXml(a, false)}<c:delete val="${deleted || a?.hidden ? 1 : 0}"/><c:axPos val="${pos}"/>${gridXml(a?.gridMajor === true)}${minorGridXml(a?.gridMinor)}${axTitle(title)}${numFmtXml(a)}${tickXml(a)}${txPrXml(a)}<c:crossAx val="${cross}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>`;
+  const valAxisXml = (id: number, cross: number, pos: string, a: AxisSpec | undefined, title: string | undefined, o: { grid: boolean; crosses?: string; between?: string }) =>
+    `<c:valAx><c:axId val="${id}"/>${scalingXml(a, true)}<c:delete val="${a?.hidden ? 1 : 0}"/><c:axPos val="${pos}"/>${gridXml(a?.gridMajor ?? o.grid)}${minorGridXml(a?.gridMinor)}${axTitle(title)}${numFmtXml(a)}${tickXml(a)}${txPrXml(a)}<c:crossAx val="${cross}"/><c:crosses val="${o.crosses ?? 'autoZero'}"/><c:crossBetween val="${o.between ?? 'between'}"/>${unitXml(a)}</c:valAx>`;
+
   let axes = '';
-  if (spec.type !== 'pie') {
+  if (spec.type !== 'pie' && spec.type !== 'doughnut') {
     const catPos = horizontal ? 'l' : 'b';
     const valPos = horizontal ? 'b' : 'l';
-    const catAx =
-      spec.type === 'scatter'
-        ? `<c:valAx><c:axId val="${AX.cat}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/>${axTitle(spec.xAxisTitle)}<c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="${AX.val}"/><c:crosses val="autoZero"/><c:crossBetween val="midCat"/></c:valAx>`
-        : `<c:catAx><c:axId val="${AX.cat}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${catPos}"/>${axTitle(spec.xAxisTitle)}<c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="${AX.val}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>`;
-    const valAx = `<c:valAx><c:axId val="${AX.val}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${valPos}"/>${gridlines}${axTitle(spec.yAxisTitle)}<c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="${AX.cat}"/><c:crosses val="autoZero"/><c:crossBetween val="${spec.type === 'scatter' ? 'midCat' : 'between'}"/></c:valAx>`;
-    axes = catAx + valAx;
-    if (hasSecondary) {
-      axes +=
-        `<c:catAx><c:axId val="${AX.cat2}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="1"/><c:axPos val="${catPos}"/><c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="${AX.val2}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>` +
-        `<c:valAx><c:axId val="${AX.val2}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${horizontal ? 't' : 'r'}"/>${axTitle(spec.y2AxisTitle)}<c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="${AX.cat2}"/><c:crosses val="max"/><c:crossBetween val="between"/></c:valAx>`;
+    if (xy) {
+      axes = valAxisXml(AX.cat, AX.val, 'b', spec.axes?.x, spec.xAxisTitle, { grid: spec.axes?.x?.gridMajor ?? true, between: 'midCat' }) + valAxisXml(AX.val, AX.cat, 'l', spec.axes?.y, spec.yAxisTitle, { grid: true, between: 'midCat' });
+    } else {
+      axes = catAxisXml(AX.cat, AX.val, catPos, spec.axes?.x, spec.xAxisTitle, false) + valAxisXml(AX.val, AX.cat, valPos, spec.axes?.y, spec.yAxisTitle, { grid: true, between: spec.type === 'radar' ? 'between' : 'between' });
+      if (hasSecondary) {
+        axes += catAxisXml(AX.cat2, AX.val2, catPos, undefined, undefined, true) + valAxisXml(AX.val2, AX.cat2, horizontal ? 't' : 'r', spec.axes?.y2, spec.y2AxisTitle, { grid: false, crosses: 'max' });
+      }
     }
   }
+  const dataTable = spec.dataTable && spec.type !== 'pie' && spec.type !== 'doughnut' && !xy && spec.type !== 'radar' ? '<c:dTable><c:showHorzBorder val="1"/><c:showVertBorder val="1"/><c:showOutline val="1"/><c:showKeys val="1"/></c:dTable>' : '';
   const legendPos = { bottom: 'b', top: 't', right: 'r', left: 'l' } as const;
-  const legend = spec.legend === 'none' ? '' : `<c:legend><c:legendPos val="${legendPos[spec.legend ?? 'bottom'] ?? 'b'}"/><c:overlay val="0"/></c:legend>`;
+  const legend = spec.legend === 'none' ? '' : `<c:legend><c:legendPos val="${legendPos[spec.legend ?? 'bottom'] ?? 'b'}"/><c:overlay val="${spec.legendOverlay ? 1 : 0}"/></c:legend>`;
+  const blanks = spec.emptyCells === 'zero' ? 'zero' : spec.emptyCells === 'connect' ? 'span' : 'gap';
+  const font = spec.fontSize && spec.fontSize !== 12 ? `<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="${Math.round(spec.fontSize * 100)}"/></a:pPr><a:endParaRPr lang="fr-FR"/></a:p></c:txPr>` : '';
   return (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
     '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
     '<c:lang val="fr-FR"/><c:roundedCorners val="0"/>' +
     '<c:chart>' +
-    (spec.title ? richTitle(spec.title) + '<c:autoTitleDeleted val="0"/>' : '<c:autoTitleDeleted val="1"/>') +
-    `<c:plotArea><c:layout/>${groupXml}${axes}</c:plotArea>` +
+    (spec.title ? richTitle(spec.title, 1400, spec.titleOverlay) + '<c:autoTitleDeleted val="0"/>' : '<c:autoTitleDeleted val="1"/>') +
+    `<c:plotArea><c:layout/>${groupXml}${axes}${dataTable}</c:plotArea>` +
     legend +
-    '<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart>' +
-    `<c:spPr>${solidFill('#FFFFFF')}<a:ln w="9525">${solidFill('#D9D9D9')}</a:ln></c:spPr>` +
+    `<c:plotVisOnly val="${spec.plotVisibleOnly === false ? 0 : 1}"/><c:dispBlanksAs val="${blanks}"/></c:chart>` +
+    `<c:spPr>${solidFill(spec.background ?? '#FFFFFF')}<a:ln w="9525">${spec.border === false ? '<a:noFill/>' : solidFill('#D9D9D9')}</a:ln></c:spPr>` +
+    font +
     '</c:chartSpace>'
   );
 }
@@ -421,9 +802,15 @@ export function chartsOfSheet(resource: DrawingResource | undefined, sheetId: st
     .map((id) => sheet.data?.[id])
     .filter(
       (d): d is DrawingItem =>
-        !!d && !!d.sheetTransform && ((d.componentKey === CHART_COMPONENT_KEY && !!d.data?.spec) || (d.drawingType === DRAWING_IMAGE_TYPE && !!d.source?.startsWith('data:image/'))),
+        !!d && !!d.sheetTransform && ((d.componentKey === CHART_COMPONENT_KEY && !!d.data?.spec) || (d.componentKey === SHAPE_COMPONENT_KEY && !!d.data?.spec) || (d.drawingType === DRAWING_IMAGE_TYPE && !!d.source?.startsWith('data:image/'))),
     )
-    .map((d) => (d.drawingType === DRAWING_IMAGE_TYPE ? { image: d.source, from: d.sheetTransform.from, to: d.sheetTransform.to } : { spec: d.data!.spec!, from: d.sheetTransform.from, to: d.sheetTransform.to }));
+    .map((d) =>
+      d.drawingType === DRAWING_IMAGE_TYPE
+        ? { image: d.source, from: d.sheetTransform.from, to: d.sheetTransform.to }
+        : d.componentKey === SHAPE_COMPONENT_KEY
+          ? { shape: d.data!.spec as unknown as ShapeSpec, from: d.sheetTransform.from, to: d.sheetTransform.to }
+          : { spec: d.data!.spec!, from: d.sheetTransform.from, to: d.sheetTransform.to },
+    );
 }
 
 const EXTENSIONS: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpeg', 'image/gif': 'gif', 'image/bmp': 'bmp', 'image/webp': 'webp', 'image/svg+xml': 'svg' };
@@ -470,6 +857,10 @@ export async function writeSheetCharts(
           `<xdr:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>` +
           '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:twoCellAnchor>',
       );
+      continue;
+    }
+    if (c.shape) {
+      anchors.push(`<xdr:twoCellAnchor editAs="oneCell">${anchorXml('from', c.from)}${anchorXml('to', c.to)}${shapeXml(c.shape, i + 2, `Forme ${i + 1}`)}<xdr:clientData/></xdr:twoCellAnchor>`);
       continue;
     }
     if (!c.spec) continue;

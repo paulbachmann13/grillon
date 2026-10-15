@@ -1,5 +1,7 @@
 import { DocumentController } from './app/document';
 import { CHART_COMPONENT, createChartComponent } from './charts/chart-view';
+import { createShapeComponent, SHAPE_COMPONENT } from './charts/shape-view';
+import { createSparklineComponent, SPARKLINE_COMPONENT } from './charts/sparkline-view';
 import { setupPwa } from './app/pwa';
 import { installShortcuts } from './app/shortcuts';
 import { Topbar } from './app/topbar';
@@ -11,6 +13,8 @@ import './style.css';
 const api = setupUniver(document.getElementById('univer')!);
 // Le composant graphique doit exister avant le chargement d'un classeur qui en contient.
 api.registerComponent(CHART_COMPONENT, createChartComponent(api) as never);
+api.registerComponent(SPARKLINE_COMPONENT, createSparklineComponent(api) as never);
+api.registerComponent(SHAPE_COMPONENT, createShapeComponent(api) as never);
 
 let topbar: Topbar | undefined;
 const doc = new DocumentController(api, {

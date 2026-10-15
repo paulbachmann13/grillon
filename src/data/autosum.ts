@@ -28,7 +28,7 @@ export function columnName(index: number): string {
 const a1 = (row: number, col: number): string => `${columnName(col)}${row + 1}`;
 const rangeA1 = (r1: number, c1: number, r2: number, c2: number): string => (r1 === r2 && c1 === c2 ? a1(r1, c1) : `${a1(r1, c1)}:${a1(r2, c2)}`);
 
-export function autoSumPlan(isNumber: (row: number, col: number) => boolean, selection: Rect, fn: AutoSumFunction = 'SUM'): AutoSumWrite[] {
+export function autoSumPlan(isNumber: (row: number, col: number) => boolean, selection: Rect, fn: AutoSumFunction = 'SUM', direction: 'down' | 'right' | 'auto' = 'auto'): AutoSumWrite[] {
   const { r1, c1, r2, c2 } = selection;
   const make = (row: number, col: number, from: Rect): AutoSumWrite => ({ row, col, formula: `=${fn}(${rangeA1(from.r1, from.c1, from.r2, from.c2)})` });
 
@@ -40,6 +40,11 @@ export function autoSumPlan(isNumber: (row: number, col: number) => boolean, sel
     while (left > 0 && isNumber(r1, left - 1)) left--;
     if (left < c1) return [make(r1, c1, { r1, c1: left, r2: r1, c2: c1 - 1 })];
     return [];
+  }
+  if (direction === 'right') {
+    const rightTotals: AutoSumWrite[] = [];
+    for (let r = r1; r <= r2; r++) rightTotals.push(make(r, c2 + 1, { r1: r, c1, r2: r, c2 }));
+    return rightTotals;
   }
   if (r1 === r2) return [make(r1, c2 + 1, selection)];
   const out: AutoSumWrite[] = [];

@@ -32,7 +32,8 @@ const sheetAndRange = (api: Api) => {
   return wb && ws && range ? { wb, ws, range } : null;
 };
 
-function autoSum(api: Api, fn: AutoSumFunction): void {
+/** Somme automatique (et variantes) ; `direction: 'right'` écrit un total à droite de chaque ligne. */
+export function autoSum(api: Api, fn: AutoSumFunction, direction: 'down' | 'right' | 'auto' = 'auto'): void {
   const cur = sheetAndRange(api);
   if (!cur) return;
   const { ws, range } = cur;
@@ -40,10 +41,15 @@ function autoSum(api: Api, fn: AutoSumFunction): void {
     const cell = ws.getRange(row, col).getCellDataGrid()[0]?.[0];
     return typeof cell?.v === 'number' && cell.t !== STRING;
   };
-  const plan = autoSumPlan(isNumber, { r1: range.getRow(), c1: range.getColumn(), r2: range.getLastRow(), c2: range.getLastColumn() }, fn);
+  const plan = autoSumPlan(isNumber, { r1: range.getRow(), c1: range.getColumn(), r2: range.getLastRow(), c2: range.getLastColumn() }, fn, direction);
   if (!plan.length) return;
-  // Les totaux d'une même ligne s'écrivent en une seule opération (un seul « Annuler »).
-  ws.getRange(plan[0]!.row, plan[0]!.col, 1, plan.length).setValues([plan.map((w) => w.formula)]);
+  if (plan.every((w) => w.row === plan[0]!.row)) {
+    // Les totaux d'une même ligne s'écrivent en une seule opération (un seul « Annuler »).
+    ws.getRange(plan[0]!.row, plan[0]!.col, 1, plan.length).setValues([plan.map((w) => w.formula)]);
+  } else {
+    // Totaux à droite : une colonne, plusieurs lignes.
+    ws.getRange(plan[0]!.row, plan[0]!.col, plan.length, 1).setValues(plan.map((w) => [w.formula]));
+  }
 }
 
 type FillDirection = 'down' | 'right' | 'up' | 'left';
