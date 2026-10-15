@@ -229,6 +229,68 @@ body,
   color: var(--grillon-muted);
 }
 
+.g-dialog-wide {
+  width: min(760px, 100%);
+}
+
+.g-csv-settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.g-csv-settings .g-row {
+  display: flex;
+  gap: 6px;
+}
+
+.g-csv-settings .g-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.g-csv-settings .g-row input {
+  width: 3em;
+}
+
+.g-csv-preview {
+  overflow: auto;
+  max-height: 260px;
+  border: 1px solid var(--grillon-border);
+  border-radius: 6px;
+}
+
+.g-csv-preview p {
+  padding: 6px 8px 0;
+  color: var(--grillon-muted);
+}
+
+.g-csv-preview table {
+  border-collapse: collapse;
+  margin: 6px 0 0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.g-csv-preview td,
+.g-csv-preview th {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 3px 8px;
+  border-top: 1px solid var(--grillon-border);
+  border-right: 1px solid var(--grillon-border);
+  text-align: left;
+}
+
+.g-csv-preview th {
+  font-weight: 600;
+}
+
+.g-csv-preview td.num {
+  text-align: right;
+}
+
 .g-field {
   display: flex;
   flex-direction: column;

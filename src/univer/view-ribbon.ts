@@ -6,6 +6,7 @@ import { IconManager } from '@univerjs/preset-sheets-core';
 import { CommandType, ICommandService, type FUniver } from '@univerjs/presets';
 import { createElement, type ComponentType } from 'react';
 import { t } from '../i18n';
+import { setTextOverflow, textOverflowEnabled } from './text-overflow';
 
 type ThemeChoice = 'system' | 'light' | 'dark';
 const STORAGE_KEY = 'grillon-theme';
@@ -48,6 +49,7 @@ export function installViewRibbon(api: FUniver, print: () => unknown): void {
   const commands = injector.get<ICommandService>(ICommandService);
   injector.get<IconManager>(IconManager).register({
     GrillonDarkIcon: icon('M13.5 9.5A5.5 5.5 0 016.5 2.5a5.5 5.5 0 107 7z'),
+    GrillonOverflowIcon: icon('M2 3v10M2 8h9M8 5l3 3-3 3M14 3v10'),
     GrillonPrintIcon: icon('M4 6V2h8v4M4 12H2.5V7h11v5H12M4 10h8v4H4z'),
   } as never);
   applyTheme(api);
@@ -63,6 +65,8 @@ export function installViewRibbon(api: FUniver, print: () => unknown): void {
     applyTheme(api, next);
   });
   register('grillon.view.print', print);
+  register('grillon.view.text-overflow', () => setTextOverflow(api, !textOverflowEnabled()));
   api.createMenu({ id: 'grillon.view.dark', icon: 'GrillonDarkIcon', title: t('view.darkMode'), tooltip: t('view.darkMode'), action: 'grillon.view.dark' }).appendTo(['ribbon.view', 'ribbon.view.display']);
+  api.createMenu({ id: 'grillon.view.text-overflow', icon: 'GrillonOverflowIcon', title: t('view.textOverflow'), tooltip: t('view.textOverflowTip'), action: 'grillon.view.text-overflow' }).appendTo(['ribbon.view', 'ribbon.view.display']);
   api.createMenu({ id: 'grillon.view.print', icon: 'GrillonPrintIcon', title: t('view.print'), tooltip: t('view.print'), action: 'grillon.view.print' }).appendTo(['ribbon.view', 'ribbon.view.others']);
 }

@@ -8,6 +8,10 @@
 - Ruban en français, en grille (comme Excel) : Démarrer, Insérer, Formules, Données, Vue ; menu **Fichier**.
 - Barre de formule, grille, onglets de feuilles (ajouter, renommer, supprimer, réordonner, masquer, couleur).
 - Nombres au format Standard affichés à la française (« 1,5 ») et booléens en « VRAI »/« FAUX ».
+- Grille qui s'agrandit d'elle-même quand on défile ou qu'on déplace la sélection vers le bord
+  (par 1 000 lignes et 26 colonnes), jusqu'aux limites d'Excel : 1 048 576 lignes, 16 384 colonnes (XFD).
+- Texte trop long **coupé au bord de la cellule** par défaut ; Vue → **Texte qui déborde** pour
+  le laisser déborder sur les cellules vides comme dans Excel (réglage d'affichage mémorisé sur l'appareil).
 
 ### Onglet Démarrer
 | Groupe Excel | Dans Grillon |
@@ -47,14 +51,16 @@
   noms définis, liens, **mises en forme conditionnelles**, **validations de données**, **filtres
   automatiques avec critères**, **tableaux structurés** (style, ligne de totaux), **plan** (groupes),
   **graphiques**, **images**, **notes**.
-- **CSV** : ouverture (séparateur et décimales détectés), import dans une nouvelle feuille,
-  export de la feuille active au format Excel français.
+- **CSV** : ouverture ou import dans une nouvelle feuille avec un **assistant** (comme « À partir
+  d'un fichier texte/CSV » d'Excel) : origine du fichier (UTF-8 ou Windows/ANSI, détectée),
+  séparateur (; , tabulation, |, espace, autre), séparateur décimal, ligne d'en-têtes (gras et figée),
+  aperçu ; export de la feuille active au format Excel français.
 - **Ouvrir/enregistrer** : File System Access API (Chrome/Edge : Ctrl+S réécrit le fichier),
   sinon sélecteur de fichier + téléchargement (Safari, iOS, Firefox). Glisser-déposer.
 - **Sauvegarde automatique** dans IndexedDB, restauration à la réouverture.
 
 ### Affichage, impression, raccourcis
-- Vue : figer les volets, zoom, quadrillage, plein écran (Univer), **mode sombre**.
+- Vue : figer les volets, zoom, quadrillage, plein écran (Univer), **mode sombre**, **texte qui déborde**.
 - **Impression / export PDF** (Ctrl/⌘+P) : feuille ou sélection, portrait/paysage, quadrillage, ajustement à la largeur.
 - Insérer : images, liens, notes, listes déroulantes, graphiques, tableau croisé dynamique.
 - Raccourcis Excel : Ctrl+C/V/X, Ctrl+Z/Y, Ctrl+B/I/U, F2, F4, Ctrl+flèches, Ctrl+Maj+flèches, Ctrl+D (recopier vers le bas), Alt+= (somme auto), Ctrl+E, Ctrl+; (date), Ctrl+: (heure), Ctrl+F (rechercher), Ctrl+S/O/P.

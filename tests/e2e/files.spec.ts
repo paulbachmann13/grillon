@@ -74,9 +74,13 @@ test('modifier un classeur puis l’enregistrer conserve la modification', async
 
 test('import et export CSV (séparateur ; et virgule décimale)', async ({ page }) => {
   const csv = '﻿Nom;Prix;Date\nCafé;1,5;14/10/2026\nThé;2;01/01/2026\n';
-  await page.evaluate(async (text) => {
-    await (window as any).grillon.doc.openBytes('achats.csv', new TextEncoder().encode(text));
+  await page.evaluate((text) => {
+    void (window as any).grillon.doc.openBytes('achats.csv', new TextEncoder().encode(text));
   }, csv);
+  // Assistant d'import : réglages détectés, aperçu, puis « Charger ».
+  const dialog = page.getByTestId('dialog-csv');
+  await expect(dialog.getByTestId('csv-preview')).toContainText('Café');
+  await dialog.getByRole('button', { name: 'Charger' }).click();
   await expect(page.getByTestId('doc-title')).toHaveText(/^achats/);
   expect(await display(page, 'A2')).toBe('Café');
   expect(await display(page, 'B2')).toBe('1,5');

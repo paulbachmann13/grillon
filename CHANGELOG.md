@@ -2,6 +2,16 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.1.0] — 2026-10-15
+
+### Ajouté
+- **Grille extensible** : au-delà de la ligne 1000 et de la colonne Z, des lignes et des colonnes s'ajoutent quand on défile ou qu'on déplace la sélection, jusqu'à 1 048 576 lignes et 16 384 colonnes (XFD) comme Excel.
+- **Assistant d'import CSV** (Fichier → Ouvrir / Importer un CSV, Données → À partir d'un CSV) : origine du fichier (UTF-8 ou Windows/ANSI), séparateur, séparateur décimal, première ligne en en-têtes (gras et figée), aperçu.
+- Vue → **Texte qui déborde** : par défaut, un texte trop long est coupé au bord de sa cellule ; ce bouton rétablit le débordement sur les cellules vides (comme Excel).
+
+### Corrigé
+- Les CSV enregistrés par Excel sous Windows (encodage ANSI) s'ouvrent avec leurs accents.
+
 ## [1.0.0] — Phase 5 : finitions — 2026-10-15
 
 ### Ajouté

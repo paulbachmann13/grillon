@@ -12,6 +12,8 @@ export interface DialogOptions {
   /** Renvoie false (ou un message d'erreur) pour garder la boîte ouverte. */
   onOk: () => boolean | string | void | Promise<boolean | string | void>;
   testId?: string;
+  /** Boîte plus large (aperçus, tableaux). */
+  wide?: boolean;
 }
 
 export function openDialog(opts: DialogOptions): Promise<boolean> {
@@ -19,7 +21,7 @@ export function openDialog(opts: DialogOptions): Promise<boolean> {
     const backdrop = document.createElement('div');
     backdrop.className = 'g-dialog-backdrop';
     const dialog = document.createElement('div');
-    dialog.className = 'g-dialog';
+    dialog.className = opts.wide ? 'g-dialog g-dialog-wide' : 'g-dialog';
     dialog.setAttribute('role', 'dialog');
     dialog.setAttribute('aria-modal', 'true');
     if (opts.testId) dialog.dataset.testid = opts.testId;

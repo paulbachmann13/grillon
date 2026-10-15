@@ -19,6 +19,31 @@ export interface CsvImportOptions {
   delimiter?: string;
   /** Interpréter « 1,5 » comme 1,5 (par défaut : détecté). */
   decimal?: '.' | ',';
+  /** Première ligne = en-têtes : en gras et figée. */
+  header?: boolean;
+}
+
+export type CsvEncoding = 'utf-8' | 'windows-1252';
+
+/**
+ * Décode les octets d'un fichier texte. Sans encodage imposé : UTF-8 si le fichier est de l'UTF-8
+ * valide (ou commence par un BOM), sinon Windows-1252 (« ANSI », celui des CSV d'Excel sous Windows).
+ */
+export function decodeCsvBytes(bytes: Uint8Array, encoding?: CsvEncoding): { text: string; encoding: CsvEncoding } {
+  if (!encoding) {
+    try {
+      return { text: new TextDecoder('utf-8', { fatal: true }).decode(bytes), encoding: 'utf-8' };
+    } catch {
+      encoding = 'windows-1252';
+    }
+  }
+  return { text: new TextDecoder(encoding).decode(bytes), encoding };
+}
+
+/** Séparateur et séparateur décimal détectés, pour pré-remplir l'assistant d'import. */
+export function detectCsvFormat(text: string): { delimiter: string; decimal: '.' | ',' } {
+  const { rows, delimiter } = csvToRows(text);
+  return { delimiter, decimal: detectDecimal(rows, delimiter) };
 }
 
 const DATE_PATTERN = 'dd/mm/yyyy';
@@ -102,13 +127,18 @@ export function csvToSheet(text: string, name: string, options: CsvImportOptions
       if (c > maxCol) maxCol = c;
     });
   });
-  return {
+  const sheet = {
     id: `sheet-${Math.random().toString(36).slice(2, 10)}`,
     name,
     cellData,
     rowCount: Math.max(DEFAULT_ROW_COUNT, rows.length + 100),
     columnCount: Math.max(DEFAULT_COLUMN_COUNT, maxCol + 6),
   } as IWorksheetData;
+  if (options.header && rows.length) {
+    for (const cell of Object.values(cellData[0] ?? {})) cell.s = { ...(cell.s as object | undefined), bl: 1 };
+    sheet.freeze = { xSplit: 0, ySplit: 1, startRow: 1, startColumn: -1 };
+  }
+  return sheet;
 }
 
 export function csvToWorkbook(text: string, name: string, options: CsvImportOptions = {}): IWorkbookData {

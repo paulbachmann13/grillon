@@ -11,7 +11,10 @@ import { installDataRibbon } from '../univer/data-ribbon';
 import { installFormulasRibbon } from '../univer/formulas-ribbon';
 import { installGridShortcuts } from '../univer/grid-shortcuts';
 import { installViewRibbon } from '../univer/view-ribbon';
+import { installGridGrowth } from '../univer/grid-growth';
+import { installTextOverflow } from '../univer/text-overflow';
 import { printDialog } from './print';
+import { csvImportDialog } from './csv-import';
 import { installPivot } from '../univer/pivot-ui';
 import { installHomeRibbon } from '../univer/home-ribbon';
 import { LOCALE_FR } from '../model/univer-types';
@@ -69,6 +72,7 @@ export class DocumentController {
       if (current) this.api.disposeUnit(current.getId());
       this.api.createWorkbook({ locale: LOCALE_FR as IWorkbookData['locale'], ...data, name: fileName.replace(/\.[^.]+$/, '') });
       installFrenchDisplay(this.api);
+      installTextOverflow(this.api);
       if (!this.ribbonReady) {
         installHomeRibbon(this.api);
         installDataRibbon(this.api, this);
@@ -77,6 +81,7 @@ export class DocumentController {
         installPivot(this.api);
         installGridShortcuts(this.api);
         installViewRibbon(this.api, () => this.print());
+        installGridGrowth(this.api);
         this.ribbonReady = true;
       }
       this.fileName = fileName;
@@ -117,9 +122,13 @@ export class DocumentController {
         this.load(data, name, handle);
       } else if (/\.(csv|txt|tsv)$/i.test(name)) {
         const { csvToWorkbook } = await import('../io/csv');
-        const text = new TextDecoder('utf-8').decode(bytes);
+        const choice = await csvImportDialog(name, bytes);
+        if (!choice) {
+          this.events.onStatus('');
+          return;
+        }
         // Un CSV ouvert devient un classeur ; « Enregistrer » produira un .xlsx (comme Excel le propose).
-        this.load(csvToWorkbook(text, name), name.replace(/\.[^.]+$/, '.xlsx'));
+        this.load(csvToWorkbook(choice.text, name, choice.options), name.replace(/\.[^.]+$/, '.xlsx'));
       } else {
         this.events.onStatus(t('errors.unsupported', { name }), 'error');
         return;
@@ -187,13 +196,14 @@ export class DocumentController {
   async importCsv(): Promise<void> {
     const file = await openFile('csv');
     if (!file) return;
+    const choice = await csvImportDialog(file.name, file.bytes);
+    if (!choice) return;
     const { csvToSheet } = await import('../io/csv');
-    const text = new TextDecoder('utf-8').decode(file.bytes);
     const data = this.snapshot();
     const used = new Set(Object.values(data.sheets).map((s) => s.name));
     let name = file.name.replace(/\.[^.]+$/, '').slice(0, 28) || 'CSV';
     for (let i = 2; used.has(name); i++) name = `${name.replace(/ \(\d+\)$/, '')} (${i})`;
-    const sheet = csvToSheet(text, name);
+    const sheet = csvToSheet(choice.text, name, choice.options);
     data.sheets[sheet.id] = sheet;
     data.sheetOrder.push(sheet.id);
     this.load(data, this.fileName, this.handle, true);

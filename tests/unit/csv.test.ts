@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { csvToWorkbook, parseCsvValue, sheetToCsv } from '../../src/io/csv';
+import { csvToWorkbook, decodeCsvBytes, detectCsvFormat, parseCsvValue, sheetToCsv } from '../../src/io/csv';
 import { CellValueType } from '../../src/model/univer-types';
 
 describe('CSV', () => {
@@ -47,5 +47,24 @@ describe('CSV', () => {
     const src = 'Ville;Valeur\r\nLyon;1,5\r\nNîmes;-3\r\nQuébec;1000000';
     const wb = csvToWorkbook(src, 'v.csv');
     expect(sheetToCsv(wb.sheets[wb.sheetOrder[0]]!, { bom: false })).toBe(src);
+  });
+
+  it('décode l’UTF-8 et le Windows-1252 (CSV « ANSI » d’Excel)', () => {
+    const utf8 = new TextEncoder().encode('Nom;Ville\nRené;Nîmes');
+    expect(decodeCsvBytes(utf8)).toEqual({ text: 'Nom;Ville\nRené;Nîmes', encoding: 'utf-8' });
+    const ansi = new Uint8Array([...'René;Nîmes;12 €'].map((c) => (c === '€' ? 0x80 : c.charCodeAt(0))));
+    expect(decodeCsvBytes(ansi)).toEqual({ text: 'René;Nîmes;12 €', encoding: 'windows-1252' });
+  });
+
+  it('détecte le format et applique les options de l’assistant', () => {
+    expect(detectCsvFormat('a,b\n1.5,2')).toEqual({ delimiter: ',', decimal: '.' });
+    expect(detectCsvFormat('a;b\n1,5;2')).toEqual({ delimiter: ';', decimal: ',' });
+    expect(detectCsvFormat('a\tb\n1,5\t2').delimiter).toBe('\t');
+    // Séparateur imposé et en-têtes en gras + figés.
+    const wb = csvToWorkbook('Nom|Prix\nCafé|1.5', 'x.csv', { delimiter: '|', decimal: '.', header: true });
+    const s = wb.sheets[wb.sheetOrder[0]]!;
+    expect(s.cellData?.[0]?.[0]).toMatchObject({ v: 'Nom', s: { bl: 1 } });
+    expect(s.cellData?.[1]?.[1]).toMatchObject({ v: 1.5 });
+    expect(s.freeze).toMatchObject({ ySplit: 1, startRow: 1 });
   });
 });

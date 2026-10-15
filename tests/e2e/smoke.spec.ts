@@ -25,6 +25,35 @@ test('saisie d’une formule et recalcul', async ({ page }) => {
   await expect(page.getByTestId('doc-title')).toHaveText(/•$/);
 });
 
+test('la grille s’agrandit au-delà de la ligne 1000 et de la colonne Z', async ({ page }) => {
+  await gotoApp(page);
+  const size = () => page.evaluate(() => {
+    const ws = (window as any).grillon.api.getActiveWorkbook().getActiveSheet();
+    return [ws.getMaxRows(), ws.getMaxColumns()];
+  });
+  expect(await size()).toEqual([1000, 26]);
+  await page.evaluate(() => {
+    const wb = (window as any).grillon.api.getActiveWorkbook();
+    wb.setActiveRange(wb.getActiveSheet().getRange('Z1000'));
+  });
+  await expect.poll(size).toEqual([2000, 52]);
+  // Saisie en AA1001 (au-delà de l'ancienne grille), sans marquer le classeur modifié avant.
+  await expect(page.getByTestId('doc-title')).not.toHaveText(/•$/);
+  await page.evaluate(() => (window as any).grillon.api.getActiveWorkbook().getActiveSheet().getRange('AA1001').setValue(7));
+  await expect.poll(() => display(page, 'AA1001')).toBe('7');
+});
+
+test('Vue → Texte qui déborde : réglage mémorisé', async ({ page }) => {
+  await gotoApp(page);
+  await page.getByRole('tab', { name: 'Vue', exact: true }).click();
+  const button = page.locator('[data-u-command="grillon.view.text-overflow"]').first();
+  await button.click();
+  expect(await page.evaluate(() => localStorage.getItem('grillon-text-overflow'))).toBe('overflow');
+  await button.click();
+  expect(await page.evaluate(() => localStorage.getItem('grillon-text-overflow'))).toBeNull();
+  await expect(page.getByTestId('doc-title')).not.toHaveText(/•$/);
+});
+
 test('mode sombre (Vue) et impression / PDF (Fichier)', async ({ page }) => {
   await gotoApp(page);
   await page.evaluate(() => {
