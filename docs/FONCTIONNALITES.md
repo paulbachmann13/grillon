@@ -22,7 +22,7 @@
 | Nombre | Standard, Nombre, Monétaire, Comptabilité, Pourcentage, Scientifique, Date, Heure, Durée, Texte, formats personnalisés (dont fractions) ; ajouter/retirer des décimales |
 | Styles | Mise en forme conditionnelle : règles de cellules, texte, dates, doublons, top/bottom, moyenne, formule, barres de données, nuances de couleurs, jeux d'icônes ; gestionnaire de règles |
 | Cellules | Insérer / Supprimer cellules, lignes, colonnes, feuille ; Format : ajustement automatique hauteur/largeur, masquer, renommer |
-| Édition | Effacer (tout, formats, contenu), Trier (A→Z, Z→A, personnalisé), Filtrer, Rechercher/Remplacer |
+| Édition | **Somme automatique** (Somme, Moyenne, Nb, Max, Min), **Remplir** (bas, droite, haut, gauche), Effacer (tout, formats, contenu), Trier (A→Z, Z→A, personnalisé), Filtrer, Rechercher/Remplacer |
 | — | Annuler / Rétablir sans limite |
 
 ### Onglet Données
@@ -36,6 +36,7 @@
 
 ### Formules et analyse
 - Barre de formule avec **autocomplétion**, **aide sur les arguments**, **coloration des références**, **F4** (références absolues), insertion de fonction par catégorie (Univer).
+- **Somme automatique** (Σ), **Afficher les formules** (aussi dans Vue, Ctrl+`).
 - **Gestionnaire de noms**, **Repérer les antécédents / les dépendants**.
 - ≈ 520 fonctions Excel (noms anglais), matrices dynamiques, LAMBDA/LET ; liste des fonctions absentes : [FONCTIONS.md](FONCTIONS.md).
 - **Graphiques** : histogramme, barres, courbes, aires (groupés/empilés), secteurs, nuage de points, combiné, axe secondaire ; titre, légende, titres d'axes, couleurs ; mise à jour en direct.
@@ -63,7 +64,7 @@
 - Vue : figer les volets, zoom, quadrillage, plein écran (Univer), **mode sombre**, **texte qui déborde**.
 - **Impression / export PDF** (Ctrl/⌘+P) : feuille ou sélection, portrait/paysage, quadrillage, ajustement à la largeur.
 - Insérer : images, liens, notes, listes déroulantes, graphiques, tableau croisé dynamique.
-- Raccourcis Excel : Ctrl+C/V/X, Ctrl+Z/Y, Ctrl+B/I/U, F2, F4, Ctrl+flèches, Ctrl+Maj+flèches, Ctrl+D (recopier vers le bas), Alt+= (somme auto), Ctrl+E, Ctrl+; (date), Ctrl+: (heure), Ctrl+F (rechercher), Ctrl+S/O/P.
+- Raccourcis Excel : Ctrl+C/V/X, Ctrl+Z/Y, Ctrl+B/I/U, F2, F4, Ctrl+flèches, Ctrl+Maj+flèches, Ctrl+Origine/Fin, Ctrl+Espace / Maj+Espace (colonne / ligne), Ctrl+D / Ctrl+R (recopier), **Alt+=** (somme automatique), Ctrl+E, Ctrl+; (date), Ctrl+: (heure), Ctrl+Maj+1 à 6 (formats nombre, heure, date, monétaire, %, scientifique), Ctrl+Maj++ / Ctrl+- (insérer / supprimer des cellules), Ctrl+` (afficher les formules), Ctrl+Maj+L (filtre), Ctrl+F (rechercher), Ctrl+S/O/P.
 
 ### Application Mac
 - .dmg universel (Intel et Apple Silicon), non signé ; Cmd+S réécrit le fichier d'origine, double-clic dans le Finder, boîtes natives. Voir le README.

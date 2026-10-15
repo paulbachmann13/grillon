@@ -11,6 +11,7 @@ import { installDataRibbon } from '../univer/data-ribbon';
 import { installFormulasRibbon } from '../univer/formulas-ribbon';
 import { installGridShortcuts } from '../univer/grid-shortcuts';
 import { installViewRibbon } from '../univer/view-ribbon';
+import { installBasics } from '../univer/basics';
 import { installGridGrowth } from '../univer/grid-growth';
 import { installTextOverflow } from '../univer/text-overflow';
 import { printDialog } from './print';
@@ -82,6 +83,7 @@ export class DocumentController {
         installGridShortcuts(this.api);
         installViewRibbon(this.api, () => this.print());
         installGridGrowth(this.api);
+        installBasics(this.api);
         this.ribbonReady = true;
       }
       this.fileName = fileName;

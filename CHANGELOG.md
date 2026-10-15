@@ -2,6 +2,17 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.2.0] — 2026-10-15
+
+### Ajouté
+- **Somme automatique** (Démarrer et Formules, **Alt+=**) : Somme, Moyenne, Nb, Max, Min ; comme dans Excel, additionne les nombres au-dessus (sinon à gauche), ou ajoute un total sous chaque colonne d'une sélection.
+- **Remplir** vers le bas, la droite, le haut et la gauche.
+- **Afficher les formules** (Formules, Vue, Ctrl+`).
+- Raccourcis : Ctrl+Espace / Maj+Espace (colonne / ligne entière), Ctrl+Origine / Ctrl+Fin, Ctrl+Maj+1 à 6 (formats), Ctrl+Maj++ et Ctrl+- (boîte Insérer / Supprimer des cellules).
+
+### Corrigé
+- La documentation annonçait Alt+= alors qu'il ne marchait pas : c'est maintenant le cas.
+
 ## [1.1.0] — 2026-10-15
 
 ### Ajouté
