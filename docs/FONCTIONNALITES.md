@@ -65,6 +65,9 @@
 - Insérer : images, liens, notes, listes déroulantes, graphiques, tableau croisé dynamique.
 - Raccourcis Excel : Ctrl+C/V/X, Ctrl+Z/Y, Ctrl+B/I/U, F2, F4, Ctrl+flèches, Ctrl+Maj+flèches, Ctrl+D (recopier vers le bas), Alt+= (somme auto), Ctrl+E, Ctrl+; (date), Ctrl+: (heure), Ctrl+F (rechercher), Ctrl+S/O/P.
 
+### Application Mac
+- .dmg universel (Intel et Apple Silicon), non signé ; Cmd+S réécrit le fichier d'origine, double-clic dans le Finder, boîtes natives. Voir le README.
+
 ### PWA
 - Installable, fonctionne hors ligne (tout est mis en cache, y compris le convertisseur xlsx).
 - Une fois installée sur Chrome/Edge, Grillon peut ouvrir les .xlsx depuis le système.

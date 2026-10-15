@@ -9,6 +9,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Assistant d'import CSV** (Fichier → Ouvrir / Importer un CSV, Données → À partir d'un CSV) : origine du fichier (UTF-8 ou Windows/ANSI), séparateur, séparateur décimal, première ligne en en-têtes (gras et figée), aperçu.
 - Vue → **Texte qui déborde** : par défaut, un texte trop long est coupé au bord de sa cellule ; ce bouton rétablit le débordement sur les cellules vides (comme Excel).
 
+- **Application Mac** (Tauri) : .dmg universel construit par GitHub Actions (workflow « Application Mac »), Cmd+S réécrit le fichier d'origine, ouverture par double-clic dans le Finder. Non signée.
+
 ### Corrigé
 - Les CSV enregistrés par Excel sous Windows (encodage ANSI) s'ouvrent avec leurs accents.
 

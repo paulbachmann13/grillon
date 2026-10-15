@@ -3,6 +3,7 @@
  */
 import { registerSW } from 'virtual:pwa-register';
 import { t } from '../i18n';
+import { isTauri } from '../io/tauri-files';
 import type { DocumentController, StatusKind } from './document';
 
 interface LaunchParams {
@@ -10,7 +11,8 @@ interface LaunchParams {
 }
 
 export function setupPwa(doc: DocumentController, notify: (msg: string, kind?: StatusKind) => void, askReload: (msg: string, onAccept: () => void) => void): void {
-  if (import.meta.env.DEV) return;
+  // Pas de service worker en développement ni dans l'application de bureau (les fichiers sont déjà locaux).
+  if (import.meta.env.DEV || isTauri()) return;
   const updateSW = registerSW({
     onNeedRefresh() {
       askReload(t('status.updateAvailable'), () => void updateSW(true));

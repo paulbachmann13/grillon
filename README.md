@@ -60,13 +60,20 @@ après passage des tests.
 
 Détails : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## Application Mac (Tauri) — non réalisée
+## Application Mac (Tauri)
 
-L'emballage Tauri était optionnel ; il n'a pas été fait. L'architecture le permet : l'app est un
-ensemble de fichiers statiques (`npm run build` → `dist/`), sans serveur, et l'accès aux fichiers est isolé
-dans `src/io/files.ts`. Il suffirait de créer un projet Tauri pointant sur `dist/` et d'ajouter dans
-`files.ts` une variante utilisant les API fichiers de Tauri (réécriture du fichier d'origine avec Cmd+S).
-En attendant, la PWA installée depuis Chrome ou Safari (« Ajouter au Dock ») fonctionne hors ligne sur Mac.
+Le dossier `src-tauri/` emballe l'appli web dans une vraie application Mac (Tauri 2, licence MIT/Apache-2.0) :
+boîtes Ouvrir / Enregistrer natives, **Cmd+S réécrit le fichier d'origine**, double-clic sur un .xlsx ou .csv
+dans le Finder. L'accès aux fichiers est isolé dans `src/io/files.ts` et `src/io/tauri-files.ts`.
+
+- **Obtenir le .dmg** : GitHub → Actions → « Application Mac » → Run workflow, puis télécharger l'artefact
+  `Grillon-mac` (ou pousser une étiquette `v1.2.0` : le .dmg est publié dans les Releases).
+  Le .dmg est universel (Mac Intel et Apple Silicon).
+- **Non signé** (pas de compte développeur Apple) : au premier lancement sur chaque Mac, ouvrir
+  Réglages Système → Confidentialité et sécurité → « Ouvrir quand même ».
+- En local (sur un Mac avec Rust installé) : `npm run build:mac`.
+- Non testé sur un vrai Mac au moment de l'écriture : le .dmg est construit par la CI GitHub.
+- Limite : l'impression (Ctrl+P) dépend de la fenêtre web du système ; à vérifier sur Mac.
 
 ## Licence
 

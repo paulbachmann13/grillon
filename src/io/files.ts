@@ -3,7 +3,9 @@
  *
  * - Chrome/Edge (bureau) : File System Access API → on peut réécrire le même fichier (Ctrl+S).
  * - Safari, iOS, Firefox : sélecteur de fichier classique + téléchargement.
+ * - Application de bureau (Tauri) : boîtes de dialogue natives, réécriture du fichier d'origine.
  */
+import { isTauri, tauriPickOpen, tauriPickSave } from './tauri-files';
 
 export interface OpenedFile {
   name: string;
@@ -58,6 +60,12 @@ function pickWithInput(accept: string): Promise<File | null> {
 
 export async function openFile(kind: 'xlsx' | 'csv' | 'any' = 'any'): Promise<OpenedFile | null> {
   const types = kind === 'xlsx' ? [XLSX_TYPE] : kind === 'csv' ? [CSV_TYPE] : [XLSX_TYPE, CSV_TYPE];
+  if (isTauri()) {
+    const handle = await tauriPickOpen(types.map((t) => ({ name: t.description, extensions: Object.values(t.accept).flat().map((e) => e.slice(1)) })));
+    if (!handle) return null;
+    const file = await handle.getFile();
+    return { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()), handle };
+  }
   if (hasFileSystemAccess()) {
     try {
       const [handle] = await fsWindow().showOpenFilePicker!({ types, multiple: false });
@@ -117,6 +125,13 @@ export async function saveAs(
   suggestedName: string,
   kind: 'xlsx' | 'csv',
 ): Promise<FileSystemFileHandle | null | undefined> {
+  if (isTauri()) {
+    const type = kind === 'xlsx' ? XLSX_TYPE : CSV_TYPE;
+    const handle = await tauriPickSave(suggestedName, [{ name: type.description, extensions: Object.values(type.accept).flat().map((e) => e.slice(1)) }]);
+    if (!handle) return null;
+    await writeToHandle(handle, bytes);
+    return handle;
+  }
   if (hasFileSystemAccess()) {
     try {
       const handle = await fsWindow().showSaveFilePicker!({ suggestedName, types: [kind === 'xlsx' ? XLSX_TYPE : CSV_TYPE] });

@@ -3,6 +3,7 @@
  * On garde le dernier état du classeur + le nom du fichier + son handle (Chrome) pour Ctrl+S.
  */
 import type { IWorkbookData } from '../model/univer-types';
+import { pathOfHandle, tauriHandleFromPath } from '../io/tauri-files';
 
 const DB_NAME = 'grillon';
 const STORE = 'autosave';
@@ -15,6 +16,8 @@ export interface AutosaveEntry {
   /** Modifié depuis le dernier enregistrement explicite dans un fichier. */
   dirty: boolean;
   handle?: FileSystemFileHandle;
+  /** Application de bureau : chemin du fichier (un handle Tauri ne peut pas être stocké tel quel). */
+  path?: string;
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -46,14 +49,16 @@ export async function saveAutosave(entry: AutosaveEntry): Promise<void> {
     await tx('readwrite', (s) => s.put(entry, KEY));
   } catch {
     // Certains navigateurs refusent de cloner un FileSystemFileHandle : on réessaie sans.
-    const { handle: _ignored, ...rest } = entry;
-    await tx('readwrite', (s) => s.put(rest, KEY));
+    const { handle, ...rest } = entry;
+    await tx('readwrite', (s) => s.put({ ...rest, path: pathOfHandle(handle) }, KEY));
   }
 }
 
 export async function loadAutosave(): Promise<AutosaveEntry | null> {
   try {
-    return ((await tx('readonly', (s) => s.get(KEY))) as AutosaveEntry | undefined) ?? null;
+    const entry = ((await tx('readonly', (s) => s.get(KEY))) as AutosaveEntry | undefined) ?? null;
+    if (entry && !entry.handle && entry.path) entry.handle = tauriHandleFromPath(entry.path);
+    return entry;
   } catch {
     return null;
   }

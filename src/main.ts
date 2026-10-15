@@ -4,6 +4,7 @@ import { setupPwa } from './app/pwa';
 import { installShortcuts } from './app/shortcuts';
 import { Topbar } from './app/topbar';
 import { t } from './i18n';
+import { isTauri, listenForOpenRequests } from './io/tauri-files';
 import { setupUniver } from './univer/setup';
 import './style.css';
 
@@ -30,6 +31,15 @@ setupPwa(
 async function start(): Promise<void> {
   if (await doc.restore()) topbar?.setStatus(t('status.restored'), 'success');
   else doc.newWorkbook();
+
+  // Application de bureau : fichier ouvert depuis le Finder (double-clic).
+  if (isTauri()) {
+    void listenForOpenRequests(async (handle) => {
+      if (doc.dirty && !window.confirm(t('confirm.discard'))) return;
+      const file = await handle.getFile();
+      await doc.openBytes(file.name, new Uint8Array(await file.arrayBuffer()), handle);
+    });
+  }
 
   // Ouverture de fichiers par glisser-déposer.
   window.addEventListener('dragover', (e) => e.preventDefault());
