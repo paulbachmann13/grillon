@@ -19,6 +19,7 @@ import { CommandType, ICommandService, type FUniver } from '@univerjs/presets';
 import type { FWorksheet } from '@univerjs/sheets/facade';
 import { createElement, type ComponentType } from 'react';
 import { t } from '../i18n';
+import { protectSheetDialog, unprotectSheetDialog } from './protection';
 
 const START = 'ribbon.start';
 const HISTORY = 'ribbon.start.history';
@@ -54,7 +55,7 @@ async function changeIndent(api: FUniver, delta: number): Promise<void> {
   });
 }
 
-export function installHomeRibbon(api: FUniver): void {
+export function installHomeRibbon(api: FUniver, onChange: () => void = () => undefined): void {
   // Les icônes de menu sont résolues par l'IconManager d'Univer (et non par registerComponent).
   const injector = (api as unknown as { _injector: { get<T>(id: unknown): T } })._injector;
   injector.get<IconManager>(IconManager).register({
@@ -129,6 +130,9 @@ export function installHomeRibbon(api: FUniver): void {
     ['grillon.format.hide-rows', t('ribbon.hideRows'), onSelection((ws, row, _c, rows) => ws.hideRows(row, rows))],
     ['grillon.format.hide-cols', t('ribbon.hideCols'), onSelection((ws, _r, col, _rs, cols) => ws.hideColumns(col, cols))],
     ['grillon.format.rename', t('ribbon.renameSheet'), run('sheet.operation.rename-sheet')],
+    ['grillon.format.cells', t('format.title') + '…', () => void api.executeCommand('grillon.format-cells')],
+    ['grillon.format.protect', t('protection.menuProtect'), () => void protectSheetDialog(api, onChange)],
+    ['grillon.format.unprotect', t('protection.menuUnprotect'), () => void unprotectSheetDialog(api, onChange)],
   ]);
   dropdown('grillon.clear', 'GrillonClearIcon', t('ribbon.clear'), [
     ['grillon.clear.all', t('ribbon.clearAll'), run('sheet.command.clear-selection-all')],

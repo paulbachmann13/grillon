@@ -29,7 +29,7 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 | Mise en forme conditionnelle (règles, barres, nuances, icônes, gestion) | Oui | |
 | Mettre sous forme de tableau (galerie de styles) | Partiel | Un style par défaut, pas de galerie |
 | Styles de cellule (Bon, Neutre, Titre 1…, Entrée, Calcul…) | Oui | Galerie dans Accueil |
-| Format de cellule (boîte Ctrl+1, six onglets) | Partiel | Formats de nombre ; alignement, police, bordure, remplissage via le ruban |
+| Format de cellule (boîte Ctrl+1 / ⌘1) | Oui | Nombre, Alignement, Police, Bordure, Remplissage ; pas l'onglet Protection |
 | Cellules : insérer, supprimer, format (hauteur, largeur, masquer, renommer) | Oui | |
 | Édition : somme automatique, remplir, effacer, trier et filtrer, rechercher/remplacer | Oui | « Série » (remplir) partiel |
 | Analyse rapide | Oui | |
@@ -38,7 +38,7 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 
 | Commande Excel | Grillon | Note |
 |---|---|---|
-| Tableau croisé dynamique | Partiel | Calculé par Grillon ; voir « Données » |
+| Tableau croisé dynamique | Oui | Vrai tableau croisé dans le .xlsx ; voir « Données » |
 | Tableau | Oui | |
 | Images, formes, zones de texte | Oui | Formes simples (6) ; pas d'icônes, SmartArt, modèles 3D |
 | Graphiques (histogramme, courbes, secteurs, barres, aires, nuage, bulles, radar, combinés) | Oui | |
@@ -94,7 +94,7 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 | Feuille de prévision | Non | |
 | Plan : grouper, dissocier, sous-total | Partiel | Pas de boutons +/− dans la marge |
 | Tableau croisé : champs, filtres, totaux, actualiser | Oui | Calculé par Grillon |
-| Tableau croisé : vrai TCD dans le .xlsx (modifiable dans Excel) | Oui | Écrit et relu (cache + définition) |
+| Tableau croisé : vrai TCD dans le .xlsx (modifiable dans Excel) | Oui | Cache, enregistrements et définition ; actualisé à l'ouverture ; reconnu par LibreOffice |
 | Tableau croisé : regroupement de dates, « afficher les valeurs en » | Non | |
 
 ## Révision
@@ -105,7 +105,7 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 | Vérifier l'accessibilité | Non | |
 | Traduire | Non | |
 | Commentaires (fil), notes | Partiel | Notes |
-| Protéger la feuille / le classeur, autoriser la modification des plages | Partiel | Protection de feuille enregistrée dans le .xlsx ; sans mot de passe |
+| Protéger la feuille / le classeur, autoriser la modification des plages | Partiel | Feuille entière, mot de passe facultatif (hachage Excel), enregistrée dans le .xlsx ; pas de cellules déverrouillées ni de protection du classeur |
 | Suivi des modifications | Non | |
 
 ## Affichage

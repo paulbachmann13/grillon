@@ -801,3 +801,64 @@ body,
 .g-shape:hover .g-chart-edit {
   opacity: 1;
 }
+
+/* --- Styles de cellule et Format de cellule --- */
+.g-cell-styles h3 {
+  margin: 8px 0 4px;
+  font-size: 12px;
+  color: var(--grillon-muted);
+}
+
+.g-cell-style-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.g-cell-style {
+  min-width: 96px;
+  padding: 6px 8px;
+  border: 1px solid var(--grillon-border);
+  border-radius: 4px;
+  background: #fff;
+  color: #000;
+  font: 12px Calibri, Carlito, Arial, sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+
+.g-cell-style:hover {
+  outline: 2px solid var(--grillon-accent, #1f7a4d);
+}
+
+.g-format-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.g-format-options select[size] {
+  height: auto;
+  padding: 4px;
+}
+
+.g-format-preview {
+  padding: 6px 8px;
+  border: 1px solid var(--grillon-border);
+  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.g-swatches {
+  display: grid;
+  grid-template-columns: repeat(9, 26px);
+  gap: 4px;
+}
+
+.g-swatches button {
+  width: 26px;
+  height: 22px;
+  border: 1px solid var(--grillon-border);
+  border-radius: 3px;
+  cursor: pointer;
+}

@@ -34,6 +34,7 @@ import { fromExcelPageSetup, type ExcelPageSetupLike } from '../../data/page-set
 import { addSparklinesToResource, readSparklines, type SheetSparkline } from './sparklines';
 import type { PivotDefinition } from '../../data/pivot';
 import { readPivotTables } from './pivot-tables';
+import { readSheetProtection, type SheetProtection } from '../../data/sheet-protection';
 
 /** Police par défaut d'Excel (les cellules sans police explicite l'utilisent). */
 export const EXCEL_DEFAULT_FONT = { ff: 'Calibri', fs: 11 } as const;
@@ -248,6 +249,7 @@ export interface SheetExtras {
   charts: SheetChart[];
   sparklines: SheetSparkline[];
   pivots: PivotDefinition[];
+  protection: SheetProtection | null;
 }
 
 function readCfStopIfTrue(sheetXml: string): Set<number> {
@@ -281,6 +283,7 @@ async function preprocess(data: ArrayBuffer | Uint8Array): Promise<{ bytes: Arra
       charts: await readSheetCharts(zip, sheet.path),
       sparklines: readSparklines(xml),
       pivots: pivotsByPath.get(sheet.path) ?? [],
+      protection: readSheetProtection(xml),
     });
     const stripped = removeWorksheetElement(xml, 'dataValidations');
     if (stripped.removed) {
@@ -341,6 +344,10 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
     }
     if (extra?.tables.length) tables[sheet.id] = { tables: extra.tables, tableFilteredOutRows: [] };
     if (extra?.charts.length) drawings[sheet.id] = chartsToDrawingResource(unitId, sheet.id, sheet, extra.charts);
+    if (extra?.protection) {
+      const custom = (sheet.custom ?? {}) as { grillon?: Record<string, unknown> };
+      sheet.custom = { ...custom, grillon: { ...(custom.grillon ?? {}), protection: extra.protection } } as never;
+    }
     if (extra?.pivots.length) {
       // Grillon gère un tableau croisé par feuille : le premier est relu, les autres restent en valeurs.
       const custom = (sheet.custom ?? {}) as { grillon?: Record<string, unknown> };

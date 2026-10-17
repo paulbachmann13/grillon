@@ -16,6 +16,7 @@ import { installFormulasRibbon } from '../univer/formulas-ribbon';
 import { installGridShortcuts } from '../univer/grid-shortcuts';
 import { installViewRibbon } from '../univer/view-ribbon';
 import { installBasics } from '../univer/basics';
+import { installCellFormat } from '../univer/cell-format';
 import { installGridGrowth } from '../univer/grid-growth';
 import { installTextOverflow } from '../univer/text-overflow';
 import { printDialog } from './print';
@@ -25,6 +26,7 @@ import { installHomeRibbon } from '../univer/home-ribbon';
 import { LOCALE_FR } from '../model/univer-types';
 import { clearAutosave, loadAutosave, saveAutosave } from '../storage/autosave';
 import { confirmAsync } from './confirm';
+import { applyStoredProtection } from '../univer/protection';
 
 /** CommandType.COMMAND = 0 : actions de l'utilisateur (les mutations internes, comme le calcul des formules, sont ignorées). */
 const COMMAND = 0;
@@ -76,11 +78,16 @@ export class DocumentController {
     try {
       const current = this.api.getActiveWorkbook();
       if (current) this.api.disposeUnit(current.getId());
-      this.api.createWorkbook({ locale: LOCALE_FR as IWorkbookData['locale'], ...data, name: fileName.replace(/\.[^.]+$/, '') });
+      // Police par défaut de chaque feuille (Univer la lit au niveau de la feuille) : celle du classeur, sinon Calibri 11 comme Excel.
+      const defaultStyle = (data as { defaultStyle?: object }).defaultStyle ?? { ff: 'Calibri', fs: 11 };
+      const sheets = Object.fromEntries(Object.entries(data.sheets ?? {}).map(([id, sh]) => [id, { defaultStyle, ...sh }]));
+      this.api.createWorkbook({ locale: LOCALE_FR as IWorkbookData['locale'], ...data, sheets, name: fileName.replace(/\.[^.]+$/, '') } as never);
       installFrenchDisplay(this.api);
       installTextOverflow(this.api);
+      // Feuilles protégées : la protection est réappliquée une fois le classeur prêt.
+      setTimeout(() => void applyStoredProtection(this.api), 0);
       if (!this.ribbonReady) {
-        installHomeRibbon(this.api);
+        installHomeRibbon(this.api, () => this.markDirtyPublic());
         installDataRibbon(this.api, this);
         installFormulasRibbon(this.api);
         installCharts(this.api);
@@ -93,6 +100,7 @@ export class DocumentController {
         installViewRibbon(this.api, () => this.print(), () => this.pageSetup());
         installGridGrowth(this.api);
         installBasics(this.api);
+        installCellFormat(this.api);
         this.ribbonReady = true;
       }
       this.fileName = fileName;
@@ -265,6 +273,17 @@ export class DocumentController {
     } catch (e) {
       console.warn('Sauvegarde automatique impossible', e);
     }
+  }
+
+  /** Protéger / ôter la protection de la feuille active (aussi dans Accueil → Format). */
+  async protectSheet(): Promise<void> {
+    const { protectSheetDialog } = await import('../univer/protection');
+    await protectSheetDialog(this.api, () => this.markDirtyPublic());
+  }
+
+  async unprotectSheet(): Promise<void> {
+    const { unprotectSheetDialog } = await import('../univer/protection');
+    await unprotectSheetDialog(this.api, () => this.markDirtyPublic());
   }
 
   /** Boîte « Mise en page » de la feuille active. */

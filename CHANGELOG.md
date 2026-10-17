@@ -2,6 +2,19 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.4.0] — 2026-10-17
+
+### Ajouté
+- **Vrais tableaux croisés dynamiques dans le .xlsx** : cache, enregistrements et définition (lignes, colonnes, valeurs, filtres) ; Excel les actualise à l'ouverture, LibreOffice les reconnaît. Les tableaux croisés des fichiers Excel sont relus et peuvent être actualisés dans Grillon.
+- **Styles de cellule** (galerie d'Excel) et boîte **Format de cellule** (Ctrl+1 / ⌘1) : Nombre, Alignement, Police, Bordure, Remplissage.
+- **Protéger la feuille** avec mot de passe facultatif (hachage SHA-512 d'Excel), enregistré dans le .xlsx.
+- Application Mac : boîtes de confirmation natives, confirmation avant de fermer un classeur non enregistré, ⌘⇧T (somme automatique).
+- docs/EXCEL-COMPARAISON.md : inventaire du ruban d'Excel et état de Grillon.
+
+### Corrigé
+- Police par défaut Calibri 11 (comme Excel) au lieu d'Arial.
+- Un tableau croisé ne remplace plus la mise en page de sa feuille.
+
 ## [1.3.0] — 2026-10-15
 
 ### Ajouté

@@ -27,6 +27,7 @@ import { toExcelPageSetup, type PageSetup } from '../../data/page-setup';
 import { sparklinesOfSheet, writeSparklines, type SheetSparkline } from './sparklines';
 import type { PivotDefinition } from '../../data/pivot';
 import { writePivotTables, type PivotToWrite } from './pivot-tables';
+import { sheetProtectionXml, type SheetProtection } from '../../data/sheet-protection';
 
 /** Niveau de plan stocké dans les métadonnées d'une ligne ou colonne. */
 function outlineLevel(custom: Record<string, unknown> | null | undefined | void): number {
@@ -210,6 +211,7 @@ interface SheetPostProcess {
   charts: SheetChart[];
   sparklines: SheetSparkline[];
   pivot?: PivotDefinition;
+  protection?: SheetProtection;
   autoFilter?: UniverAutoFilter;
   tables: TableToWrite[];
   stopIfTruePriorities: number[];
@@ -304,7 +306,7 @@ function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: Sheet
     const name = sanitizeSheetName(sheet.name ?? '', used);
     const filter = filters[id];
     const ws = writeSheet(wb, xlWb, sheet, name, filter?.cachedFilteredOut);
-    const p: SheetPostProcess = { name, charts: chartsOfSheet(drawings, id), sparklines: sparklinesOfSheet(drawings, id), tables: [], stopIfTruePriorities: [], pivot: (sheet.custom as { grillon?: { pivot?: PivotDefinition } } | undefined)?.grillon?.pivot };
+    const p: SheetPostProcess = { name, charts: chartsOfSheet(drawings, id), sparklines: sparklinesOfSheet(drawings, id), tables: [], stopIfTruePriorities: [], pivot: (sheet.custom as { grillon?: { pivot?: PivotDefinition } } | undefined)?.grillon?.pivot, protection: (sheet.custom as { grillon?: { protection?: SheetProtection } } | undefined)?.grillon?.protection };
     if (cf[id]?.length) {
       exportConditionalFormats(ws, cf[id]);
       cf[id].forEach((entry, i) => entry.stopIfTrue && p.stopIfTruePriorities.push(i + 1));
@@ -364,7 +366,7 @@ function addStopIfTrue(sheetXml: string, priorities: number[]): string {
 
 /** Écrit dans le XML ce qu'ExcelJS ne sait pas écrire (critères de filtre, tableaux, stopIfTrue). */
 async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPostProcess[]): Promise<Uint8Array> {
-  const needed = (p: SheetPostProcess) => p.autoFilter || p.tables.length || p.stopIfTruePriorities.length || p.charts.length || p.sparklines.length || !!p.pivot;
+  const needed = (p: SheetPostProcess) => p.autoFilter || p.tables.length || p.stopIfTruePriorities.length || p.charts.length || p.sparklines.length || !!p.pivot || !!p.protection;
   if (!post.some(needed)) return bytes;
   const zip = await loadZip(bytes);
   const sheets = await listSheets(zip);
@@ -378,6 +380,7 @@ async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPost
     const file = zip.file(sheets[i].path);
     if (!file) continue;
     let xml = await file.async('string');
+    if (p.protection) xml = insertWorksheetElement(xml, 'sheetProtection', sheetProtectionXml(p.protection));
     if (p.autoFilter) xml = insertWorksheetElement(xml, 'autoFilter', buildAutoFilterXml(p.autoFilter));
     if (p.stopIfTruePriorities.length) xml = addStopIfTrue(xml, p.stopIfTruePriorities);
     if (p.tables.length) xml = await writeTables(zip, sheets[i].path, xml, p.tables, () => ++tableId, usedTableNames);
