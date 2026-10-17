@@ -176,6 +176,18 @@ export const fr = {
     now: 'Calculer maintenant (F9)',
     manualBadge: 'Calcul manuel : appuyez sur F9 pour calculer',
   },
+  watch: {
+    title: 'Fenêtre Espion',
+    add: 'Ajouter un espion…',
+    addActive: 'Ajouter la cellule {cell}',
+    remove: 'Supprimer l’espion',
+    empty: 'Aucune cellule surveillée. Sélectionnez une cellule, puis cliquez sur « Ajouter un espion ».',
+    sheet: 'Feuille',
+    cell: 'Cellule',
+    value: 'Valeur',
+    formula: 'Formule',
+    hint: 'Double-cliquez sur une ligne pour atteindre la cellule.',
+  },
   audit: {
     evaluate: 'Évaluer la formule',
     evaluateStep: 'Évaluer',

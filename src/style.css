@@ -904,3 +904,10 @@ body,
 
 /* Calcul manuel (comme « Calculer » dans la barre d'état d'Excel) */
 .g-calc-badge { position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%); z-index: 20; padding: 3px 10px; border-radius: 10px; font-size: 12px; background: var(--grillon-accent); color: #fff; pointer-events: none; }
+
+.g-watch { width: 100%; border-collapse: collapse; font-size: 12px; }
+.g-watch th, .g-watch td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--grillon-border); }
+.g-watch th { cursor: pointer; user-select: none; color: var(--grillon-muted); font-weight: 600; }
+.g-watch tbody tr { cursor: default; }
+.g-watch tbody tr.selected { background: var(--grillon-accent); color: #fff; }
+.g-watch-scroll { max-height: 260px; overflow: auto; border: 1px solid var(--grillon-border); border-radius: 4px; }

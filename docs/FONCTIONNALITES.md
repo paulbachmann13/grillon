@@ -39,6 +39,7 @@
 - **Somme automatique** (Σ), **Afficher les formules** (aussi dans Vue, Ctrl+`).
 - **Gestionnaire de noms**, **Repérer les antécédents / les dépendants**.
 - **Vérification des erreurs** (#DIV/0!, #N/A, #NOM?…, nombres stockés sous forme de texte : convertir, ignorer, précédent / suivant) et **Évaluer la formule** (calcul pas à pas, partie soulignée, comme Excel). Les erreurs s'affichent avec les codes français d'Excel (#NOM?, #VALEUR!, #NOMBRE!…).
+- **Fenêtre Espion** : surveille la valeur et la formule de cellules (même d'une autre feuille) ; liste gardée pour la session, non enregistrée dans le .xlsx.
 - **Options de calcul** : Automatique ou **Manuel**, **Calculer maintenant** (F9).
 - ≈ 520 fonctions Excel (noms anglais), matrices dynamiques, LAMBDA/LET ; liste des fonctions absentes : [FONCTIONS.md](FONCTIONS.md).
 - **Graphiques** (comme Insérer → Graphiques d'Excel) : boîte « Tous les graphiques » avec aperçu en direct ; histogramme, barres, courbes, aires (groupés, empilés, 100 % empilés), secteurs, anneau, nuage de points (marqueurs, lignes droites ou lissées), bulles, radar, combinés (courbe sur axe secondaire), **cascade** (totaux), **entonnoir**, **histogramme de répartition** (largeur ou nombre de classes, dépassement, soupassement) et **boîte à moustaches** (moyenne, valeurs aberrantes).

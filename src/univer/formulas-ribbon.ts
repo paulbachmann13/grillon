@@ -13,6 +13,7 @@ import { rangeToA1, toA1 } from '../io/xlsx/units';
 import type { IWorkbookData } from '../model/univer-types';
 import { alertDialog, box, field, openDialog, textInput } from '../ui/dialog';
 import { errorCheckingDialog, evaluateFormulaDialog } from './formula-audit';
+import { watchWindow } from './watch-window';
 import { calculateNow, installCalculationShortcut, setCalculationMode } from './calculation';
 
 const FORMULAS = 'ribbon.formulas';
@@ -170,6 +171,7 @@ export function installFormulasRibbon(api: FUniver): void {
     GrillonPrecedentsIcon: icon('M2 4h4v3H2zM10 9h4v3h-4zM6 5.5c3 0 3 5 4 5M8.5 9l1.5 1.5L8.5 12'),
     GrillonDependentsIcon: icon('M10 4h4v3h-4zM2 9h4v3H2zM10 5.5c-3 0-3 5-4 5M7.5 9L6 10.5 7.5 12'),
     GrillonErrorCheckIcon: icon('M8 2l6.5 11.5h-13zM8 6.5v3.5M8 12h.01'),
+    GrillonWatchIcon: icon('M1.5 8s2.3-4.5 6.5-4.5S14.5 8 14.5 8 12.2 12.5 8 12.5 1.5 8 1.5 8zM8 9.8a1.8 1.8 0 100-3.6 1.8 1.8 0 000 3.6z'),
     GrillonEvaluateIcon: icon('M2 3h12v10H2zM4.5 6.5l1.5 1.5-1.5 1.5M8 10h3.5'),
     GrillonCalcOptionsIcon: icon('M3 2h10v12H3zM5 4.5h6M5.5 8h1M9.5 8h1M5.5 11h1M9.5 11h1'),
     GrillonCalcNowIcon: icon('M8 2.5a5.5 5.5 0 105.2 3.7M13.5 2v4h-4'),
@@ -184,6 +186,7 @@ export function installFormulasRibbon(api: FUniver): void {
   button('grillon.formulas.dependents', 'GrillonDependentsIcon', t('formulas.dependents'), () => traceDependents(api), [FORMULAS, FORMULAS_OTHERS]);
   button('grillon.formulas.error-checking', 'GrillonErrorCheckIcon', t('audit.errorChecking'), () => errorCheckingDialog(api), [FORMULAS, FORMULAS_OTHERS]);
   button('grillon.formulas.evaluate', 'GrillonEvaluateIcon', t('audit.evaluate'), () => evaluateFormulaDialog(api), [FORMULAS, FORMULAS_OTHERS]);
+  button('grillon.formulas.watch', 'GrillonWatchIcon', t('watch.title'), () => watchWindow(api), [FORMULAS, FORMULAS_OTHERS]);
   api.createSubmenu({ id: 'grillon.formulas.calc-options', icon: 'GrillonCalcOptionsIcon', title: t('calc.options'), tooltip: t('calc.options') }).appendTo([FORMULAS, FORMULAS_OTHERS]);
   for (const [mode, order] of [['auto', 0], ['manual', 1]] as const) {
     const itemId = `grillon.formulas.calc-${mode}`;

@@ -79,3 +79,16 @@ test('Imprimer : aperçu des pages à côté des réglages', async ({ page }) =>
   await expect.poll(async () => Number((await count.textContent())!.match(/sur (\d+)/)![1])).toBeGreaterThan(before);
   await dialog.getByRole('button', { name: 'Annuler' }).click();
 });
+
+test('Fenêtre Espion : ajouter, suivre la valeur, supprimer', async ({ page }) => {
+  await run(page, `wb.setActiveRange(ws.getRange('H1')); api.executeCommand('grillon.formulas.watch');`);
+  const dialog = page.getByTestId('dialog-watch');
+  await dialog.getByTestId('watch-add').click();
+  const rows = dialog.getByTestId('watch-row');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('H1');
+  await expect(rows.first()).toContainText('=SUM(F1:F3)*2');
+  await rows.first().click();
+  await dialog.getByTestId('watch-remove').click();
+  await expect(rows).toHaveCount(0);
+});

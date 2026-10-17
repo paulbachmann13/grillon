@@ -75,7 +75,7 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 | Repérer les antécédents / dépendants | Partiel | Liste cliquable, pas de flèches sur la grille |
 | Afficher les formules | Oui | |
 | Vérification des erreurs, évaluer la formule | Oui | Erreurs et nombres stockés en texte ; pas de triangles verts sur la grille |
-| Fenêtre Espion | Non | |
+| Fenêtre Espion | Oui | Boîte (non flottante) ; liste gardée en mémoire, non enregistrée dans le .xlsx |
 | Options de calcul (automatique / manuel), calculer maintenant | Oui | F9 ; mode non enregistré dans le fichier |
 | ≈ 520 fonctions, tableaux dynamiques, LAMBDA | Oui | 23 fonctions absentes (docs/FONCTIONS.md) |
 

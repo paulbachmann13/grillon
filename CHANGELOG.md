@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.7.0] — 2026-10-17
+
+### Ajouté
+- **Fenêtre Espion** (Formules) : surveille la valeur et la formule de cellules choisies, même sur d'autres feuilles ; tri par colonne, double-clic pour atteindre la cellule.
+
 ## [1.6.0] — 2026-10-17
 
 ### Ajouté
