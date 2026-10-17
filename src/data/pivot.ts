@@ -26,6 +26,21 @@ export interface PivotConfig {
   filters: PivotFilter[];
 }
 
+/** Tableau croisé enregistré dans une feuille (métadonnées custom.grillon.pivot). */
+export interface PivotDefinition {
+  sourceSheet: string;
+  sourceRange: string;
+  config: PivotConfig;
+  /** Taille de la dernière sortie (pour l'effacer avant d'actualiser). */
+  outRows: number;
+  outCols: number;
+  /** Coin haut gauche de la sortie (par défaut A3, la ligne 1 décrivant la source). */
+  outRow?: number;
+  outCol?: number;
+  /** Nom du tableau croisé (dans le .xlsx). */
+  name?: string;
+}
+
 export interface PivotLabels {
   rowLabels: string;
   grandTotal: string;

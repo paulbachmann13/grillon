@@ -8,21 +8,13 @@ import { CommandType, ICommandService, type FUniver } from '@univerjs/presets';
 import type { FWorkbook, FWorksheet } from '@univerjs/sheets/facade';
 import { createElement, type ComponentType } from 'react';
 import { cellText, type Grid } from '../data/cells';
-import { computePivot, distinctValues, FR_PIVOT_LABELS, type PivotConfig, type PivotFunction } from '../data/pivot';
+import { computePivot, distinctValues, FR_PIVOT_LABELS, type PivotConfig, type PivotDefinition, type PivotFunction } from '../data/pivot';
 import { t } from '../i18n';
 import { columnToLetters, rangeFromA1 } from '../io/xlsx/units';
 import type { ICellData } from '../model/univer-types';
 import { alertDialog, box, field, group, openDialog, select, textInput, checkbox } from '../ui/dialog';
 import { currentRegionRect } from './region';
 
-interface PivotDefinition {
-  sourceSheet: string;
-  sourceRange: string;
-  config: PivotConfig;
-  /** Taille de la dernière sortie (pour l'effacer avant d'actualiser). */
-  outRows: number;
-  outCols: number;
-}
 
 const OUT_ROW = 2; // la sortie commence en A3 ; A1 décrit la source et les filtres
 const CLEAR: ICellData = { v: null, f: null, p: null, s: null } as unknown as ICellData;
@@ -53,14 +45,18 @@ function writePivot(api: FUniver, target: FWorksheet, def: PivotDefinition): boo
   const out = computePivot(grid, def.config, FR_PIVOT_LABELS);
   const width = Math.max(1, ...out.map((r) => r.length));
   // Efface l'ancienne sortie.
+  const top = def.outRow ?? OUT_ROW;
+  const left = def.outCol ?? 0;
   if (def.outRows && def.outCols) {
-    target.getRange(OUT_ROW, 0, def.outRows, def.outCols).setValues(Array.from({ length: def.outRows }, () => Array.from({ length: def.outCols }, () => CLEAR)));
+    target.getRange(top, left, def.outRows, def.outCols).setValues(Array.from({ length: def.outRows }, () => Array.from({ length: def.outCols }, () => CLEAR)));
   }
   const header = [cellText(grid[0]?.[0]) ? grid[0] : []];
   const filters = def.config.filters.map((f) => `${cellText(header[0][f.col]) || columnToLetters(f.col)} = ${f.include.join(', ')}`);
-  target.getRange(0, 0, 1, 1).setValues([[{ v: `${t('pivot.source')} : ${def.sourceSheet}!${def.sourceRange}${filters.length ? ` — ${t('pivot.filters')} : ${filters.join(' ; ')}` : ''}`, t: 1, s: { it: 1 } } as ICellData]]);
-  target.getRange(OUT_ROW, 0, out.length, width).setValues(out.map((r) => Array.from({ length: width }, (_, i) => r[i] ?? CLEAR)) as ICellData[][]);
-  target.setCustomMetadata({ ...(target.getCustomMetadata() ?? {}), grillon: { pivot: { ...def, outRows: out.length, outCols: width } } });
+  // Ligne de description (source et filtres) : seulement pour un tableau créé par Grillon en A3.
+  if (def.outRow === undefined) target.getRange(0, 0, 1, 1).setValues([[{ v: `${t('pivot.source')} : ${def.sourceSheet}!${def.sourceRange}${filters.length ? ` — ${t('pivot.filters')} : ${filters.join(' ; ')}` : ''}`, t: 1, s: { it: 1 } } as ICellData]]);
+  target.getRange(top, left, out.length, width).setValues(out.map((r) => Array.from({ length: width }, (_, i) => r[i] ?? CLEAR)) as ICellData[][]);
+  const custom = (target.getCustomMetadata() ?? {}) as { grillon?: Record<string, unknown> };
+  target.setCustomMetadata({ ...custom, grillon: { ...(custom.grillon ?? {}), pivot: { ...def, outRows: out.length, outCols: width } } });
   return true;
 }
 

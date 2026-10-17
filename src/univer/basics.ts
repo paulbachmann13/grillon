@@ -189,7 +189,8 @@ export function installBasics(api: Api): void {
       const mod = e.ctrlKey || e.metaKey;
       if (e.isComposing) return;
       // Appuyer sur Alt ouvre l'éditeur de cellule d'Univer : pour Alt+= on le referme avant d'écrire la somme.
-      const altSum = e.altKey && !mod && e.code === 'Equal' && !document.querySelector('.g-dialog');
+      // Somme automatique : Alt+= (Windows) ou ⌘⇧T (Excel pour Mac).
+      const altSum = ((e.altKey && !mod && e.code === 'Equal') || (e.metaKey && e.shiftKey && !e.ctrlKey && e.code === 'KeyT')) && !document.querySelector('.g-dialog');
       if (!altSum && isTypingInCell(editor)) return;
       const handled = (fn: () => void) => {
         e.preventDefault();

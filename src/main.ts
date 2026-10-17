@@ -9,6 +9,7 @@ import { t } from './i18n';
 import { isTauri, listenForOpenRequests } from './io/tauri-files';
 import { setupUniver } from './univer/setup';
 import './style.css';
+import { guardDesktopClose } from './app/confirm';
 
 const api = setupUniver(document.getElementById('univer')!);
 // Le composant graphique doit exister avant le chargement d'un classeur qui en contient.
@@ -39,7 +40,7 @@ async function start(): Promise<void> {
   // Application de bureau : fichier ouvert depuis le Finder (double-clic).
   if (isTauri()) {
     void listenForOpenRequests(async (handle) => {
-      if (doc.dirty && !window.confirm(t('confirm.discard'))) return;
+      if (!(await doc.confirmDiscard())) return;
       const file = await handle.getFile();
       await doc.openBytes(file.name, new Uint8Array(await file.arrayBuffer()), handle);
     });
@@ -51,9 +52,12 @@ async function start(): Promise<void> {
     const file = e.dataTransfer?.files?.[0];
     if (!file) return;
     e.preventDefault();
-    if (doc.dirty && !window.confirm(t('confirm.discard'))) return;
+    if (!(await doc.confirmDiscard())) return;
     await doc.openBytes(file.name, new Uint8Array(await file.arrayBuffer()));
   });
+
+  // Application de bureau : confirmation avant de fermer un classeur non enregistré.
+  void guardDesktopClose(() => doc.dirty, () => doc.autosaveNow());
 
   // Dernière sauvegarde automatique avant de quitter.
   window.addEventListener('pagehide', () => void doc.autosaveNow());

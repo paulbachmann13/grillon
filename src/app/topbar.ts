@@ -102,7 +102,7 @@ export class Topbar {
   }
 
   private confirmThen(fn: () => void): void {
-    if (!this.doc.dirty || window.confirm(t('confirm.discard'))) fn();
+    void this.doc.confirmDiscard().then((ok) => ok && fn());
   }
 
   private openMenu(): void {

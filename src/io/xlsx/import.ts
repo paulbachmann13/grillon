@@ -32,6 +32,8 @@ import { styleToUniver } from './styles';
 import { dateToSerial, EXCEL_DEFAULT_COL_WIDTH, EXCEL_DEFAULT_ROW_HEIGHT_PT, excelWidthToPx, fromA1, ptToPx, rangeFromA1 } from './units';
 import { fromExcelPageSetup, type ExcelPageSetupLike } from '../../data/page-setup';
 import { addSparklinesToResource, readSparklines, type SheetSparkline } from './sparklines';
+import type { PivotDefinition } from '../../data/pivot';
+import { readPivotTables } from './pivot-tables';
 
 /** Police par défaut d'Excel (les cellules sans police explicite l'utilisent). */
 export const EXCEL_DEFAULT_FONT = { ff: 'Calibri', fs: 11 } as const;
@@ -245,6 +247,7 @@ export interface SheetExtras {
   cfStopIfTrue: Set<number>;
   charts: SheetChart[];
   sparklines: SheetSparkline[];
+  pivots: PivotDefinition[];
 }
 
 function readCfStopIfTrue(sheetXml: string): Set<number> {
@@ -265,6 +268,7 @@ async function preprocess(data: ArrayBuffer | Uint8Array): Promise<{ bytes: Arra
   const extras = new Map<string, SheetExtras>();
   const zip = await loadZip(data);
   let modified = false;
+  const pivotsByPath = await readPivotTables(zip);
   for (const sheet of await listSheets(zip)) {
     const file = zip.file(sheet.path);
     if (!file) continue;
@@ -276,6 +280,7 @@ async function preprocess(data: ArrayBuffer | Uint8Array): Promise<{ bytes: Arra
       cfStopIfTrue: readCfStopIfTrue(xml),
       charts: await readSheetCharts(zip, sheet.path),
       sparklines: readSparklines(xml),
+      pivots: pivotsByPath.get(sheet.path) ?? [],
     });
     const stripped = removeWorksheetElement(xml, 'dataValidations');
     if (stripped.removed) {
@@ -336,6 +341,11 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
     }
     if (extra?.tables.length) tables[sheet.id] = { tables: extra.tables, tableFilteredOutRows: [] };
     if (extra?.charts.length) drawings[sheet.id] = chartsToDrawingResource(unitId, sheet.id, sheet, extra.charts);
+    if (extra?.pivots.length) {
+      // Grillon gère un tableau croisé par feuille : le premier est relu, les autres restent en valeurs.
+      const custom = (sheet.custom ?? {}) as { grillon?: Record<string, unknown> };
+      sheet.custom = { ...custom, grillon: { ...(custom.grillon ?? {}), pivot: extra.pivots[0] } } as never;
+    }
     if (extra?.sparklines.length) drawings[sheet.id] = addSparklinesToResource(unitId, sheet.id, sheet, extra.sparklines, drawings[sheet.id]);
   });
 

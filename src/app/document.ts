@@ -24,6 +24,7 @@ import { installPivot } from '../univer/pivot-ui';
 import { installHomeRibbon } from '../univer/home-ribbon';
 import { LOCALE_FR } from '../model/univer-types';
 import { clearAutosave, loadAutosave, saveAutosave } from '../storage/autosave';
+import { confirmAsync } from './confirm';
 
 /** CommandType.COMMAND = 0 : actions de l'utilisateur (les mutations internes, comme le calcul des formules, sont ignorées). */
 const COMMAND = 0;
@@ -113,12 +114,12 @@ export class DocumentController {
     void clearAutosave();
   }
 
-  private confirmDiscard(): boolean {
-    return !this.dirty || window.confirm(t('confirm.discard'));
+  async confirmDiscard(): Promise<boolean> {
+    return !this.dirty || confirmAsync(t('confirm.discard'));
   }
 
   async open(): Promise<void> {
-    if (!this.confirmDiscard()) return;
+    if (!(await this.confirmDiscard())) return;
     const file = await openFile('any');
     if (file) await this.openBytes(file.name, file.bytes, file.handle);
   }

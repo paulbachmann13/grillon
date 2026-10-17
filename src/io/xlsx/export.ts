@@ -25,6 +25,8 @@ import { styleFromUniver } from './styles';
 import { EXCEL_DEFAULT_COL_WIDTH, EXCEL_DEFAULT_ROW_HEIGHT_PT, pxToExcelWidth, pxToPt, rangeToA1 } from './units';
 import { toExcelPageSetup, type PageSetup } from '../../data/page-setup';
 import { sparklinesOfSheet, writeSparklines, type SheetSparkline } from './sparklines';
+import type { PivotDefinition } from '../../data/pivot';
+import { writePivotTables, type PivotToWrite } from './pivot-tables';
 
 /** Niveau de plan stocké dans les métadonnées d'une ligne ou colonne. */
 function outlineLevel(custom: Record<string, unknown> | null | undefined | void): number {
@@ -207,6 +209,7 @@ interface SheetPostProcess {
   name: string;
   charts: SheetChart[];
   sparklines: SheetSparkline[];
+  pivot?: PivotDefinition;
   autoFilter?: UniverAutoFilter;
   tables: TableToWrite[];
   stopIfTruePriorities: number[];
@@ -301,7 +304,7 @@ function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: Sheet
     const name = sanitizeSheetName(sheet.name ?? '', used);
     const filter = filters[id];
     const ws = writeSheet(wb, xlWb, sheet, name, filter?.cachedFilteredOut);
-    const p: SheetPostProcess = { name, charts: chartsOfSheet(drawings, id), sparklines: sparklinesOfSheet(drawings, id), tables: [], stopIfTruePriorities: [] };
+    const p: SheetPostProcess = { name, charts: chartsOfSheet(drawings, id), sparklines: sparklinesOfSheet(drawings, id), tables: [], stopIfTruePriorities: [], pivot: (sheet.custom as { grillon?: { pivot?: PivotDefinition } } | undefined)?.grillon?.pivot };
     if (cf[id]?.length) {
       exportConditionalFormats(ws, cf[id]);
       cf[id].forEach((entry, i) => entry.stopIfTrue && p.stopIfTruePriorities.push(i + 1));
@@ -361,13 +364,14 @@ function addStopIfTrue(sheetXml: string, priorities: number[]): string {
 
 /** Écrit dans le XML ce qu'ExcelJS ne sait pas écrire (critères de filtre, tableaux, stopIfTrue). */
 async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPostProcess[]): Promise<Uint8Array> {
-  const needed = (p: SheetPostProcess) => p.autoFilter || p.tables.length || p.stopIfTruePriorities.length || p.charts.length || p.sparklines.length;
+  const needed = (p: SheetPostProcess) => p.autoFilter || p.tables.length || p.stopIfTruePriorities.length || p.charts.length || p.sparklines.length || !!p.pivot;
   if (!post.some(needed)) return bytes;
   const zip = await loadZip(bytes);
   const sheets = await listSheets(zip);
   let tableId = 0;
   const counters = { drawing: 0, chart: 0 };
   const usedTableNames = new Set<string>();
+  const pivots: PivotToWrite[] = [];
   for (let i = 0; i < sheets.length && i < post.length; i++) {
     const p = post[i];
     if (!needed(p)) continue;
@@ -380,7 +384,10 @@ async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPost
     if (p.charts.length) xml = await writeSheetCharts(zip, wb, p.name, sheets[i].path, xml, p.charts, counters);
     if (p.sparklines.length) xml = writeSparklines(xml, p.sparklines);
     zip.file(sheets[i].path, xml);
+    if (p.pivot) pivots.push({ sheetPath: sheets[i].path, def: p.pivot });
   }
+  // Les tableaux croisés touchent aussi le classeur (caches) : écrits après les feuilles.
+  if (pivots.length) await writePivotTables(zip, wb, pivots);
   return zipToBytes(zip);
 }
 

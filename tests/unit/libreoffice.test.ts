@@ -100,4 +100,20 @@ describe.skipIf(!soffice)('LibreOffice ouvre les graphiques Grillon', () => {
       ["scatter", 1],
     ]);
   });
+
+  it("tableau croisé dynamique : LibreOffice le reconnaît comme tel (et le réécrit)", async () => {
+    const { pivotWorkbook } = await import("../fixtures/pivot");
+    const { readPivotTables } = await import("../../src/io/xlsx/pivot-tables");
+    const JSZip = (await import("jszip")).default;
+    const dir = mkdtempSync(join(tmpdir(), "grillon-lo-"));
+    const ours = join(dir, "pivot.xlsx");
+    writeFileSync(ours, await exportXlsx(pivotWorkbook()));
+    const outDir = join(dir, "out");
+    execFileSync(soffice!, ["--headless", "--norestore", "--convert-to", "xlsx", "--outdir", outDir, ours], { timeout: 120_000 });
+    const zip = await JSZip.loadAsync(readFileSync(join(outDir, "pivot.xlsx")));
+    const pivots = [...(await readPivotTables(zip)).values()].flat();
+    expect(pivots).toHaveLength(1);
+    expect(pivots[0]!.config.rows).toEqual([0]);
+    expect(pivots[0]!.config.values.map((v) => v.fn)).toEqual(["sum", "average"]);
+  });
 });

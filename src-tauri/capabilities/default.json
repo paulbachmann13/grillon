@@ -8,6 +8,10 @@
     "dialog:allow-open",
     "dialog:allow-save",
     "dialog:allow-message",
+    "dialog:allow-ask",
+    "dialog:allow-confirm",
+    "core:window:allow-destroy",
+    "core:window:allow-close",
     {
       "identifier": "fs:allow-read-file",
       "allow": [{ "path": "/**" }, { "path": "$HOME/**" }, { "path": "$DESKTOP/**" }, { "path": "$DOCUMENT/**" }, { "path": "$DOWNLOAD/**" }]

@@ -21,6 +21,7 @@ import type { ICellData } from '../model/univer-types';
 import { GRILLON_CUSTOM_KEY } from '../model/univer-types';
 import { alertDialog, box, checkbox, field, group, openDialog, radio, select, textInput } from '../ui/dialog';
 import { currentRegionRect } from './region';
+import { confirmAsync } from '../app/confirm';
 
 const DATA = 'ribbon.data';
 const ORGANIZATION = 'ribbon.data.organization';
@@ -153,7 +154,7 @@ async function textToColumnsTool(api: FUniver): Promise<void> {
     title: t('data.textToColumnsTitle'),
     testId: 'dialog-text-to-columns',
     body: box(group(t('data.separators'), tab.el, semicolon.el, comma.el, space.el, other.el), consecutive.el),
-    onOk: () => {
+    onOk: async () => {
       const rows = textToColumns(values, {
         tab: tab.input.checked,
         semicolon: semicolon.input.checked,
@@ -166,7 +167,7 @@ async function textToColumnsTool(api: FUniver): Promise<void> {
       const width = Math.max(1, ...rows.map((r) => r.length));
       if (width > 1) {
         const right = readGrid({ ws: area.ws, row: area.row, col: sel.col + 1, rows: area.rows, cols: width - 1 });
-        if (right.some((r) => r.some((c) => !isEmpty(c))) && !window.confirm(t('data.overwrite'))) return false;
+        if (right.some((r) => r.some((c) => !isEmpty(c))) && !(await confirmAsync(t('data.overwrite')))) return false;
       }
       writeGrid(area.ws, area.row, sel.col, rows);
     },

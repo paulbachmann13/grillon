@@ -523,6 +523,9 @@ export const fr = {
   },
   confirm: {
     discard: 'Le classeur actuel a des modifications non enregistrées. Continuer quand même ?',
+    close: 'Le classeur a des modifications non enregistrées. Fermer quand même ? (Il sera restauré à la prochaine ouverture.)',
+    yes: 'Oui',
+    no: 'Non',
   },
 } as const;
 
