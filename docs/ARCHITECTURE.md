@@ -88,7 +88,14 @@ seront ajoutés dans les phases suivantes, chacun avec son test de round-trip.
 | `src/univer/*-ribbon.ts` | Ajouts au ruban (Démarrer, Données, Formules, Vue), commandes annulables |
 | `src/univer/french-display.ts` | Affichage à la française du format Standard et des booléens |
 | `src/univer/custom-functions.ts` | Fonctions ajoutées au moteur (worker et page) |
-| `src/app/print.ts` | Impression / PDF |
+| `src/app/print.ts` | Impression / PDF avec aperçu des pages |
+| `src/univer/outline-gutter.ts` | Marge du plan (boutons de niveau et − / +) posée sur la grille |
+| `src/univer/protection.ts`, `src/data/cell-locks.ts` | Protection de feuille, cellules déverrouillées, garde des commandes |
+| `src/univer/formula-audit.ts`, `src/data/evaluate-formula.ts` | Vérification des erreurs et Évaluer la formule |
+| `src/univer/calculation.ts` | Calcul automatique / manuel, F9 |
+| `src/univer/table-styles-ui.ts`, `src/data/table-styles.ts` | Galerie des styles de tableau |
+| `src/io/xlsx/chartex.ts` | Graphiques Excel 2016 (cascade, entonnoir, histogramme, boîte à moustaches) |
+| `src-tauri/` | Application Mac : fenêtres multiples, ouverture par le Finder (`src/io/tauri-files.ts` côté JS) |
 
 ## Moteur de formules — choix
 

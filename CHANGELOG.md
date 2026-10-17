@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.6.0] — 2026-10-17
+
+### Ajouté
+- **Plusieurs fenêtres** (application Mac) : Fichier → Nouveau et Fichier → Ouvrir, ou un double-clic dans le Finder, ouvrent un classeur dans sa propre fenêtre sans fermer celui en cours.
+- CLAUDE.md (consignes du projet pour Claude Code) et guide « Développer sur Mac » dans le README.
+
 ## [1.5.0] — 2026-10-17
 
 ### Ajouté

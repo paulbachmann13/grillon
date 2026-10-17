@@ -9,6 +9,10 @@ const DB_NAME = 'grillon';
 const STORE = 'autosave';
 const KEY = 'current';
 
+/** Les fenêtres supplémentaires (application de bureau) ne touchent pas à la sauvegarde de la fenêtre principale. */
+let enabled = true;
+export const disableAutosave = (): void => void (enabled = false);
+
 export interface AutosaveEntry {
   data: IWorkbookData;
   fileName: string;
@@ -45,6 +49,7 @@ async function tx<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => ID
 }
 
 export async function saveAutosave(entry: AutosaveEntry): Promise<void> {
+  if (!enabled) return;
   try {
     await tx('readwrite', (s) => s.put(entry, KEY));
   } catch {
@@ -55,6 +60,7 @@ export async function saveAutosave(entry: AutosaveEntry): Promise<void> {
 }
 
 export async function loadAutosave(): Promise<AutosaveEntry | null> {
+  if (!enabled) return null;
   try {
     const entry = ((await tx('readonly', (s) => s.get(KEY))) as AutosaveEntry | undefined) ?? null;
     if (entry && !entry.handle && entry.path) entry.handle = tauriHandleFromPath(entry.path);
@@ -65,6 +71,7 @@ export async function loadAutosave(): Promise<AutosaveEntry | null> {
 }
 
 export async function clearAutosave(): Promise<void> {
+  if (!enabled) return;
   try {
     await tx('readwrite', (s) => s.delete(KEY));
   } catch {

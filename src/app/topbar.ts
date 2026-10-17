@@ -56,7 +56,7 @@ export class Topbar {
     this.menu.hidden = true;
 
     const items: MenuItem[] = [
-      { id: 'new', label: t('file.new'), run: () => this.confirmThen(() => doc.newWorkbook()) },
+      { id: 'new', label: t('file.new'), run: async () => ((await doc.newInNewWindow()) ? undefined : this.confirmThen(() => doc.newWorkbook())) },
       { id: 'open', label: t('file.open'), shortcut: `${mod}O`, run: () => doc.open() },
       { id: 'save', label: t('file.save'), shortcut: `${mod}S`, run: () => doc.save(), separatorBefore: true },
       { id: 'save-as', label: t('file.saveAs'), shortcut: isMac ? '⇧⌘S' : 'Ctrl+Maj+S', run: () => doc.saveAs() },

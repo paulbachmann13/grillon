@@ -3,7 +3,7 @@
  * n'affiche pas toujours window.confirm), boîte du navigateur sinon.
  */
 import { t } from '../i18n';
-import { isTauri } from '../io/tauri-files';
+import { isTauri, secondaryWindowLabel } from '../io/tauri-files';
 
 export async function confirmAsync(message: string, title = t('app.name')): Promise<boolean> {
   if (isTauri()) {
@@ -22,7 +22,7 @@ export async function guardDesktopClose(isDirty: () => boolean, beforeClose: () 
   if (!isTauri()) return;
   const { getCurrentWindow } = await import('@tauri-apps/api/window');
   await getCurrentWindow().onCloseRequested(async (event) => {
-    if (isDirty() && !(await confirmAsync(t('confirm.close')))) {
+    if (isDirty() && !(await confirmAsync(t(secondaryWindowLabel() ? 'confirm.closeWindow' : 'confirm.close')))) {
       event.preventDefault();
       return;
     }

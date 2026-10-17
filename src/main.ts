@@ -6,7 +6,8 @@ import { setupPwa } from './app/pwa';
 import { installShortcuts } from './app/shortcuts';
 import { Topbar } from './app/topbar';
 import { t } from './i18n';
-import { isTauri, listenForOpenRequests } from './io/tauri-files';
+import { isTauri, secondaryWindowLabel, takeStartupOpens, takeWindowOpen, tauriHandleFromPath } from './io/tauri-files';
+import { disableAutosave } from './storage/autosave';
 import { setupUniver } from './univer/setup';
 import './style.css';
 import { guardDesktopClose } from './app/confirm';
@@ -34,16 +35,22 @@ setupPwa(
 (window as unknown as { grillon: unknown }).grillon = { api, doc };
 
 async function start(): Promise<void> {
-  if (await doc.restore()) topbar?.setStatus(t('status.restored'), 'success');
-  else doc.newWorkbook();
-
-  // Application de bureau : fichier ouvert depuis le Finder (double-clic).
-  if (isTauri()) {
-    void listenForOpenRequests(async (handle) => {
-      if (!(await doc.confirmDiscard())) return;
-      const file = await handle.getFile();
-      await doc.openBytes(file.name, new Uint8Array(await file.arrayBuffer()), handle);
-    });
+  const secondary = isTauri() ? secondaryWindowLabel() : null;
+  if (secondary) {
+    // Fenêtre supplémentaire (Fichier > Nouveau / Ouvrir, double-clic dans le Finder) : un classeur
+    // à elle ; la sauvegarde automatique et la restauration restent à la fenêtre principale.
+    disableAutosave();
+    const path = await takeWindowOpen(secondary);
+    if (path) await doc.openHandle(tauriHandleFromPath(path), true);
+    else doc.newWorkbook();
+  } else {
+    if (await doc.restore()) topbar?.setStatus(t('status.restored'), 'success');
+    else doc.newWorkbook();
+    // Application de bureau : fichiers ouverts depuis le Finder (double-clic) avant le démarrage ;
+    // les suivants arrivent dans leur propre fenêtre (côté natif).
+    if (isTauri()) {
+      for (const path of await takeStartupOpens()) await doc.openHandle(tauriHandleFromPath(path));
+    }
   }
 
   // Ouverture de fichiers par glisser-déposer.

@@ -79,7 +79,7 @@
 - Raccourcis Excel : Ctrl+C/V/X, Ctrl+Z/Y, Ctrl+B/I/U, F2, F4, Ctrl+flèches, Ctrl+Maj+flèches, Ctrl+Origine/Fin, Ctrl+Espace / Maj+Espace (colonne / ligne), Ctrl+D / Ctrl+R (recopier), **Alt+=** (somme automatique), Ctrl+E, Ctrl+; (date), Ctrl+: (heure), Ctrl+Maj+1 à 6 (formats nombre, heure, date, monétaire, %, scientifique), Ctrl+Maj++ / Ctrl+- (insérer / supprimer des cellules), Ctrl+` (afficher les formules), Ctrl+Maj+L (filtre), Ctrl+F (rechercher), Ctrl+S/O/P, Ctrl+1 / ⌘1 (Format de cellule), **F9** (calculer).
 
 ### Application Mac
-- .dmg universel (Intel et Apple Silicon), non signé ; Cmd+S réécrit le fichier d'origine, double-clic dans le Finder, boîtes natives. Voir le README.
+- .dmg universel (Intel et Apple Silicon), non signé ; Cmd+S réécrit le fichier d'origine, double-clic dans le Finder, boîtes natives. **Plusieurs fenêtres** : Nouveau et Ouvrir ouvrent un classeur par fenêtre, comme Excel. Voir le README.
 
 ### PWA
 - Installable, fonctionne hors ligne (tout est mis en cache, y compris le convertisseur xlsx).
@@ -109,6 +109,7 @@
 | Tableaux : la ligne de totaux est une ligne ordinaire sous le tableau dans Grillon (Univer ne gère pas encore les totaux) ; elle est réécrite comme vraie ligne de totaux dans le .xlsx. Les styles de tableau d'Excel sont affichés avec le style le plus proche de la galerie (couleur et famille) et le nom d'origine est réécrit tel quel tant qu'on ne change pas de style. | — |
 | Validation : le type « case à cocher » d'Univer n'existe pas dans Excel et n'est pas exporté. | — |
 | Les fichiers protégés par mot de passe, .xls (ancien format) et .xlsb ne sont pas pris en charge. | Les réenregistrer en .xlsx depuis Excel/LibreOffice. |
+| Plusieurs fenêtres : uniquement dans l'application Mac ; dans le navigateur, ouvrir un autre fichier remplace le classeur courant (ouvrir Grillon dans un autre onglet pour en avoir deux). Les fenêtres supplémentaires n'ont pas de sauvegarde automatique (confirmation avant fermeture). | — |
 | Sur Safari/iOS, « Enregistrer » télécharge une copie (pas de réécriture du fichier d'origine). | Limite du navigateur ; une app Mac (Tauri) le permettrait (voir README). |
 | Impression : l'aperçu montre le contenu des pages, sans les en-têtes et pieds de page ni les lignes à répéter ; le découpage final est celui du navigateur. Les en-têtes et pieds de page (et les numéros de page) s'impriment avec Chrome et Edge (marges de page CSS) ; Safari et Firefox les ignorent. Pas de sauts de page manuels ; « centrer verticalement » est enregistré dans le fichier mais pas appliqué à l'impression. | — |
 | iPhone : ruban complet, défilable horizontalement ; pas d'interface dédiée au téléphone. | Version simplifiée suffisante pour consulter et saisir. |

@@ -4,6 +4,7 @@
 import type { FUniver } from '@univerjs/presets';
 import { t } from '../i18n';
 import { openFile, saveAs, writeToHandle } from '../io/files';
+import { isTauri, openInNewWindow, pathOfHandle } from '../io/tauri-files';
 import type { IWorkbookData } from '../model/univer-types';
 import { installFrenchDisplay } from '../univer/french-display';
 import { installCharts } from '../charts/chart-view';
@@ -129,10 +130,43 @@ export class DocumentController {
     return !this.dirty || confirmAsync(t('confirm.discard'));
   }
 
+  /** Fenêtre vide et intacte : un fichier ouvert la remplace au lieu d'en ouvrir une autre. */
+  isPristine(): boolean {
+    return !this.dirty && !this.handle;
+  }
+
   async open(): Promise<void> {
-    if (!(await this.confirmDiscard())) return;
     const file = await openFile('any');
-    if (file) await this.openBytes(file.name, file.bytes, file.handle);
+    if (!file) return;
+    if (await this.openInOtherWindow(file.handle)) return;
+    if (!(await this.confirmDiscard())) return;
+    await this.openBytes(file.name, file.bytes, file.handle);
+  }
+
+  /**
+   * Application de bureau : comme Excel, un fichier s'ouvre dans sa propre fenêtre, sans fermer
+   * le classeur en cours. Renvoie false s'il faut l'ouvrir ici (fenêtre vide, navigateur).
+   */
+  private async openInOtherWindow(handle: FileSystemFileHandle | undefined): Promise<boolean> {
+    const path = pathOfHandle(handle);
+    if (!path || this.isPristine()) return false;
+    await openInNewWindow(path);
+    return true;
+  }
+
+  /** Ouvre le fichier d'un handle (Finder, fenêtre créée pour lui) ; fenêtre dédiée si celle-ci est utilisée. */
+  async openHandle(handle: FileSystemFileHandle, inThisWindow = false): Promise<void> {
+    if (!inThisWindow && (await this.openInOtherWindow(handle))) return;
+    if (!(await this.confirmDiscard())) return;
+    const file = await handle.getFile();
+    await this.openBytes(file.name, new Uint8Array(await file.arrayBuffer()), handle);
+  }
+
+  /** Fichier > Nouveau : dans l'application de bureau, un classeur vide dans une nouvelle fenêtre. */
+  async newInNewWindow(): Promise<boolean> {
+    if (!isTauri() || this.isPristine()) return false;
+    await openInNewWindow();
+    return true;
   }
 
   async openBytes(name: string, bytes: Uint8Array, handle?: FileSystemFileHandle): Promise<void> {

@@ -117,7 +117,7 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 | Affichages personnalisés | Non | |
 | Règle, quadrillage, barre de formule, en-têtes | Partiel | Quadrillage |
 | Zoom, 100 %, zoom sur la sélection | Oui | |
-| Nouvelle fenêtre, réorganiser, fractionner | Non | |
+| Nouvelle fenêtre (un classeur par fenêtre), réorganiser, fractionner | Partiel | App Mac : une fenêtre par classeur ; pas de réorganisation ni de fractionnement |
 | Figer les volets | Oui | |
 | Masquer / afficher une feuille | Oui | |
 | Macros (VBA), Office Scripts | Non | Hors périmètre |
@@ -134,5 +134,5 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 | Touches d'accès (Alt…) | Non | |
 | Grille jusqu'à 1 048 576 × 16 384 | Oui | |
 | Classeurs de 100 000 lignes | Oui | Quelques secondes à l'ouverture |
-| Application Mac et Windows | Partiel | Mac : .dmg construit, à tester ; Windows : web/PWA |
+| Application Mac et Windows | Partiel | Mac : .dmg construit (plusieurs fenêtres), à tester ; Windows : web/PWA |
 | iPad / iPhone | Oui | Appli installée depuis Safari |

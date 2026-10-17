@@ -72,8 +72,24 @@ dans le Finder. L'accès aux fichiers est isolé dans `src/io/files.ts` et `src/
 - **Non signé** (pas de compte développeur Apple) : au premier lancement sur chaque Mac, ouvrir
   Réglages Système → Confidentialité et sécurité → « Ouvrir quand même ».
 - En local (sur un Mac avec Rust installé) : `npm run build:mac`.
-- Non testé sur un vrai Mac au moment de l'écriture : le .dmg est construit par la CI GitHub.
+- **Plusieurs fenêtres**, comme Excel : Fichier → Nouveau et Fichier → Ouvrir (ou un double-clic dans le Finder)
+  ouvrent un classeur dans sa propre fenêtre, sans fermer celui en cours (sauf si la fenêtre est encore vide et intacte).
+- **Mise à jour** : télécharger le nouveau .dmg (Actions → « Application Mac » → `Grillon-mac`) et remplacer
+  Grillon dans Applications ; les fichiers ne sont pas touchés.
 - Limite : l'impression (Ctrl+P) dépend de la fenêtre web du système ; à vérifier sur Mac.
+
+### Développer sur Mac (avec Claude Code)
+
+```bash
+brew install node            # Node.js 20+
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh   # Rust (pour l'application Mac)
+git clone https://github.com/paulbachmann13/grillon.git && cd grillon
+npm install
+npm run dev                  # le site en local
+npm run tauri dev            # l'application Mac en développement
+```
+
+Les consignes du projet pour Claude Code sont dans [CLAUDE.md](CLAUDE.md).
 
 ## Licence
 

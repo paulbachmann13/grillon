@@ -72,14 +72,23 @@ export async function tauriPickSave(defaultPath: string, filters: DialogFilter[]
   return path ? tauriHandleFromPath(path) : null;
 }
 
-/** Fichiers demandés par le Finder (double-clic) : ceux reçus avant le démarrage, puis les suivants. */
-export async function listenForOpenRequests(onOpen: (handle: FileSystemFileHandle) => void): Promise<void> {
+/** Étiquette de la fenêtre créée par « Nouveau » / « Ouvrir » (absente pour la fenêtre principale). */
+export const secondaryWindowLabel = (): string | null => (typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('w'));
+
+/** Fichiers demandés par le Finder avant le démarrage (fenêtre principale seulement). */
+export async function takeStartupOpens(): Promise<string[]> {
   const { invoke } = await import('@tauri-apps/api/core');
-  const { listen } = await import('@tauri-apps/api/event');
-  await listen<string[]>('grillon://open', (e) => {
-    const path = e.payload[0];
-    if (path) onOpen(tauriHandleFromPath(path));
-  });
-  const pending = await invoke<string[]>('take_pending_opens');
-  if (pending[0]) onOpen(tauriHandleFromPath(pending[0]));
+  return invoke<string[]>('take_pending_opens');
+}
+
+/** Fichier que doit ouvrir une fenêtre créée par openInNewWindow (null : classeur vide). */
+export async function takeWindowOpen(label: string): Promise<string | null> {
+  const { invoke } = await import('@tauri-apps/api/core');
+  return (await invoke<string | null>('take_window_open', { label })) ?? null;
+}
+
+/** Ouvre une nouvelle fenêtre Grillon (comme Excel : un classeur par fenêtre), avec un fichier éventuel. */
+export async function openInNewWindow(path?: string): Promise<void> {
+  const { invoke } = await import('@tauri-apps/api/core');
+  await invoke('new_window', { path: path ?? null });
 }
