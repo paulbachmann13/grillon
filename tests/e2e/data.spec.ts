@@ -120,7 +120,8 @@ test('Mettre sous forme de tableau, ligne de totaux et référence structurée',
   await run(page, `ws.getRange('A1:B4').setValues([['Produit','Qte'],['Café',2],['Thé',5],['Jus',1]]);`);
   await select(page, 'A2');
   await dataTab(page);
-  await ribbon(page, 'grillon.data.table', 'Mettre sous forme de tableau');
+  await ribbon(page, 'grillon.data.table', 'Mettre sous forme de tableau…');
+  await page.getByTestId('dialog-table-styles').getByRole('button', { name: 'Moyen 2', exact: true }).click();
   await expect.poll(() => run<string[]>(page, `return wb.getTableList().map(t => t.name);`)).toEqual(['Tableau1']);
   await ribbon(page, 'grillon.data.table', 'Ligne de totaux');
   await expect.poll(() => display(page, 'B5')).toBe('8');

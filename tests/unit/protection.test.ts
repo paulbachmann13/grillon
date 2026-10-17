@@ -40,4 +40,17 @@ describe('protection de feuille', () => {
     const back = await importXlsx(bytes);
     expect((Object.values(back.sheets)[0] as { custom?: { grillon?: { protection?: unknown } } }).custom?.grillon?.protection).toEqual({});
   });
+
+  it('round-trip .xlsx : cellules déverrouillées (protection locked="0")', async () => {
+    const wb = chartWorkbook([]);
+    const rect = { startRow: 1, endRow: 3, startColumn: 1, endColumn: 2 };
+    (wb.sheets.s1 as { custom?: unknown }).custom = { grillon: { protection: {}, unlocked: [rect] } };
+    const bytes = await exportXlsx(wb);
+    const styles = await (await JSZip.loadAsync(bytes)).file('xl/styles.xml')!.async('string');
+    expect(styles).toContain('locked="0"');
+    const back = await importXlsx(bytes);
+    const grillon = (Object.values(back.sheets)[0] as { custom?: { grillon?: { unlocked?: unknown; protection?: unknown } } }).custom?.grillon;
+    expect(grillon?.unlocked).toEqual([rect]);
+    expect(grillon?.protection).toEqual({});
+  });
 });

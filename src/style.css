@@ -862,3 +862,45 @@ body,
   border-radius: 3px;
   cursor: pointer;
 }
+
+/* Marge du plan (boutons 1 2 3, − et +), comme Excel */
+.g-outline { position: absolute; pointer-events: none; overflow: hidden; z-index: 9; }
+.g-outline-btn {
+  position: absolute; width: 13px; height: 13px; padding: 0; pointer-events: auto;
+  font: 600 10px/11px system-ui, sans-serif; text-align: center; cursor: pointer;
+  color: var(--grillon-fg); background: var(--grillon-bg); border: 1px solid var(--grillon-muted); border-radius: 2px;
+}
+.g-outline-btn:hover { background: var(--grillon-menu-hover); border-color: var(--grillon-accent); }
+.g-outline-line { position: absolute; background: var(--grillon-muted); }
+
+/* Galerie des styles de tableau */
+.g-table-style-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.g-table-style { padding: 3px; background: var(--grillon-bg); border: 1px solid var(--grillon-border); border-radius: 4px; cursor: pointer; }
+.g-table-style:hover, .g-table-style.selected { border-color: var(--grillon-accent); box-shadow: 0 0 0 1px var(--grillon-accent); }
+.g-table-preview { display: grid; grid-template-columns: repeat(4, 13px); grid-auto-rows: 8px; background: #fff; }
+.g-table-preview span { font-size: 5px; line-height: 7px; text-align: center; color: inherit; overflow: hidden; }
+
+/* Évaluer la formule / Vérification des erreurs */
+.g-eval-expr { font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace; padding: 8px 10px; min-height: 2.5em; border: 1px solid var(--grillon-border); border-radius: 4px; background: var(--grillon-bg); color: var(--grillon-fg); word-break: break-all; }
+.g-eval-expr u { text-decoration-thickness: 2px; text-underline-offset: 3px; text-decoration-color: var(--grillon-accent); }
+.g-eval-title { font-weight: 600; margin-bottom: 0; }
+.g-eval-where { font-weight: 600; }
+.g-eval-status { color: var(--grillon-muted); font-size: 12px; }
+.g-eval-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.g-eval-actions button { height: 30px; padding: 0 12px; border: 1px solid var(--grillon-border); border-radius: 6px; background: var(--grillon-bg); color: inherit; font: inherit; cursor: pointer; }
+.g-eval-actions button:hover:not(:disabled) { border-color: var(--grillon-accent); }
+.g-eval-actions button:disabled { opacity: 0.5; cursor: default; }
+
+/* Imprimer : réglages et aperçu, comme le mode Backstage d'Excel */
+.g-print-layout { display: grid; grid-template-columns: minmax(220px, 1fr) auto; gap: 20px; align-items: start; }
+.g-print-preview { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px; background: var(--grillon-menu-hover); border-radius: 6px; }
+.g-print-holder { overflow: hidden; }
+.g-print-page { box-sizing: border-box; background: #fff; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3); transform-origin: top left; overflow: hidden; }
+.g-print-page iframe { display: block; border: 0; overflow: hidden; background: #fff; }
+.g-print-nav { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.g-print-nav button { min-width: 28px; height: 26px; border: 1px solid var(--grillon-border); border-radius: 4px; background: var(--grillon-bg); color: inherit; cursor: pointer; }
+.g-print-nav button:disabled { opacity: 0.4; cursor: default; }
+@media (max-width: 720px) { .g-print-layout { grid-template-columns: 1fr; } }
+
+/* Calcul manuel (comme « Calculer » dans la barre d'état d'Excel) */
+.g-calc-badge { position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%); z-index: 20; padding: 3px 10px; border-radius: 10px; font-size: 12px; background: var(--grillon-accent); color: #fff; pointer-events: none; }

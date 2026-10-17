@@ -11,10 +11,15 @@
 import { columnToLetters, rangeFromA1 } from '../io/xlsx/units';
 import { formatGeneral, formatNumberPattern } from './format';
 import { errorAmounts, trendline, type ErrorBarsSpec, type TrendlineSpec } from './trendline';
+import { boxStats, histogramBins, waterfallBars, type BinOptions } from './stats';
 
 export type { ErrorBarsSpec, TrendlineSpec, TrendlineType } from './trendline';
 
-export type ChartType = 'column' | 'bar' | 'line' | 'area' | 'pie' | 'doughnut' | 'scatter' | 'bubble' | 'radar';
+export type ChartType = 'column' | 'bar' | 'line' | 'area' | 'pie' | 'doughnut' | 'scatter' | 'bubble' | 'radar' | StatChartType;
+/** Graphiques d'Excel 2016 (enregistrés au format « chartEx ») : cascade, entonnoir, histogramme, boîte à moustaches. */
+export type StatChartType = 'waterfall' | 'funnel' | 'histogram' | 'boxWhisker';
+export const STAT_CHART_TYPES: StatChartType[] = ['waterfall', 'funnel', 'histogram', 'boxWhisker'];
+export const isStatChart = (type: ChartType): type is StatChartType => (STAT_CHART_TYPES as string[]).includes(type);
 export type Grouping = 'standard' | 'stacked' | 'percent';
 export type MarkerShape = 'circle' | 'square' | 'diamond' | 'triangle' | 'none';
 export type LabelPosition = 'auto' | 'center' | 'insideEnd' | 'insideBase' | 'outsideEnd' | 'above' | 'below' | 'left' | 'right';
@@ -116,6 +121,13 @@ export interface ChartSpec {
   emptyCells?: 'gap' | 'zero' | 'connect';
   /** N'afficher que les cellules visibles (défaut : oui). */
   plotVisibleOnly?: boolean;
+  /** Cascade : points affichés comme totaux (barre partant de zéro). */
+  waterfallTotals?: number[];
+  /** Histogramme : classes. */
+  bins?: BinOptions;
+  /** Boîte à moustaches : moyenne (croix), valeurs aberrantes. */
+  boxShowMean?: boolean;
+  boxShowOutliers?: boolean;
 }
 
 export const PALETTES: Record<string, { label: string; colors: string[] }> = {
@@ -173,7 +185,7 @@ export function seriesFromRange(
   const firstDataRow = headerRow ? 1 : 0;
   const headerCol = cols > 1 && (grid.slice(firstDataRow).some((r) => isText(r[0])) || (headerRow && !isText(grid[0][0]) && grid[0][0] === null));
   const xy = type === 'scatter' || type === 'bubble';
-  const single = type === 'pie' || type === 'doughnut';
+  const single = type === 'pie' || type === 'doughnut' || type === 'waterfall' || type === 'funnel';
   const auto = !headerCol && !headerRow ? false : cols - (headerCol ? 1 : 0) > rows - (headerRow ? 1 : 0) && !xy && !single;
   const byRows = options.byRows ?? auto;
   const r0 = origin.row;
@@ -333,6 +345,121 @@ function axisOption(a: AxisSpec | undefined, o: { title?: string; kind: 'value' 
   };
 }
 
+interface StatCtx {
+  title: unknown;
+  background: string;
+  text: string;
+  grid: string;
+  fontSize: number;
+  palette: string[];
+  legend: (extra: string[]) => Record<string, unknown>;
+  gridBox: Record<string, unknown>;
+}
+
+/** Cascade, entonnoir, histogramme et boîte à moustaches, dessinés comme Excel. */
+function statChartOption(spec: ChartSpec, series: ResolvedSeries[], c: StatCtx): Record<string, unknown> {
+  const base = { backgroundColor: c.background, title: c.title, textStyle: { fontSize: c.fontSize }, grid: c.gridBox };
+  const dl = spec.dataLabels;
+  const valueAxis = (title?: string, a?: AxisSpec) => axisOption(a, { title, kind: 'value', text: c.text, grid: c.grid, fontSize: c.fontSize, position: 'left', defaultGrid: true });
+  const catAxis = (data: string[], title?: string, a?: AxisSpec) => axisOption(a, { title, kind: 'category', text: c.text, grid: c.grid, fontSize: c.fontSize, position: 'bottom', defaultGrid: false, data });
+
+  if (spec.type === 'waterfall') {
+    const s = series[0];
+    const cats = (s?.categories ?? []).map(formatCategory);
+    const bars = waterfallBars(s?.values ?? [], spec.waterfallTotals ?? []);
+    const colors = { increase: s?.spec.color ?? c.palette[0]!, decrease: c.palette[1]!, total: c.palette[2]! };
+    const names = { increase: 'Augmentation', decrease: 'Diminution', total: 'Total' };
+    const kinds = (['increase', 'decrease', 'total'] as const).filter((k) => bars.some((b) => b.kind === k));
+    return {
+      ...base,
+      legend: { ...c.legend([]), data: kinds.map((k) => names[k]) },
+      tooltip: { trigger: 'item', formatter: (p: { dataIndex: number }) => `${cats[p.dataIndex] ?? ''} : ${fmt(s?.values[p.dataIndex] ?? 0)}` },
+      xAxis: catAxis(cats, spec.xAxisTitle, spec.axes?.x),
+      yAxis: valueAxis(spec.yAxisTitle, spec.axes?.y),
+      series: [
+        { type: 'bar', stack: 'w', silent: true, itemStyle: { color: 'transparent' }, data: bars.map((b) => b.base), tooltip: { show: false } },
+        ...kinds.map((k) => ({
+          type: 'bar',
+          name: names[k],
+          stack: 'w',
+          barCategoryGap: `${Math.round((spec.gapWidth ?? 50) / 3)}%`,
+          itemStyle: { color: colors[k] },
+          data: bars.map((b, i) => (b.kind === k ? { value: b.value, raw: s?.values[i] ?? 0, itemStyle: s?.spec.pointColors?.[i] ? { color: s.spec.pointColors[i] } : undefined } : '-')),
+          label: labelOption(dl ?? { show: true }, { horizontal: false, kind: 'bar', stackedFill: false, text: c.text, fontSize: c.fontSize }),
+        })),
+      ],
+    };
+  }
+
+  if (spec.type === 'funnel') {
+    const s = series[0];
+    const cats = (s?.categories ?? []).map(formatCategory);
+    const values = (s?.values ?? []).map((v) => Math.max(0, v ?? 0));
+    const max = Math.max(0, ...values);
+    return {
+      ...base,
+      legend: { show: false },
+      tooltip: { trigger: 'item', formatter: (p: { dataIndex: number }) => `${cats[p.dataIndex] ?? ''} : ${fmt(values[p.dataIndex] ?? 0)}` },
+      xAxis: { type: 'value', show: false, max },
+      yAxis: { type: 'category', data: cats, inverse: true, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: c.text, fontSize: c.fontSize } },
+      series: [
+        { type: 'bar', stack: 'f', silent: true, itemStyle: { color: 'transparent' }, data: values.map((v) => (max - v) / 2), tooltip: { show: false } },
+        {
+          type: 'bar',
+          name: s?.name,
+          stack: 'f',
+          barCategoryGap: '6%',
+          data: values.map((v, i) => ({ value: v, raw: v, itemStyle: { color: s?.spec.pointColors?.[i] ?? s?.spec.color ?? c.palette[0] } })),
+          label: { show: dl?.show !== false, position: 'inside', color: '#fff', fontSize: c.fontSize, formatter: (p: { data: { raw: number } }) => fmt(p.data.raw, dl?.numFmt) },
+        },
+      ],
+    };
+  }
+
+  if (spec.type === 'histogram') {
+    const values = series.flatMap((s) => s.values.filter((v): v is number => v !== null));
+    const bins = histogramBins(values, spec.bins);
+    const color = series[0]?.spec.color ?? c.palette[0]!;
+    return {
+      ...base,
+      legend: { show: false },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      xAxis: catAxis(bins.map((b) => b.label), spec.xAxisTitle, spec.axes?.x),
+      yAxis: valueAxis(spec.yAxisTitle, spec.axes?.y),
+      series: [
+        {
+          type: 'bar',
+          name: series[0]?.name ?? '',
+          barCategoryGap: `${Math.round((spec.gapWidth ?? 0) / 3)}%`,
+          itemStyle: { color, borderColor: c.background === 'transparent' ? '#1e1e1e' : '#ffffff', borderWidth: 1 },
+          data: bins.map((b) => ({ value: b.count, raw: b.count })),
+          label: labelOption(dl, { horizontal: false, kind: 'bar', stackedFill: false, text: c.text, fontSize: c.fontSize }),
+        },
+      ],
+    };
+  }
+
+  // Boîte à moustaches : une boîte par catégorie et par série.
+  const rawCats = series[0]?.spec.categoriesRef ? (series[0]?.categories ?? []).map(formatCategory) : [];
+  const groups = rawCats.length ? [...new Set(rawCats)] : [''];
+  const out: Record<string, unknown>[] = [];
+  series.forEach((s, i) => {
+    const color = s.spec.color ?? c.palette[i % c.palette.length]!;
+    const stats = groups.map((g) => boxStats(s.values.filter((v, k): v is number => v !== null && (!rawCats.length || rawCats[k] === g))));
+    out.push({ type: 'boxplot', name: s.name, itemStyle: { color: `${color}55`, borderColor: color }, data: stats.map((b) => (b ? [b.min, b.q1, b.median, b.q3, b.max] : [])) });
+    if (spec.boxShowMean !== false) out.push({ type: 'scatter', name: s.name, symbol: 'path://M0,0L10,10M10,0L0,10', symbolSize: 8, itemStyle: { borderColor: color, borderWidth: 1.5, color }, data: stats.map((b, k) => (b ? [k, b.mean] : null)).filter(Boolean), tooltip: { show: false } });
+    if (spec.boxShowOutliers !== false) out.push({ type: 'scatter', name: s.name, symbolSize: 5, itemStyle: { color }, data: stats.flatMap((b, k) => (b ? b.outliers.map((o) => [k, o]) : [])) });
+  });
+  return {
+    ...base,
+    legend: { ...c.legend([]), data: series.map((s) => s.name) },
+    tooltip: { trigger: 'item' },
+    xAxis: catAxis(groups, spec.xAxisTitle, spec.axes?.x),
+    yAxis: { ...valueAxis(spec.yAxisTitle, spec.axes?.y), scale: true },
+    series: out,
+  };
+}
+
 /** Option ECharts pour un graphique (type principal + éventuelles séries d'autres types). */
 export function buildEChartsOption(spec: ChartSpec, series: ResolvedSeries[], dark = false): Record<string, unknown> {
   const text = dark ? '#e6e6e6' : '#404040';
@@ -366,6 +493,10 @@ export function buildEChartsOption(spec: ChartSpec, series: ResolvedSeries[], da
     bottom: 12 + (legendPos === 'bottom' && !spec.legendOverlay ? 30 : 0),
     containLabel: true,
   });
+
+  if (isStatChart(spec.type)) {
+    return statChartOption(spec, series, { title, background, text, grid, fontSize, palette, legend: legendBase, gridBox: gridBox(false) });
+  }
 
   // --- Secteurs et anneaux ---
   if (spec.type === 'pie' || spec.type === 'doughnut') {

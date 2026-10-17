@@ -7,7 +7,8 @@
  */
 import type JSZip from 'jszip';
 import type { AxisSpec, ChartSpec, ChartType, DataLabelsSpec, ErrorBarsSpec, Grouping, LabelPosition, MarkerShape, SeriesSpec, TrendlineSpec } from '../../charts/spec';
-import { DEFAULT_COLORS, groupingOf, PALETTES, parseSheetRef } from '../../charts/spec';
+import { DEFAULT_COLORS, groupingOf, isStatChart, PALETTES, parseSheetRef } from '../../charts/spec';
+import { buildChartExXml, chartExFrameXml, CT_CHARTEX, parseChartExXml, REL_CHARTEX } from './chartex';
 import type { ShapeSpec } from '../../charts/shape';
 import type { ICellData, IWorkbookData, IWorksheetData } from '../../model/univer-types';
 import { parseShapeAnchor, shapeXml } from './shapes';
@@ -441,8 +442,13 @@ export async function readSheetCharts(zip: JSZip, sheetPath: string): Promise<Sh
       let image: string | undefined;
       let shape: ShapeSpec | null = null;
       const chartRef = /<c:chart\b[^>]*\br:id="([^"]+)"/.exec(anchor.xml)?.[1];
+      const chartExRef = /<cx:chart\b[^>]*\br:id="([^"]+)"/.exec(anchor.xml)?.[1];
       const blipRef = /<a:blip\b[^>]*\br:embed="([^"]+)"/.exec(anchor.xml)?.[1];
-      if (chartRef) {
+      if (chartExRef) {
+        const rel = relById.get(chartExRef);
+        const file = rel && zip.file(resolveRelTarget(drawingPath, rel.Target));
+        if (file) spec = parseChartExXml(await file.async('string'));
+      } else if (chartRef) {
         const chartRel = relById.get(chartRef);
         const chartFile = chartRel && zip.file(resolveRelTarget(drawingPath, chartRel.Target));
         if (chartFile) spec = parseChartXml(await chartFile.async('string'));
@@ -835,7 +841,7 @@ export async function writeSheetCharts(
   sheetPath: string,
   sheetXml: string,
   charts: SheetChart[],
-  counters: { drawing: number; chart: number; image?: number },
+  counters: { drawing: number; chart: number; image?: number; chartEx?: number },
 ): Promise<string> {
   if (!charts.length) return sheetXml;
   const drawingIndex = ++counters.drawing;
@@ -864,6 +870,16 @@ export async function writeSheetCharts(
       continue;
     }
     if (!c.spec) continue;
+    if (isStatChart(c.spec.type)) {
+      // Cascade, entonnoir, histogramme, boîte à moustaches : partie chartEx d'Excel 2016.
+      const n = (counters.chartEx = (counters.chartEx ?? 0) + 1);
+      const path = `xl/charts/chartEx${n}.xml`;
+      zip.file(path, buildChartExXml(c.spec as never, (ref) => readValues(wb, ref, sheetName)));
+      await addContentTypeOverride(zip, `/${path}`, CT_CHARTEX);
+      const rid = await addRelationship(zip, drawingPath, REL_CHARTEX, `../charts/chartEx${n}.xml`);
+      anchors.push(`<xdr:twoCellAnchor editAs="oneCell">${anchorXml('from', c.from)}${anchorXml('to', c.to)}${chartExFrameXml(c.spec.type as never, i + 2, `Graphique ${i + 1}`, rid)}<xdr:clientData/></xdr:twoCellAnchor>`);
+      continue;
+    }
     const chartIndex = ++counters.chart;
     const chartPath = `xl/charts/chart${chartIndex}.xml`;
     zip.file(chartPath, buildChartXml(wb, c.spec, sheetName));

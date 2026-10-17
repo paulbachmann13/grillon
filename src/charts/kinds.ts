@@ -27,6 +27,9 @@ export const KIND_GROUPS: { id: string; label: string }[] = [
   { id: 'bubble', label: 'Bulles' },
   { id: 'radar', label: 'Radar' },
   { id: 'combo', label: 'Combo' },
+  { id: 'waterfall', label: 'Cascade' },
+  { id: 'funnel', label: 'Entonnoir' },
+  { id: 'statistic', label: 'Statistique' },
 ];
 
 export const CHART_KINDS: ChartKind[] = [
@@ -57,6 +60,10 @@ export const CHART_KINDS: ChartKind[] = [
   { id: 'radar-filled', group: 'radar', label: 'Radar plein', type: 'radar', radarFilled: true },
   { id: 'combo', group: 'combo', label: 'Histogramme groupé – Courbe', type: 'column', combo: 'line' },
   { id: 'combo-secondary', group: 'combo', label: 'Histogramme groupé – Courbe sur axe secondaire', type: 'column', combo: 'line-secondary' },
+  { id: 'waterfall', group: 'waterfall', label: 'Cascade', type: 'waterfall' },
+  { id: 'funnel', group: 'funnel', label: 'Entonnoir', type: 'funnel' },
+  { id: 'histogram', group: 'statistic', label: 'Histogramme (répartition)', type: 'histogram' },
+  { id: 'box-whisker', group: 'statistic', label: 'Zone et valeur (boîte à moustaches)', type: 'boxWhisker' },
 ];
 
 export const kindById = (id: string): ChartKind => CHART_KINDS.find((k) => k.id === id) ?? CHART_KINDS[0]!;

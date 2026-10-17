@@ -105,3 +105,29 @@ test('valeur cible', async ({ page }) => {
   const x = await run<number>(page, `return Number(ws.getRange('E1').getCellDataGrid()[0][0].v);`);
   expect(x).toBeCloseTo(2, 5);
 });
+
+test('graphiques cascade et entonnoir : insertion depuis le ruban, totaux, export .xlsx (chartEx)', async ({ page }) => {
+  await run(page, `wb.setActiveRange(ws.getRange('B1:C6'));`);
+  await page.getByRole('tab', { name: 'Insérer', exact: true }).click();
+  await page.locator('[data-u-command="grillon.insert.chart"]').first().click();
+  await page.getByRole('menuitem', { name: 'Cascade', exact: true }).click();
+  const chart = page.getByTestId('chart');
+  await expect(chart.locator('canvas')).toHaveCount(1);
+  await chart.hover();
+  await chart.getByRole('button', { name: 'Modifier le graphique' }).click();
+  const dialog = page.getByTestId('dialog-chart');
+  await dialog.getByRole('tab', { name: 'Mise en forme' }).click();
+  await dialog.getByLabel('Points affichés comme totaux (n°)').fill('5');
+  await dialog.getByRole('button', { name: 'Appliquer' }).click();
+  const spec = () => run<any>(page, 'return ws.getAllFloatDoms()[0].data.spec;');
+  await expect.poll(async () => (await spec()).waterfallTotals).toEqual([4]);
+  expect((await spec()).type).toBe('waterfall');
+  await page.evaluate(async () => {
+    const g = (window as any).grillon;
+    await g.doc.openBytes('g.xlsx', await g.doc.exportXlsxBytes());
+  });
+  await expect(page.getByTestId('chart')).toBeVisible();
+  const back = await spec();
+  expect(back.type).toBe('waterfall');
+  expect(back.waterfallTotals).toEqual([4]);
+});

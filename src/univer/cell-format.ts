@@ -6,10 +6,12 @@ import { IconManager } from '@univerjs/preset-sheets-core';
 import { CommandType, ICommandService, type FUniver } from '@univerjs/presets';
 import { createElement, type ComponentType } from 'react';
 import { formatNumberPattern } from '../charts/format';
+import { lockedState, setUnlocked } from '../data/cell-locks';
 import { CELL_STYLES, NO_BORDER, rangeStyles, type BorderPart } from '../data/cell-styles';
 import { t } from '../i18n';
 import type { IStyleData } from '../model/univer-types';
 import { box, checkbox, field, group, openDialog, select, textInput } from '../ui/dialog';
+import { protectionOf, storeUnlocked, unlockedOf } from './protection';
 
 /** Au-delà, on applique propriété par propriété (sélection de colonnes entières…). */
 const MAX_MATRIX_CELLS = 200_000;
@@ -353,6 +355,18 @@ export async function formatCellsDialog(api: Api, startTab = 'number'): Promise<
   }
   const fillPanel = box(field(t('format.fillColor'), fill), swatches, noFill);
 
+  // --- Protection ---
+  const sheetRange = sel.range.getRange();
+  const initialLock = lockedState(unlockedOf(sel.ws), sheetRange);
+  const locked = checkbox(t('format.locked'), initialLock !== false);
+  locked.input.indeterminate = initialLock === null;
+  locked.input.dataset.testid = 'format-locked';
+  let lockChanged = false;
+  locked.input.addEventListener('change', () => (lockChanged = true));
+  const sheetProtected = !!protectionOf(sel.ws);
+  locked.input.disabled = sheetProtected;
+  const protectionPanel = box(locked.el, sheetProtected ? t('format.lockedProtected') : t('format.lockedHelp'));
+
   // --- Onglets ---
   const tabs: [string, string, HTMLElement][] = [
     ['number', t('format.tabNumber'), numberPanel],
@@ -360,6 +374,7 @@ export async function formatCellsDialog(api: Api, startTab = 'number'): Promise<
     ['font', t('format.tabFont'), fontPanel],
     ['border', t('format.tabBorder'), borderPanel],
     ['fill', t('format.tabFill'), fillPanel],
+    ['protection', t('format.tabProtection'), protectionPanel],
   ];
   const bar = document.createElement('div');
   bar.className = 'g-chart-tabs';
@@ -383,6 +398,7 @@ export async function formatCellsDialog(api: Api, startTab = 'number'): Promise<
 
   const ok = await openDialog({ title: t('format.title'), testId: 'dialog-format-cells', wide: true, body: box(bar, host), onOk: () => true });
   if (!ok) return;
+  if (lockChanged && !sheetProtected) storeUnlocked(sel.ws, setUnlocked(unlockedOf(sel.ws), sheetRange, !locked.input.checked));
   const style: IStyleData = {};
   for (const k of changed) (style as Record<string, unknown>)[k] = (patch as Record<string, unknown>)[k];
   if (changed.has('n')) {

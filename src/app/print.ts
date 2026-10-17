@@ -191,6 +191,75 @@ function printHtml(html: string): void {
   else frame.addEventListener('load', () => setTimeout(go, 150));
 }
 
+const MM_TO_PX = 96 / 25.4;
+
+/**
+ * Aperçu avant impression (comme le panneau de droite d'Excel) : une page aux proportions du
+ * papier, marges comprises, et la navigation entre les pages. Le découpage est celui du navigateur
+ * à l'impression, au plus près (hauteur imprimable).
+ */
+function printPreview(): { el: HTMLElement; show(html: string, page: PageSetup): void } {
+  const el = document.createElement('div');
+  el.className = 'g-print-preview';
+  el.dataset.testid = 'print-preview';
+  const sheet = document.createElement('div');
+  sheet.className = 'g-print-page';
+  const frame = document.createElement('iframe');
+  frame.title = t('print.preview');
+  frame.setAttribute('scrolling', 'no');
+  sheet.append(frame);
+  // Le cadre réserve la place de la page réduite (transform ne change pas la mise en page).
+  const holder = document.createElement('div');
+  holder.className = 'g-print-holder';
+  holder.append(sheet);
+  const nav = document.createElement('div');
+  nav.className = 'g-print-nav';
+  const prev = actionButton('◀', () => go(index - 1));
+  const next = actionButton('▶', () => go(index + 1));
+  prev.setAttribute('aria-label', t('print.previousPage'));
+  next.setAttribute('aria-label', t('print.nextPage'));
+  const label = document.createElement('span');
+  label.dataset.testid = 'print-page-count';
+  nav.append(prev, label, next);
+  el.append(holder, nav);
+  let index = 0;
+  let pages = 1;
+  let pageHeight = 0;
+
+  function go(i: number): void {
+    index = Math.max(0, Math.min(pages - 1, i));
+    frame.contentWindow?.scrollTo(0, index * pageHeight);
+    label.textContent = t('print.pageOf', { n: index + 1, total: pages });
+    prev.disabled = index === 0;
+    next.disabled = index >= pages - 1;
+  }
+
+  return {
+    el,
+    show(html: string, page: PageSetup) {
+      const paper = PAPER_SIZES[page.paper ?? DEFAULT_PAGE.paper];
+      const landscape = page.orientation === 'landscape';
+      const w = (landscape ? paper.heightMm : paper.widthMm) * MM_TO_PX;
+      const h = (landscape ? paper.widthMm : paper.heightMm) * MM_TO_PX;
+      const m = page.margins ?? DEFAULT_PAGE.margins;
+      const [top, right, bottom, left] = [m.top, m.right, m.bottom, m.left].map((x) => x * 96);
+      // La page est réduite pour tenir dans l'aperçu ; le contenu garde ses dimensions d'impression.
+      const scale = Math.min(1, 380 / w, 520 / h);
+      Object.assign(sheet.style, { width: `${w}px`, height: `${h}px`, padding: `${top}px ${right}px ${bottom}px ${left}px`, transform: `scale(${scale})` });
+      Object.assign(holder.style, { width: `${w * scale}px`, height: `${h * scale}px` });
+      pageHeight = h - top - bottom;
+      Object.assign(frame.style, { width: `${w - left - right}px`, height: `${pageHeight}px` });
+      frame.srcdoc = html;
+      frame.onload = () => {
+        const doc = frame.contentDocument;
+        const height = doc?.documentElement.scrollHeight ?? pageHeight;
+        pages = Math.max(1, Math.ceil((height - 2) / pageHeight));
+        go(Math.min(index, pages - 1));
+      };
+    },
+  };
+}
+
 export async function printDialog(api: FUniver, fileName = ''): Promise<void> {
   const base = getPageSetup(api);
   const orientation = select(
@@ -209,26 +278,40 @@ export async function printDialog(api: FUniver, fileName = ''): Promise<void> {
   );
   const gridlines = checkbox(t('print.gridlines'), !!base.gridlines);
   const fit = checkbox(t('print.fitWidth'), base.fitWidth !== undefined ? !!base.fitWidth : !base.scale);
-  const setup = actionButton(t('print.pageSetup'), () => void import('./page-setup').then((m) => m.pageSetupDialog(api)));
+  const preview = printPreview();
+
+  // Les réglages de la feuille (papier, marges, zone, titres, en-têtes…) restent ; ceux de la boîte priment.
+  const currentPage = (): PageSetup => {
+    const current = getPageSetup(api);
+    const page: PageSetup = { ...current, orientation: orientation.value === 'landscape' ? 'landscape' : 'portrait', gridlines: gridlines.input.checked };
+    if (fit.input.checked) page.fitWidth = current.fitWidth || 1;
+    else {
+      delete page.fitWidth;
+      delete page.fitHeight;
+    }
+    return page;
+  };
+  const build = () => buildPrintHtml(api, { selectionOnly: what.value === 'selection', page: currentPage(), fileName });
+  const refresh = () => {
+    const html = build();
+    if (html) preview.show(html, currentPage());
+  };
+  for (const c of [orientation, what, gridlines.input, fit.input]) c.addEventListener('change', refresh);
+  const setup = actionButton(t('print.pageSetup'), () => void import('./page-setup').then((m) => m.pageSetupDialog(api)).then(refresh));
+  const settings = box(t('print.help'), field(t('print.what'), what), field(t('print.orientation'), orientation), gridlines.el, fit.el, setup);
+  settings.classList.add('g-print-settings');
+  const layout = document.createElement('div');
+  layout.className = 'g-print-layout';
+  layout.append(settings, preview.el);
+  refresh();
   await openDialog({
     title: t('print.title'),
     testId: 'dialog-print',
     okLabel: t('print.ok'),
-    body: box(t('print.help'), field(t('print.what'), what), field(t('print.orientation'), orientation), gridlines.el, fit.el, setup),
+    xl: true,
+    body: layout,
     onOk: () => {
-      // Les réglages de la feuille (papier, marges, zone, titres, en-têtes…) restent ; ceux de la boîte priment.
-      const current = getPageSetup(api);
-      const page: PageSetup = {
-        ...current,
-        orientation: orientation.value === 'landscape' ? 'landscape' : 'portrait',
-        gridlines: gridlines.input.checked,
-      };
-      if (fit.input.checked) page.fitWidth = current.fitWidth || 1;
-      else {
-        delete page.fitWidth;
-        delete page.fitHeight;
-      }
-      const html = buildPrintHtml(api, { selectionOnly: what.value === 'selection', page, fileName });
+      const html = build();
       if (html) printHtml(html);
     },
   });

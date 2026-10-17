@@ -38,3 +38,31 @@ export function detailBlock(levels: number[], index: number): { from: number; to
 export function hiddenForLevel(levels: number[], show: number): boolean[] {
   return levels.map((l) => (l ?? 0) >= show);
 }
+
+/** Tous les groupes du plan (un par niveau et par bloc contigu), comme les crochets d'Excel. */
+export function outlineBlocks(levels: number[]): { from: number; to: number; level: number }[] {
+  const out: { from: number; to: number; level: number }[] = [];
+  const max = levels.reduce((m, l) => Math.max(m, l ?? 0), 0);
+  for (let level = 1; level <= max; level++) {
+    let start = -1;
+    for (let i = 0; i <= levels.length; i++) {
+      const inside = i < levels.length && (levels[i] ?? 0) >= level;
+      if (inside && start < 0) start = i;
+      if (!inside && start >= 0) {
+        out.push({ from: start, to: i - 1, level });
+        start = -1;
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Lignes à afficher quand on développe un groupe (bouton +) : celles du niveau du groupe ;
+ * les sous-groupes restent réduits, comme dans Excel.
+ */
+export function rowsToExpand(levels: number[], block: { from: number; to: number; level: number }): number[] {
+  const out: number[] = [];
+  for (let i = block.from; i <= block.to; i++) if ((levels[i] ?? 0) === block.level) out.push(i);
+  return out;
+}

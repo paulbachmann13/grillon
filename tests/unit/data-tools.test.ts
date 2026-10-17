@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { advancedFilter } from '../../src/data/advanced-filter';
 import { cellText, type Grid } from '../../src/data/cells';
 import { flashFill, inferProgram, runProgram } from '../../src/data/flash-fill';
-import { detailBlock, group, hiddenForLevel, ungroup } from '../../src/data/outline';
+import { detailBlock, group, hiddenForLevel, outlineBlocks, rowsToExpand, ungroup } from '../../src/data/outline';
 import { removeDuplicates } from '../../src/data/remove-duplicates';
 import { computeSubtotals } from '../../src/data/subtotals';
 import { splitText, textToColumns } from '../../src/data/text-to-columns';
@@ -147,5 +147,19 @@ describe('Plan (grouper/dissocier)', () => {
     expect(detailBlock(levels, 0)).toBeNull();
     expect(hiddenForLevel(levels, 2)).toEqual([false, false, true, true, false, false]);
     expect(ungroup(levels, 1, 4)).toEqual([0, 0, 1, 1, 0, 0]);
+  });
+});
+
+describe('marge du plan', () => {
+  const levels = [0, 2, 2, 1, 2, 2, 1, 0];
+  it('liste les groupes de chaque niveau', () => {
+    expect(outlineBlocks(levels)).toEqual([
+      { from: 1, to: 6, level: 1 },
+      { from: 1, to: 2, level: 2 },
+      { from: 4, to: 5, level: 2 },
+    ]);
+  });
+  it('développe un groupe sans ouvrir ses sous-groupes', () => {
+    expect(rowsToExpand(levels, { from: 1, to: 6, level: 1 })).toEqual([3, 6]);
   });
 });

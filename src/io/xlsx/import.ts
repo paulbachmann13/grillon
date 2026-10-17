@@ -35,6 +35,7 @@ import { addSparklinesToResource, readSparklines, type SheetSparkline } from './
 import type { PivotDefinition } from '../../data/pivot';
 import { readPivotTables } from './pivot-tables';
 import { readSheetProtection, type SheetProtection } from '../../data/sheet-protection';
+import { cellsToRects } from '../../data/cell-locks';
 
 /** Police par défaut d'Excel (les cellules sans police explicite l'utilisent). */
 export const EXCEL_DEFAULT_FONT = { ff: 'Calibri', fs: 11 } as const;
@@ -134,6 +135,8 @@ function convertWorksheet(ws: ExcelJS.Worksheet, registry: StyleRegistry): IWork
   const columnData: Record<number, Partial<IColumnData>> = {};
   let maxRow = 0;
   let maxCol = 0;
+  // Cellules déverrouillées (Format de cellule → Protection → Verrouillée décochée).
+  const unlocked: [number, number][] = [];
 
   const props = ws.properties ?? ({} as ExcelJS.WorksheetProperties);
   const defaultColWidthPx = excelWidthToPx(props.defaultColWidth ?? EXCEL_DEFAULT_COL_WIDTH);
@@ -157,6 +160,7 @@ function convertWorksheet(ws: ExcelJS.Worksheet, registry: StyleRegistry): IWork
     for (let c = 0; c < cells.length; c++) {
       const cell = cells[c];
       if (!cell) continue;
+      if (cell.style?.protection?.locked === false) unlocked.push([r, c]);
       // Les cellules fusionnées « esclaves » sont ignorées : seule la cellule maître porte la valeur.
       if (cell.isMerged && cell.master !== cell) {
         const s = registry.idFor(cell.style);
@@ -230,7 +234,7 @@ function convertWorksheet(ws: ExcelJS.Worksheet, registry: StyleRegistry): IWork
     columnHeader: { height: 20, hidden: 0 },
     showGridlines: view?.showGridLines === false ? 0 : 1,
     rightToLeft: view?.rightToLeft ? 1 : 0,
-    ...(page ? { custom: { [GRILLON_CUSTOM_KEY]: { page } } } : {}),
+    ...(page || unlocked.length ? { custom: { [GRILLON_CUSTOM_KEY]: { ...(page ? { page } : {}), ...(unlocked.length ? { unlocked: cellsToRects(unlocked) } : {}) } } } : {}),
   } as IWorksheetData;
 }
 

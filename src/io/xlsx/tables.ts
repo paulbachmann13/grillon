@@ -10,11 +10,11 @@ import type JSZip from 'jszip';
 import type { IRange } from '../../model/univer-types';
 import { addContentTypeOverride, addRelationship, attrs, insertWorksheetElement, parseXml, readRelationships, resolveRelTarget } from './ooxml';
 import { rangeFromA1, rangeToA1 } from './units';
+import { excelStyleName, galleryStyleFor } from '../../data/table-styles';
 
 export const TABLE_RESOURCE = 'SHEET_TABLE_PLUGIN';
 const TABLE_REL_TYPE = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/table';
 const TABLE_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml';
-const DEFAULT_EXCEL_STYLE = 'TableStyleMedium2';
 
 export interface UniverTableColumn {
   id: string;
@@ -86,7 +86,7 @@ export async function readTables(zip: JSZip, sheetPath: string): Promise<UniverT
       id: newId('tbl'),
       name: t.displayName ?? t.name ?? `Tableau${out.length + 1}`,
       range,
-      options: { showHeader: header !== 0, showFooter: false, showAutoFilter: t.autoFilter !== undefined },
+      options: { showHeader: header !== 0, showFooter: false, showAutoFilter: t.autoFilter !== undefined, tableStyleId: galleryStyleFor(style.name) },
       filters: { tableColumnFilterList: [] },
       columns: (t.tableColumns?.tableColumn ?? []).map((c, i) => {
         const col: UniverTableColumn = {
@@ -179,7 +179,7 @@ export async function writeTables(
       (header && table.options.showAutoFilter !== false ? `<autoFilter ref="${rangeToA1(filterRange)}"/>` : '') +
       `<tableColumns count="${headerNames.length}">${columns}</tableColumns>` +
       `<tableStyleInfo${attrs({
-        name: excel.styleName ?? DEFAULT_EXCEL_STYLE,
+        name: excelStyleName(table.options.tableStyleId, excel.styleName),
         showFirstColumn: excel.showFirstColumn ? 1 : 0,
         showLastColumn: excel.showLastColumn ? 1 : 0,
         showRowStripes: excel.showRowStripes === false ? 0 : 1,

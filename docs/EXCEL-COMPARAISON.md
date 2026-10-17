@@ -11,7 +11,7 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 | Commande Excel | Grillon | Note |
 |---|---|---|
 | Nouveau, Ouvrir, Enregistrer, Enregistrer sous | Oui | .xlsx et .csv ; ⌘S réécrit le fichier (Chrome, Edge, app Mac) |
-| Imprimer, aperçu, Exporter en PDF | Partiel | Boîte d'impression du système ; pas d'aperçu intégré |
+| Imprimer, aperçu, Exporter en PDF | Oui | Réglages et aperçu des pages ; PDF par « Enregistrer au format PDF » |
 | Mise en page (boîte) | Oui | Papier, marges, échelle, zone, titres, en-têtes/pieds |
 | Ouvrir .xls, .ods, .xlsb | Non | Réenregistrer en .xlsx |
 | Mot de passe d'ouverture | Non | |
@@ -27,9 +27,9 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 | Alignement : horizontal, vertical, orientation, renvoi à la ligne, fusionner, retrait | Oui | |
 | Nombre : formats, %, €, séparateur de milliers, décimales | Oui | |
 | Mise en forme conditionnelle (règles, barres, nuances, icônes, gestion) | Oui | |
-| Mettre sous forme de tableau (galerie de styles) | Partiel | Un style par défaut, pas de galerie |
+| Mettre sous forme de tableau (galerie de styles) | Oui | 21 styles (Clair, Moyen, Foncé × 7 couleurs) ; les autres styles d'Excel sont rapprochés |
 | Styles de cellule (Bon, Neutre, Titre 1…, Entrée, Calcul…) | Oui | Galerie dans Accueil |
-| Format de cellule (boîte Ctrl+1 / ⌘1) | Oui | Nombre, Alignement, Police, Bordure, Remplissage ; pas l'onglet Protection |
+| Format de cellule (boîte Ctrl+1 / ⌘1) | Oui | Nombre, Alignement, Police, Bordure, Remplissage, Protection (Verrouillée) |
 | Cellules : insérer, supprimer, format (hauteur, largeur, masquer, renommer) | Oui | |
 | Édition : somme automatique, remplir, effacer, trier et filtrer, rechercher/remplacer | Oui | « Série » (remplir) partiel |
 | Analyse rapide | Oui | |
@@ -42,7 +42,8 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 | Tableau | Oui | |
 | Images, formes, zones de texte | Oui | Formes simples (6) ; pas d'icônes, SmartArt, modèles 3D |
 | Graphiques (histogramme, courbes, secteurs, barres, aires, nuage, bulles, radar, combinés) | Oui | |
-| Graphiques cascade, entonnoir, boursier, surface, compartimentage, rayons de soleil, boîte à moustaches, histogramme statistique, cartes | Non | |
+| Graphiques cascade, entonnoir, histogramme statistique, boîte à moustaches | Oui | Format chartEx d'Excel 2016 |
+| Graphiques boursier, surface, compartimentage, rayons de soleil, Pareto, cartes | Non | |
 | Graphique croisé dynamique | Non | |
 | Mini-graphiques | Oui | |
 | Segments, chronologies | Non | |
@@ -73,9 +74,9 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 | Gestionnaire de noms, définir un nom | Oui | |
 | Repérer les antécédents / dépendants | Partiel | Liste cliquable, pas de flèches sur la grille |
 | Afficher les formules | Oui | |
-| Vérification des erreurs, évaluer la formule | Non | |
+| Vérification des erreurs, évaluer la formule | Oui | Erreurs et nombres stockés en texte ; pas de triangles verts sur la grille |
 | Fenêtre Espion | Non | |
-| Options de calcul (automatique / manuel), calculer maintenant | Non | Toujours automatique |
+| Options de calcul (automatique / manuel), calculer maintenant | Oui | F9 ; mode non enregistré dans le fichier |
 | ≈ 520 fonctions, tableaux dynamiques, LAMBDA | Oui | 23 fonctions absentes (docs/FONCTIONS.md) |
 
 ## Données
@@ -92,7 +93,7 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 | Analyse de scénarios : valeur cible | Oui | |
 | Analyse de scénarios : gestionnaire de scénarios, table de données | Non | |
 | Feuille de prévision | Non | |
-| Plan : grouper, dissocier, sous-total | Partiel | Pas de boutons +/− dans la marge |
+| Plan : grouper, dissocier, sous-total | Oui | Boutons 1 2 3 et − / + dans la marge |
 | Tableau croisé : champs, filtres, totaux, actualiser | Oui | Calculé par Grillon |
 | Tableau croisé : vrai TCD dans le .xlsx (modifiable dans Excel) | Oui | Cache, enregistrements et définition ; actualisé à l'ouverture ; reconnu par LibreOffice |
 | Tableau croisé : regroupement de dates, « afficher les valeurs en » | Non | |
@@ -105,7 +106,7 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 | Vérifier l'accessibilité | Non | |
 | Traduire | Non | |
 | Commentaires (fil), notes | Partiel | Notes |
-| Protéger la feuille / le classeur, autoriser la modification des plages | Partiel | Feuille entière, mot de passe facultatif (hachage Excel), enregistrée dans le .xlsx ; pas de cellules déverrouillées ni de protection du classeur |
+| Protéger la feuille / le classeur, autoriser la modification des plages | Partiel | Feuille entière, mot de passe facultatif (hachage Excel), enregistrée dans le .xlsx ; cellules déverrouillées ; pas de protection du classeur ni de plages autorisées |
 | Suivi des modifications | Non | |
 
 ## Affichage

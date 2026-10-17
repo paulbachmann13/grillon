@@ -12,6 +12,7 @@ import { findChart, insertChartSpec, isDark, loadECharts, readRef, removeChart, 
 import { applyKind, CHART_KINDS, kindOf, KIND_GROUPS } from './kinds';
 import {
   buildEChartsOption,
+  isStatChart,
   DEFAULT_COLORS,
   PALETTES,
   parseSheetRef,
@@ -548,7 +549,31 @@ export async function chartDialog(api: FUniver, opts: ChartDialogOptions): Promi
     if (work.type === 'scatter') {
       rows.push(choose('Style', [['markers', 'Marqueurs seuls'], ['straightMarkers', 'Lignes droites et marqueurs'], ['straight', 'Lignes droites'], ['smoothMarkers', 'Courbes lissées et marqueurs'], ['smooth', 'Courbes lissées']], () => work.scatterStyle ?? 'markers', (v) => void (work.scatterStyle = v === 'markers' ? undefined : (v as ChartSpec['scatterStyle']))));
     }
-    if (work.series.length === 1 && !isXY(work) && work.type !== 'radar') rows.push(check(L('varyColors'), () => work.varyColors, (v) => void (work.varyColors = v)));
+    if (work.type === 'waterfall') {
+      // « Définir comme total » d'Excel : numéros des points (1 = premier).
+      rows.push(
+        text(L('waterfallTotals'), () => (work.waterfallTotals ?? []).map((i) => i + 1).join('; ') || undefined, (v) => {
+          const idx = (v ?? '').split(/[;,\s]+/).map(Number).filter((n) => Number.isInteger(n) && n > 0).map((n) => n - 1);
+          work.waterfallTotals = idx.length ? idx : undefined;
+        }, '1; 6'),
+      );
+    }
+    if (work.type === 'histogram') {
+      const bins = () => (work.bins ??= {});
+      rows.push(
+        num(L('binWidth'), () => work.bins?.width, (v) => void (bins().width = v), L('automatic')),
+        num(L('binCount'), () => work.bins?.count, (v) => void (bins().count = v), L('automatic')),
+        num(L('binOverflow'), () => work.bins?.overflow, (v) => void (bins().overflow = v)),
+        num(L('binUnderflow'), () => work.bins?.underflow, (v) => void (bins().underflow = v)),
+      );
+    }
+    if (work.type === 'boxWhisker') {
+      rows.push(
+        check(L('boxMean'), () => work.boxShowMean !== false, (v) => void (work.boxShowMean = v ? undefined : false)),
+        check(L('boxOutliers'), () => work.boxShowOutliers !== false, (v) => void (work.boxShowOutliers = v ? undefined : false)),
+      );
+    }
+    if (work.series.length === 1 && !isXY(work) && work.type !== 'radar' && !isStatChart(work.type)) rows.push(check(L('varyColors'), () => work.varyColors, (v) => void (work.varyColors = v)));
     return panelOf(...rows);
   };
 

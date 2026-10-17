@@ -22,6 +22,7 @@ import { GRILLON_CUSTOM_KEY } from '../model/univer-types';
 import { alertDialog, box, checkbox, field, group, openDialog, radio, select, textInput } from '../ui/dialog';
 import { currentRegionRect } from './region';
 import { confirmAsync } from '../app/confirm';
+import { pickTableStyle, registerTableStyles } from './table-styles-ui';
 
 const DATA = 'ribbon.data';
 const ORGANIZATION = 'ribbon.data.organization';
@@ -393,12 +394,35 @@ function showAllRows(api: FUniver): void {
 async function formatAsTable(api: FUniver): Promise<void> {
   const area = currentRegion(api);
   if (!area) return noData();
+  const existing = (area.ws as unknown as { getTableByCell(r: number, c: number): unknown }).getTableByCell(area.row, area.col);
+  if (existing) return void changeTableStyle(api);
+  const pick = await pickTableStyle(t('data.tableFormat'), true);
+  if (!pick) return;
   const wb = api.getActiveWorkbook() as unknown as { getTableList(): { name: string }[] };
   const used = new Set(wb.getTableList().map((x) => x.name.toLowerCase()));
   let n = 1;
   while (used.has(`tableau${n}`)) n++;
+  // Sans ligne d'en-tête, Excel en ajoute une (Colonne1, Colonne2…) au-dessus des données.
+  let row = area.row;
+  if (!pick.headers) {
+    area.ws.insertRowsBefore(area.row, 1);
+    writeGrid(area.ws, area.row, area.col, [Array.from({ length: area.cols }, (_, i): ICellData => ({ v: `Colonne${i + 1}`, t: 1 }))]);
+    row = area.row;
+  }
+  const rows = pick.headers ? area.rows : area.rows + 1;
   const ws = area.ws as unknown as { addTable(name: string, range: object, id?: string, options?: object): Promise<boolean> | boolean };
-  await ws.addTable(`Tableau${n}`, { startRow: area.row, endRow: area.row + area.rows - 1, startColumn: area.col, endColumn: area.col + area.cols - 1 }, undefined, { showHeader: true });
+  await ws.addTable(`Tableau${n}`, { startRow: row, endRow: row + rows - 1, startColumn: area.col, endColumn: area.col + area.cols - 1 }, undefined, { showHeader: true, tableStyleId: pick.name });
+}
+
+/** Création → Styles de tableau : change le style du tableau sous la cellule active. */
+async function changeTableStyle(api: FUniver): Promise<void> {
+  const sel = selection(api);
+  if (!sel) return;
+  const table = (sel.ws as unknown as { getTableByCell(r: number, c: number): { id: string; tableStyleId?: string; options?: { tableStyleId?: string } } | undefined }).getTableByCell(sel.row, sel.col);
+  if (!table) return void alertDialog(t('data.tableStyle'), t('data.noTable'));
+  const pick = await pickTableStyle(t('data.tableStyle'), false, table.tableStyleId ?? table.options?.tableStyleId);
+  if (!pick) return;
+  await api.executeCommand('sheet.command.set-table-config', { unitId: api.getActiveWorkbook()!.getId(), tableId: table.id, theme: pick.name });
 }
 
 function addTotalsRow(api: FUniver): void {
@@ -471,8 +495,10 @@ export function installDataRibbon(api: FUniver, doc: DocumentController): void {
   button('grillon.data.text-to-columns', 'GrillonSplitIcon', t('data.textToColumns'), () => textToColumnsTool(api));
   button('grillon.data.flash-fill', 'GrillonFlashIcon', t('data.flashFill'), () => flashFillTool(api));
   button('grillon.data.remove-duplicates', 'GrillonDedupIcon', t('data.removeDuplicates'), () => removeDuplicatesTool(api));
+  registerTableStyles(api);
   dropdown('grillon.data.table', 'GrillonTableIcon', t('data.tableFormat'), [
-    ['grillon.data.table.create', t('data.tableFormat'), () => formatAsTable(api)],
+    ['grillon.data.table.create', `${t('data.tableFormat')}…`, () => formatAsTable(api)],
+    ['grillon.data.table.style', `${t('data.tableStyle')}…`, () => changeTableStyle(api)],
     ['grillon.data.table.totals', t('data.totalsRow'), () => addTotalsRow(api)],
   ]);
   dropdown('grillon.data.outline', 'GrillonOutlineIcon', t('data.outline'), [
@@ -483,6 +509,8 @@ export function installDataRibbon(api: FUniver, doc: DocumentController): void {
     ['grillon.data.hide-detail', t('data.hideDetail'), () => showHideDetail(api, false)],
     ['grillon.data.show-detail', t('data.showDetail'), () => showHideDetail(api, true)],
   ]);
+  // Accueil → Styles : « Mettre sous forme de tableau », comme Excel.
+  api.createMenu({ id: 'grillon.home.format-as-table', icon: 'GrillonTableIcon', title: t('data.tableFormat'), tooltip: t('data.tableFormat'), action: 'grillon.data.table.create' }).appendTo(['ribbon.start', 'ribbon.start.others']);
   button('grillon.data.subtotal', 'GrillonSubtotalIcon', t('data.subtotal'), () => subtotalTool(api));
 
   // Ctrl+E : remplissage instantané (comme Excel), sauf pendant la saisie dans une cellule

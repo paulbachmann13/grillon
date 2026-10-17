@@ -17,6 +17,7 @@ import { installGridShortcuts } from '../univer/grid-shortcuts';
 import { installViewRibbon } from '../univer/view-ribbon';
 import { installBasics } from '../univer/basics';
 import { installCellFormat } from '../univer/cell-format';
+import { installOutlineGutter } from '../univer/outline-gutter';
 import { installGridGrowth } from '../univer/grid-growth';
 import { installTextOverflow } from '../univer/text-overflow';
 import { printDialog } from './print';
@@ -26,12 +27,12 @@ import { installHomeRibbon } from '../univer/home-ribbon';
 import { LOCALE_FR } from '../model/univer-types';
 import { clearAutosave, loadAutosave, saveAutosave } from '../storage/autosave';
 import { confirmAsync } from './confirm';
-import { applyStoredProtection } from '../univer/protection';
+import { applyStoredProtection, installProtectionGuard } from '../univer/protection';
 
 /** CommandType.COMMAND = 0 : actions de l'utilisateur (les mutations internes, comme le calcul des formules, sont ignorées). */
 const COMMAND = 0;
 /** Commandes qui ne modifient pas le contenu du classeur. */
-const NON_CONTENT_COMMANDS = /^doc\.|^grillon\.|copy|scroll|selection|zoom|find|search|activate|editor|preview|show|hide-panel|open|close/i;
+const NON_CONTENT_COMMANDS = /^doc\.|^grillon\.|header-(width|height)|copy|scroll|selection|zoom|find|search|activate|editor|preview|show|hide-panel|open|close/i;
 
 const AUTOSAVE_DELAY_MS = 1500;
 
@@ -101,6 +102,8 @@ export class DocumentController {
         installGridGrowth(this.api);
         installBasics(this.api);
         installCellFormat(this.api);
+        installOutlineGutter(this.api);
+        installProtectionGuard(this.api);
         this.ribbonReady = true;
       }
       this.fileName = fileName;

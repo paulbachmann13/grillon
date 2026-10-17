@@ -28,6 +28,10 @@ import { sparklinesOfSheet, writeSparklines, type SheetSparkline } from './spark
 import type { PivotDefinition } from '../../data/pivot';
 import { writePivotTables, type PivotToWrite } from './pivot-tables';
 import { sheetProtectionXml, type SheetProtection } from '../../data/sheet-protection';
+import type { Rect } from '../../data/cell-locks';
+
+/** Nombre maximal de cellules déverrouillées écrites une à une. */
+const MAX_UNLOCKED_CELLS = 100_000;
 
 /** Niveau de plan stocké dans les métadonnées d'une ligne ou colonne. */
 function outlineLevel(custom: Record<string, unknown> | null | undefined | void): number {
@@ -178,6 +182,20 @@ function writeSheet(
       }
       const st = toXlStyle(cell.s);
       if (st) xc.style = st as ExcelJS.Style;
+    }
+  }
+
+  // Cellules déverrouillées : protection locked="0" dans leur style (sans toucher aux styles partagés).
+  const unlocked = (sheet.custom as { grillon?: { unlocked?: Rect[] } } | undefined)?.grillon?.unlocked ?? [];
+  let budget = MAX_UNLOCKED_CELLS;
+  for (const r of unlocked) {
+    const endRow = Math.min(r.endRow, (sheet.rowCount ?? 1000) - 1);
+    const endCol = Math.min(r.endColumn, (sheet.columnCount ?? 26) - 1);
+    for (let row = r.startRow; row <= endRow && budget > 0; row++) {
+      for (let col = r.startColumn; col <= endCol && budget > 0; col++, budget--) {
+        const xc = ws.getCell(row + 1, col + 1);
+        xc.style = { ...xc.style, protection: { locked: false } } as ExcelJS.Style;
+      }
     }
   }
 

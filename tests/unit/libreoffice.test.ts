@@ -101,6 +101,22 @@ describe.skipIf(!soffice)('LibreOffice ouvre les graphiques Grillon', () => {
     ]);
   });
 
+  it("graphiques chartEx (cascade, entonnoir…) : le fichier s'ouvre, les autres graphiques et les données restent", async () => {
+    const { chartWorkbook, COLUMN, WATERFALL, FUNNEL, HISTOGRAM, BOX } = await import("../fixtures/charts");
+    const { readSheetCharts } = await import("../../src/io/xlsx/charts");
+    const JSZip = (await import("jszip")).default;
+    const dir = mkdtempSync(join(tmpdir(), "grillon-lo-"));
+    const ours = join(dir, "chartex.xlsx");
+    writeFileSync(ours, await exportXlsx(chartWorkbook([COLUMN, WATERFALL, FUNNEL, HISTOGRAM, BOX])));
+    const outDir = join(dir, "out");
+    execFileSync(soffice!, ["--headless", "--norestore", "--convert-to", "xlsx", "--outdir", outDir, ours], { timeout: 120_000 });
+    const zip = await JSZip.loadAsync(readFileSync(join(outDir, "chartex.xlsx")));
+    const charts = await readSheetCharts(zip, "xl/worksheets/sheet1.xml");
+    expect(charts.some((c) => c.spec?.type === "column")).toBe(true);
+    const back = await importXlsx(readFileSync(join(outDir, "chartex.xlsx")));
+    expect(Object.values(back.sheets)[0]!.cellData?.[1]?.[1]?.v).toBe(120);
+  });
+
   it("tableau croisé dynamique : LibreOffice le reconnaît comme tel (et le réécrit)", async () => {
     const { pivotWorkbook } = await import("../fixtures/pivot");
     const { readPivotTables } = await import("../../src/io/xlsx/pivot-tables");

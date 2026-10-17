@@ -9,6 +9,7 @@
 import { INTERCEPTOR_POINT, SheetInterceptorService } from '@univerjs/preset-sheets-core';
 import { InterceptorEffectEnum } from '@univerjs/presets';
 import type { FUniver } from '@univerjs/presets';
+import { frenchError, isErrorValue } from '../data/formula-errors';
 
 const NUMBER = 2;
 const BOOLEAN = 3;
@@ -56,6 +57,8 @@ export function installFrenchDisplay(api: FUniver): void {
     priority: 1,
     handler: (cell, location, next) => {
       if (!cell || cell.v === null || cell.v === undefined) return next(cell);
+      // Erreurs de formule : codes d'Excel en français (#NOM?, #VALEUR!…).
+      if (isErrorValue(cell.v) && frenchError(cell.v) !== cell.v) return next({ ...cell, v: frenchError(cell.v) });
       const isBool = cell.t === BOOLEAN;
       const isNum = typeof cell.v === 'number' && (cell.t === NUMBER || cell.t === undefined || cell.t === null);
       if (!isBool && !isNum) return next(cell);

@@ -90,3 +90,9 @@ export const DOUGHNUT: ChartSpec = { version: 1, type: 'doughnut', legend: 'bott
 export const RADAR: ChartSpec = { version: 1, type: 'radar', legend: 'bottom', radarFilled: true, series: [{ nameRef: `${S}!$B$1`, categoriesRef: `${S}!$A$2:$A$4`, valuesRef: `${S}!$B$2:$B$4`, color: '#4472C4' }] };
 export const LINES: ChartSpec = { version: 1, type: 'line', legend: 'bottom', markers: true, smooth: true, grouping: 'percent', series: [{ nameRef: `${S}!$B$1`, categoriesRef: `${S}!$A$2:$A$4`, valuesRef: `${S}!$B$2:$B$4`, color: '#4472C4' }, { nameRef: `${S}!$C$1`, categoriesRef: `${S}!$A$2:$A$4`, valuesRef: `${S}!$C$2:$C$4`, color: '#ED7D31' }] };
 export const SCATTER_LINES: ChartSpec = { version: 1, type: 'scatter', legend: 'none', scatterStyle: 'smoothMarkers', series: [{ nameRef: `${S}!$C$1`, categoriesRef: `${S}!$B$2:$B$4`, valuesRef: `${S}!$C$2:$C$4`, color: '#A5A5A5' }] };
+
+/** Graphiques Excel 2016 (chartEx). */
+export const WATERFALL: ChartSpec = { version: 1, type: 'waterfall', title: 'Résultat', series: [{ nameRef: `${S}!$B$1`, categoriesRef: `${S}!$A$2:$A$4`, valuesRef: `${S}!$B$2:$B$4` }], waterfallTotals: [2] };
+export const FUNNEL: ChartSpec = { version: 1, type: 'funnel', series: [{ nameRef: `${S}!$B$1`, categoriesRef: `${S}!$A$2:$A$4`, valuesRef: `${S}!$B$2:$B$4`, color: '#70AD47' }] };
+export const HISTOGRAM: ChartSpec = { version: 1, type: 'histogram', series: [{ nameRef: `${S}!$B$1`, valuesRef: `${S}!$B$2:$C$4` }], bins: { width: 20, overflow: 140 } };
+export const BOX: ChartSpec = { version: 1, type: 'boxWhisker', legend: 'top', boxShowOutliers: false, series: [{ nameRef: `${S}!$B$1`, valuesRef: `${S}!$B$2:$B$4` }, { nameRef: `${S}!$C$1`, valuesRef: `${S}!$C$2:$C$4` }] };

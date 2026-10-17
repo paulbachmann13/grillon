@@ -2,6 +2,17 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.5.0] — 2026-10-17
+
+### Ajouté
+- **Plan dans la marge**, comme Excel : boutons de niveau 1, 2, 3… et − / + pour replier ou développer chaque groupe (lignes et colonnes).
+- **Cellules déverrouillées** (Format de cellule → Protection) : sur une feuille protégée, seules ces cellules restent modifiables ; enregistrées dans le .xlsx.
+- **Galerie des styles de tableau** (Mettre sous forme de tableau, aussi dans Accueil) : 21 styles d'Excel, « Mon tableau comporte des en-têtes », changement de style ; le style est écrit et relu dans le .xlsx.
+- **Vérification des erreurs** et **Évaluer la formule** (Formules) ; erreurs affichées avec les codes français d'Excel (#NOM?, #VALEUR!…).
+- Graphiques **cascade**, **entonnoir**, **histogramme** de répartition et **boîte à moustaches**, enregistrés au format chartEx d'Excel.
+- **Aperçu avant impression** dans la boîte Imprimer.
+- **Options de calcul** : Automatique / Manuel, **Calculer maintenant** (F9).
+
 ## [1.4.0] — 2026-10-17
 
 ### Ajouté
