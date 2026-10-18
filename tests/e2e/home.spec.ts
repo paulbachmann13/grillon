@@ -151,3 +151,61 @@ test('fichiers récents : liste, retrait d’un fichier, fichier introuvable', a
   await home(page).getByTestId('start-forget').click();
   await expect(home(page).getByTestId('start-no-recent')).toBeVisible();
 });
+
+// Plusieurs travaux non enregistrés : cinq au plus, le plus récent d'abord.
+async function dirtySession(page: Page, text: string) {
+  await home(page).getByTestId('start-new').click();
+  await page.evaluate(`window.grillon.api.getActiveWorkbook().getActiveSheet().getRange('A1').setValue('${text}')`);
+  await page.evaluate(`window.grillon.doc.autosaveNow()`);
+  await page.reload();
+  await waitReady(page);
+}
+
+test('plusieurs travaux non enregistrés : cinq au plus, le plus récent en premier, chacun repris tel quel', async ({ page }) => {
+  await start(page);
+  for (let i = 1; i <= 6; i++) {
+    await dirtySession(page, `travail ${i}`);
+    await page.waitForTimeout(15); // des dates de sauvegarde différentes
+  }
+  const drafts = home(page).getByTestId('start-draft');
+  await expect(drafts).toHaveCount(5);
+  // Le plus récent (travail 6) est en tête ; le plus ancien (travail 1) a été écarté.
+  await drafts.first().getByRole('button').first().click();
+  await expect(home(page)).toBeHidden();
+  await expect.poll(() => a1(page)).toBe('travail 6');
+  await page.getByTestId('file-menu').click();
+  await page.getByTestId('file-home').click();
+  await expect(home(page).getByTestId('start-draft')).toHaveCount(4);
+  // Reprendre un autre pendant que « travail 6 » est ouvert et non enregistré : celui-ci n'est pas perdu, il passe dans la liste.
+  await home(page).getByTestId('start-draft').last().getByRole('button').first().click();
+  await expect.poll(() => a1(page)).toBe('travail 2');
+  await page.getByTestId('file-menu').click();
+  await page.getByTestId('file-home').click();
+  const after = home(page).getByTestId('start-draft');
+  await expect(after).toHaveCount(4);
+  await after.first().getByRole('button').first().click();
+  await expect.poll(() => a1(page)).toBe('travail 6');
+});
+
+test('l’ancien brouillon unique (versions 1.13.0 et 1.13.1) est repris dans la liste', async ({ page }) => {
+  await start(page);
+  await dirtySession(page, 'ancien');
+  // On fait comme l'ancienne version : le travail est rangé sous la clé « draft », et la liste n'existe pas.
+  await page.evaluate(`new Promise((resolve, reject) => {
+    const open = indexedDB.open('grillon');
+    open.onsuccess = () => {
+      const db = open.result;
+      const t = db.transaction('autosave', 'readwrite');
+      const store = t.objectStore('autosave');
+      const drafts = store.get('drafts');
+      drafts.onsuccess = () => { store.put(drafts.result[0], 'draft'); store.delete('drafts'); };
+      t.oncomplete = () => { db.close(); resolve(null); };
+      t.onerror = () => reject(t.error);
+    };
+  })`);
+  await page.reload();
+  await waitReady(page);
+  await expect(home(page).getByTestId('start-draft')).toHaveCount(1);
+  await home(page).getByTestId('start-draft').getByRole('button').first().click();
+  await expect.poll(() => a1(page)).toBe('ancien');
+});

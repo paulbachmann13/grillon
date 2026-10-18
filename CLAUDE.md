@@ -85,8 +85,8 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 
 - `src/app/start-screen.ts` (interface), `src/data/recent.ts` (logique testée), `src/storage/recent.ts` (liste dans localStorage,
   handles du navigateur dans IndexedDB), `src/app/settings.ts`. Le numéro de version vient de `package.json` (`__APP_VERSION__`, vite.config.ts).
-- Il s'affiche **toujours** au démarrage. Le travail non enregistré de la dernière session est mis de côté (`stashDraft`,
-  clé `draft` d'IndexedDB) et proposé en « Reprendre » ; il n'est jamais rouvert d'office. Les tests e2e posent
+- Il s'affiche **toujours** au démarrage. Les travaux non enregistrés des dernières sessions (cinq au plus) sont mis de côté (`stashDraft`,
+  clé `drafts` d'IndexedDB ; l'ancienne clé `draft` est migrée) et proposés en « Reprendre » ; jamais rouverts d'office. Les tests e2e posent
   `localStorage['grillon-no-home']` (dans `gotoApp`) : accueil masqué et ancien comportement (reprise automatique) ;
   `tests/e2e/home.spec.ts` teste le vrai démarrage sans ce réglage.
 

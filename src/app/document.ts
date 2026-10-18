@@ -34,7 +34,7 @@ import { csvImportDialog } from './csv-import';
 import { installPivot } from '../univer/pivot-ui';
 import { installHomeRibbon } from '../univer/home-ribbon';
 import { LOCALE_FR } from '../model/univer-types';
-import { clearAutosave, clearDraft, loadAutosave, loadDraft, saveAutosave, stashDraft } from '../storage/autosave';
+import { clearAutosave, clearDraft, loadAutosave, loadDrafts, saveAutosave, stashDraft } from '../storage/autosave';
 import { confirmAsync } from './confirm';
 import { applyStoredProtection, installProtectionGuard } from '../univer/protection';
 
@@ -373,9 +373,9 @@ export class DocumentController {
         importCsv: () => this.importCsv(),
         openRecent: (file) => this.openRecent(file),
         checkUpdates: () => this.checkForUpdates(false),
-        draft: () => this.draftInfo(),
-        resumeDraft: () => this.resumeDraft(),
-        discardDraft: () => this.discardDraft(),
+        drafts: () => this.draftsInfo(),
+        resumeDraft: (id) => this.resumeDraft(id),
+        discardDraft: (id) => this.discardDraft(id),
       });
       if (isTauri()) {
         try {
@@ -427,24 +427,28 @@ export class DocumentController {
     this.newWorkbook();
   }
 
-  /** Brouillon proposé sur l'écran d'accueil : nom et date, ou null. */
-  async draftInfo(): Promise<{ name: string; savedAt: number } | null> {
-    const draft = await loadDraft();
-    return draft ? { name: draft.fileName, savedAt: draft.savedAt } : null;
+  /** Travaux non enregistrés proposés sur l'écran d'accueil (le plus récent d'abord). */
+  async draftsInfo(): Promise<{ id: string; name: string; savedAt: number }[]> {
+    return (await loadDrafts()).map((d) => ({ id: d.id, name: d.fileName, savedAt: d.savedAt }));
   }
 
-  /** « Reprendre » : rouvre le travail non enregistré tel qu'il était. */
-  async resumeDraft(): Promise<void> {
-    const draft = await loadDraft();
+  /** « Reprendre » : rouvre ce travail non enregistré tel qu'il était. */
+  async resumeDraft(id: string): Promise<void> {
+    const draft = (await loadDrafts()).find((d) => d.id === id);
     if (!draft?.data?.sheetOrder?.length) return;
+    // Un travail non enregistré est déjà ouvert : on le met de côté (il reste dans la liste) avant de le remplacer.
+    if (this.dirty) {
+      await this.autosaveNow();
+      await stashDraft();
+    }
     this.load(draft.data, draft.fileName, draft.handle, true);
-    await clearDraft();
+    await clearDraft(id);
     this.markDirty();
   }
 
-  async discardDraft(): Promise<boolean> {
+  async discardDraft(id: string): Promise<boolean> {
     if (!(await confirmAsync(t('home.discardDraft')))) return false;
-    await clearDraft();
+    await clearDraft(id);
     return true;
   }
 

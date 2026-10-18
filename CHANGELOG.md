@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.13.2] — 2026-10-18
+
+### Modifié
+- **Jusqu'à cinq travaux non enregistrés** sont gardés (au lieu d'un seul) et proposés en haut des récents, le plus récent d'abord, chacun avec « Reprendre : nom », sa date et son ✕. Le brouillon unique des versions 1.13.0 et 1.13.1 est repris dans la liste.
+- Reprendre un travail pendant qu'un autre, non enregistré, est ouvert ne perd plus ce dernier : il passe dans la liste.
+
 ## [1.13.1] — 2026-10-18
 
 ### Modifié

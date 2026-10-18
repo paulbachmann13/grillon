@@ -40,7 +40,7 @@
 - **Somme automatique** (Σ), **Afficher les formules** (aussi dans Vue, Ctrl+`).
 - **Gestionnaire de noms**, **Repérer les antécédents / les dépendants**.
 - **Vérification des erreurs** (#DIV/0!, #N/A, #NOM?…, nombres stockés sous forme de texte : convertir, ignorer, précédent / suivant) et **Évaluer la formule** (calcul pas à pas, partie soulignée, comme Excel). Les erreurs s'affichent avec les codes français d'Excel (#NOM?, #VALEUR!, #NOMBRE!…).
-- **Écran d'accueil** (toujours au démarrage, et Fichier → Accueil ; un travail non enregistré est proposé en « Reprendre ») : Nouveau, Ouvrir, fichiers récents, Paramètres (apparence, mises à jour) et numéro de version.
+- **Écran d'accueil** (toujours au démarrage, et Fichier → Accueil ; les cinq derniers travaux non enregistrés sont proposés en « Reprendre ») : Nouveau, Ouvrir, fichiers récents, Paramètres (apparence, mises à jour) et numéro de version.
 - **Mises à jour automatiques** (application Mac) : Grillon propose d'installer les nouvelles versions publiées sur GitHub ; Fichier → Rechercher les mises à jour….
 - **Fenêtre Espion** : surveille la valeur et la formule de cellules (même d'une autre feuille) ; liste gardée pour la session, non enregistrée dans le .xlsx.
 - **Segments et chronologies** (Insertion) : filtres à boutons pour un tableau ou un tableau croisé dynamique ; plusieurs se combinent.

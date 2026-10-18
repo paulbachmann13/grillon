@@ -20,11 +20,11 @@ export interface StartActions {
   importCsv(): void | Promise<void>;
   openRecent(file: RecentFile): void | Promise<void>;
   checkUpdates(): void | Promise<void>;
-  /** Travail non enregistré de la dernière session (nom, date de la dernière sauvegarde automatique). */
-  draft(): Promise<{ name: string; savedAt: number } | null>;
-  resumeDraft(): void | Promise<void>;
+  /** Travaux non enregistrés des dernières sessions (nom, date de la dernière sauvegarde automatique), le plus récent d'abord. */
+  drafts(): Promise<{ id: string; name: string; savedAt: number }[]>;
+  resumeDraft(id: string): void | Promise<void>;
   /** Renvoie vrai si le brouillon a bien été supprimé (l'utilisateur confirme). */
-  discardDraft(): Promise<boolean>;
+  discardDraft(id: string): Promise<boolean>;
 }
 
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] => {
@@ -161,8 +161,8 @@ export class StartScreen {
     box.append(el('h2', undefined, t('home.recent')));
     const drafts = el('div', 'g-start-drafts');
     box.append(drafts);
-    void this.actions.draft().then((draft) => {
-      if (!draft) return;
+    void this.actions.drafts().then((list) => {
+      for (const draft of list) {
       const row = el('div', 'g-start-recent-row g-start-draft');
       row.dataset.testid = 'start-draft';
       const open = el('button', 'g-start-recent-open');
@@ -172,17 +172,18 @@ export class StartScreen {
       const text = el('span', 'g-start-recent-text');
       text.append(el('strong', undefined, t('home.resume', { name: draft.name })), el('small', undefined, t('home.resumeHint')));
       open.append(icon, text, el('span', 'g-start-recent-when', formatWhen(draft.savedAt)));
-      open.addEventListener('click', () => void this.actions.resumeDraft());
+      open.addEventListener('click', () => void this.actions.resumeDraft(draft.id));
       const discard = el('button', 'g-start-recent-forget', '✕');
       discard.type = 'button';
       discard.title = t('home.discard');
       discard.setAttribute('aria-label', t('home.discard'));
       discard.dataset.testid = 'start-discard-draft';
       discard.addEventListener('click', async () => {
-        if (await this.actions.discardDraft()) row.remove();
+        if (await this.actions.discardDraft(draft.id)) row.remove();
       });
       row.append(open, discard);
       drafts.append(row);
+      }
     });
     const list = loadRecent();
     if (!list.length) {
