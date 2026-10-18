@@ -2,6 +2,16 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.8.0] — 2026-10-18
+
+### Ajouté
+- **Thèmes, Couleurs et Polices** (Vue) : 8 thèmes (Office 2013 – 2022, Office, Office 2007 – 2010 et cinq thèmes Grillon), couleurs et polices personnalisables. Les cellules qui utilisent une couleur du thème (avec ses teintes plus claires / plus foncées) ou la police du thème prennent celles du nouveau thème.
+- Le thème est lu dans le .xlsx (`theme1.xml`) et réécrit à l'enregistrement.
+
+### Corrigé
+- Les fichiers enregistrés par Grillon contenaient le thème Office 2007 (Cambria/Calibri) au lieu du thème Office 2013 – 2022 : le thème du classeur est maintenant toujours écrit.
+- Tests e2e « annuler » et « copier/coller » sous macOS (touches Ctrl/⌘ de Chromium).
+
 ## [1.7.0] — 2026-10-17
 
 ### Ajouté

@@ -22,6 +22,7 @@ import { installOutlineGutter } from '../univer/outline-gutter';
 import { installGridGrowth } from '../univer/grid-growth';
 import { installTextOverflow } from '../univer/text-overflow';
 import { printDialog } from './print';
+import type { ThemeMode } from './theme-dialog';
 import { csvImportDialog } from './csv-import';
 import { installPivot } from '../univer/pivot-ui';
 import { installHomeRibbon } from '../univer/home-ribbon';
@@ -99,7 +100,7 @@ export class DocumentController {
         installQuickAnalysis(this.api);
         installPivot(this.api);
         installGridShortcuts(this.api);
-        installViewRibbon(this.api, () => this.print(), () => this.pageSetup());
+        installViewRibbon(this.api, () => this.print(), () => this.pageSetup(), (mode) => this.changeTheme(mode));
         installGridGrowth(this.api);
         installBasics(this.api);
         installCellFormat(this.api);
@@ -327,6 +328,23 @@ export class DocumentController {
   async pageSetup(): Promise<void> {
     const { pageSetupDialog } = await import('./page-setup');
     if (await pageSetupDialog(this.api)) this.markDirtyPublic();
+  }
+
+  /** Mise en page → Thèmes, Couleurs, Polices : recolore le classeur puis le recharge (l'historique d'annulation est perdu). */
+  async changeTheme(mode: ThemeMode): Promise<void> {
+    const { themeDialog } = await import('./theme-dialog');
+    const { applyThemeToWorkbook, themeOf } = await import('../data/theme');
+    const data = this.snapshot();
+    const next = await themeDialog(mode, themeOf(data as never));
+    if (!next) return;
+    const wb = this.api.getActiveWorkbook();
+    const activeSheetId = wb?.getActiveSheet().getSheetId();
+    this.load(applyThemeToWorkbook(data as never, next) as unknown as IWorkbookData, this.fileName, this.handle, true);
+    const loaded = this.api.getActiveWorkbook();
+    const sheet = activeSheetId ? loaded?.getSheetBySheetId(activeSheetId) : null;
+    if (loaded && sheet) loaded.setActiveSheet(sheet);
+    this.markDirty();
+    this.events.onStatus(t('theme.applied', { name: next.name }), 'success');
   }
 
   /** Impression / export PDF de la feuille active. */

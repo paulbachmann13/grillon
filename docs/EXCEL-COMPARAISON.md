@@ -57,7 +57,7 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 
 | Commande Excel | Grillon | Note |
 |---|---|---|
-| Thèmes (couleurs, polices, effets) | Partiel | Couleurs de thème lues dans les fichiers ; pas de changement de thème |
+| Thèmes (couleurs, polices, effets) | Partiel | Thèmes, Couleurs et Polices dans Vue, lus et écrits dans le .xlsx ; pas d'effets ; la palette d'Univer (sélecteur de couleur) n'affiche pas les couleurs du thème |
 | Marges, orientation, taille, zone d'impression, imprimer les titres | Oui | Boîte Mise en page |
 | Sauts de page manuels, aperçu des sauts de page | Non | |
 | Arrière-plan de feuille | Oui | (Univer) |

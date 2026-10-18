@@ -911,3 +911,12 @@ body,
 .g-watch tbody tr { cursor: default; }
 .g-watch tbody tr.selected { background: var(--grillon-accent); color: #fff; }
 .g-watch-scroll { max-height: 260px; overflow: auto; border: 1px solid var(--grillon-border); border-radius: 4px; }
+
+.g-theme-list { display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow: auto; border: 1px solid var(--grillon-border); border-radius: 4px; padding: 4px; }
+.g-theme-list button { display: flex; align-items: center; gap: 10px; padding: 4px 8px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.g-theme-list button:hover { border-color: var(--grillon-accent); }
+.g-theme-list button.selected { border-color: var(--grillon-accent); box-shadow: 0 0 0 1px var(--grillon-accent); }
+.g-theme-swatches { display: inline-flex; flex: none; }
+.g-theme-swatches span { width: 14px; height: 18px; border: 1px solid rgba(0, 0, 0, 0.15); margin-right: -1px; }
+.g-theme-custom { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 12px; }
+.g-theme-custom input[type=color] { width: 36px; height: 24px; padding: 0; border: 1px solid var(--grillon-border); background: none; }

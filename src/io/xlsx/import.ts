@@ -22,6 +22,7 @@ import {
 import { FILTER_RESOURCE, readAutoFilter, type UniverAutoFilter, type UniverFilterResource } from './auto-filter';
 import { chartsToDrawingResource, DRAWING_RESOURCE, readSheetCharts, type DrawingResource, type SheetChart } from './charts';
 import { parseThemeColors } from './colors';
+import { parseTheme, sameTheme, DEFAULT_THEME, THEME_CUSTOM_KEY } from '../../data/theme';
 import { CF_RESOURCE, importConditionalFormats, type UniverCfResource } from './conditional-formatting';
 import { DV_RESOURCE, readDataValidations, type UniverDvResource, type UniverDvRule } from './data-validation';
 import { importNotes, NOTE_RESOURCE, type UniverNoteResource } from './notes';
@@ -309,6 +310,9 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
   const themes = (wb as unknown as { _themes?: Record<string, string> })._themes;
   const theme = parseThemeColors(themes?.theme1);
   const registry = new StyleRegistry(theme);
+  // Thème du fichier : gardé (s'il n'est pas celui d'Office par défaut) pour pouvoir le changer et le réécrire.
+  const fileTheme = parseTheme(themes?.theme1, theme);
+  const custom = fileTheme && !sameTheme(fileTheme, DEFAULT_THEME) ? { grillon: { [THEME_CUSTOM_KEY]: fileTheme } } : undefined;
 
   const sheets: Record<string, Partial<IWorksheetData>> = {};
   const sheetOrder: string[] = [];
@@ -397,6 +401,7 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
     sheetOrder,
     sheets,
     resources,
+    ...(custom ? { custom } : {}),
   };
 }
 

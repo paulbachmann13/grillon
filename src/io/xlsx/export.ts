@@ -29,6 +29,7 @@ import type { PivotDefinition } from '../../data/pivot';
 import { writePivotTables, type PivotToWrite } from './pivot-tables';
 import { sheetProtectionXml, type SheetProtection } from '../../data/sheet-protection';
 import type { Rect } from '../../data/cell-locks';
+import { patchThemeXml, themeOf } from '../../data/theme';
 
 /** Nombre maximal de cellules déverrouillées écrites une à une. */
 const MAX_UNLOCKED_CELLS = 100_000;
@@ -384,8 +385,9 @@ function addStopIfTrue(sheetXml: string, priorities: number[]): string {
 
 /** Écrit dans le XML ce qu'ExcelJS ne sait pas écrire (critères de filtre, tableaux, stopIfTrue). */
 async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPostProcess[]): Promise<Uint8Array> {
+  // Le thème est toujours écrit : celui qu'ExcelJS fournit par défaut est l'ancien Office 2007.
+  const theme = themeOf(wb as never);
   const needed = (p: SheetPostProcess) => p.autoFilter || p.tables.length || p.stopIfTruePriorities.length || p.charts.length || p.sparklines.length || !!p.pivot || !!p.protection;
-  if (!post.some(needed)) return bytes;
   const zip = await loadZip(bytes);
   const sheets = await listSheets(zip);
   let tableId = 0;
@@ -409,6 +411,8 @@ async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPost
   }
   // Les tableaux croisés touchent aussi le classeur (caches) : écrits après les feuilles.
   if (pivots.length) await writePivotTables(zip, wb, pivots);
+  const themeFile = zip.file('xl/theme/theme1.xml');
+  if (themeFile) zip.file('xl/theme/theme1.xml', patchThemeXml(await themeFile.async('string'), theme));
   return zipToBytes(zip);
 }
 
