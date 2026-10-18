@@ -42,7 +42,7 @@ test('Insérer / Supprimer des lignes et des colonnes depuis le ruban', async ({
   await expect.poll(() => display(page, 'A1')).toBe('1');
 
   // Annuler (Ctrl+Z) rétablit la colonne supprimée.
-  await page.keyboard.press('ControlOrMeta+Z');
+  await page.keyboard.press('Control+Z');
   await expect.poll(() => display(page, 'B1')).toBe('1');
 });
 

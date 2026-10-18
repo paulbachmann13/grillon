@@ -66,7 +66,10 @@ test('saisie : F2, Suppr, Ctrl+; (date du jour), Ctrl+: (heure)', async ({ page 
 test('copier/coller : Ctrl+C, Ctrl+V', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.keyboard.press('Control+C');
+  // La copie écrit le presse-papiers de façon asynchrone : attendre avant de coller.
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('1');
   await run(page, `wb.setActiveRange(ws.getRange('E5'));`);
-  await page.keyboard.press('Control+V');
+  // Chromium sous macOS ne déclenche l'événement « paste » natif qu'avec ⌘V (Ctrl+V est ignoré).
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
   await expect.poll(() => value(page, 'E5')).toBe('1');
 });
