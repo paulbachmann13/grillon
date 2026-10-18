@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.12.0] — 2026-10-18
+
+### Ajouté
+- **Mises à jour automatiques** de l'application Mac : quelques secondes après le démarrage, Grillon regarde s'il existe une Release GitHub plus récente et propose de l'installer (un clic, redémarrage automatique). Aussi dans Fichier → Rechercher les mises à jour…. Les mises à jour sont signées (clé de Grillon, sans rapport avec Apple).
+- Chaque Release contient maintenant `latest.json` et l'archive `.app.tar.gz` utilisés par la mise à jour, en plus du .dmg.
+
+**Cette version doit être installée à la main** (.dmg) ; les suivantes se mettront à jour toutes seules.
+
 ## [1.11.0] — 2026-10-18
 
 ### Ajouté

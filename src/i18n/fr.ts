@@ -176,6 +176,18 @@ export const fr = {
     now: 'Calculer maintenant (F9)',
     manualBadge: 'Calcul manuel : appuyez sur F9 pour calculer',
   },
+  update: {
+    check: 'Rechercher les mises à jour…',
+    available: 'La version {version} de Grillon est disponible (vous avez la {current}).\n\nL’installer maintenant ? Grillon va redémarrer : pensez à enregistrer vos classeurs ouverts.',
+    install: 'Installer et redémarrer',
+    later: 'Plus tard',
+    downloading: 'Téléchargement de la mise à jour…',
+    progress: 'Téléchargement de la mise à jour : {percent} %',
+    installed: 'Mise à jour installée : redémarrage…',
+    failed: 'La mise à jour a échoué : {message}',
+    upToDate: 'Vous utilisez la dernière version de Grillon ({version}).',
+    checkFailed: 'Impossible de vérifier les mises à jour : {message}',
+  },
   slicer: {
     insert: { slicer: 'Segment', timeline: 'Chronologie' },
     pick: { slicer: 'Choisissez le champ à filtrer avec des boutons.', timeline: 'Choisissez le champ de dates à filtrer.' },

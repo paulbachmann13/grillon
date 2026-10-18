@@ -61,6 +61,9 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        // Mises à jour automatiques (Releases GitHub) : vérification et installation depuis l'interface.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(Opens::default())
         .invoke_handler(tauri::generate_handler![take_pending_opens, take_window_open, new_window])
         .build(tauri::generate_context!())

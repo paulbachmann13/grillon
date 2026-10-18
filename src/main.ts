@@ -52,6 +52,8 @@ async function start(): Promise<void> {
     // les suivants arrivent dans leur propre fenêtre (côté natif).
     if (isTauri()) {
       for (const path of await takeStartupOpens()) await doc.openHandle(tauriHandleFromPath(path));
+      // Mise à jour : vérification discrète quelques secondes après le démarrage (jamais pendant les tests).
+      setTimeout(() => void doc.checkForUpdates(true), 5000);
     }
   }
 

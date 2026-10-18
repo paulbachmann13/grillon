@@ -1,7 +1,7 @@
 {
   "name": "grillon",
   "private": true,
-  "version": "1.11.0",
+  "version": "1.12.0",
   "description": "Grillon — tableur local gratuit, type Excel (PWA)",
   "license": "Apache-2.0",
   "type": "module",
@@ -20,6 +20,8 @@
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-dialog": "^2.8.3",
     "@tauri-apps/plugin-fs": "^2.7.1",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.14.0",
     "@univerjs/icons": "^1.43.1",
     "@univerjs/preset-sheets-conditional-formatting": "^1.0.4",
     "@univerjs/preset-sheets-core": "^1.0.4",

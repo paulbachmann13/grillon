@@ -12,6 +12,8 @@
     "dialog:allow-confirm",
     "core:window:allow-destroy",
     "core:window:allow-close",
+    "updater:default",
+    "process:allow-restart",
     {
       "identifier": "fs:allow-read-file",
       "allow": [{ "path": "/**" }, { "path": "$HOME/**" }, { "path": "$DESKTOP/**" }, { "path": "$DOCUMENT/**" }, { "path": "$DOWNLOAD/**" }]

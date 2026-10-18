@@ -2,6 +2,7 @@
  * Barre supérieure : bouton « Fichier » (comme l'onglet Fichier d'Excel), nom du document, état.
  */
 import { t } from '../i18n';
+import { isTauri } from '../io/tauri-files';
 import type { DocumentController, StatusKind } from './document';
 
 interface MenuItem {
@@ -66,6 +67,7 @@ export class Topbar {
       { id: 'unprotect', label: t('protection.menuUnprotect'), run: () => doc.unprotectSheet() },
       { id: 'page-setup', label: t('file.pageSetup'), run: () => doc.pageSetup(), separatorBefore: true },
       { id: 'print', label: t('file.print'), shortcut: `${mod}P`, run: () => doc.print() },
+      ...(isTauri() ? [{ id: 'update', label: t('update.check'), run: () => doc.checkForUpdates(false), separatorBefore: true }] : []),
     ];
     for (const item of items) {
       if (item.separatorBefore) {

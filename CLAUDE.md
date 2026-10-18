@@ -81,6 +81,18 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 - Le code Rust n'a longtemps été écrit sans pouvoir le compiler localement : sur le Mac, lancer
   `npm run tauri dev` pour le vérifier.
 
+## Mises à jour automatiques (application Mac)
+
+- Plugin `tauri-plugin-updater` : `src/app/updater.ts` (logique testée) ; vérification discrète 5 s après le démarrage
+  (fenêtre principale seulement) et Fichier → Rechercher les mises à jour. Point d'accès :
+  `https://github.com/paulbachmann13/grillon/releases/latest/download/latest.json` (dans `tauri.conf.json`).
+- Signature des mises à jour : clé générée avec `npx tauri signer generate`. La clé **privée** est dans
+  `~/.tauri/grillon-updater.key` (sauvegarde à garder : sans elle, plus aucune mise à jour possible pour les
+  copies déjà installées) et dans le secret GitHub `TAURI_SIGNING_PRIVATE_KEY` ; la clé publique est dans `tauri.conf.json`.
+- Le workflow « Application Mac » (étiquette `vX.Y.Z`, qui doit égaler la version de `package.json`) publie le .dmg,
+  `Grillon_X.Y.Z_universal.app.tar.gz` et `latest.json` (`scripts/make-latest-json.mjs`).
+- Ne jamais changer la clé publique sans prévenir : les versions installées refuseraient les mises à jour suivantes.
+
 ## Pas encore vérifié (à tester sur un vrai Mac / avec le vrai Excel)
 
 - Ouverture dans Microsoft Excel des tableaux croisés dynamiques et des graphiques chartEx écrits par Grillon.

@@ -353,6 +353,14 @@ export class DocumentController {
     this.events.onStatus(t('theme.applied', { name: next.name }), 'success');
   }
 
+  /** Fichier → Rechercher les mises à jour (application de bureau) ; `silent` : vérification discrète au démarrage. */
+  async checkForUpdates(silent: boolean): Promise<void> {
+    if (!isTauri()) return;
+    const { runUpdateCheck, tauriDeps } = await import('./updater');
+    const deps = await tauriDeps((message, kind) => this.events.onStatus(message, kind), () => this.autosaveNow());
+    await runUpdateCheck(deps, silent);
+  }
+
   /** Impression / export PDF de la feuille active. */
   print(): Promise<void> {
     return printDialog(this.api, this.fileName);

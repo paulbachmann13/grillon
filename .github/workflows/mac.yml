@@ -26,16 +26,35 @@ jobs:
         with:
           workspaces: src-tauri
       - run: npm ci
-      - name: Construire le .dmg universel
+      - name: Construire le .dmg universel (et l'archive de mise à jour signée)
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
         run: npm run build:mac
+      - name: Préparer les fichiers à publier
+        run: |
+          B=src-tauri/target/universal-apple-darwin/release/bundle
+          VERSION=$(node -p "require('./package.json').version")
+          # Une étiquette v1.2.3 doit correspondre à la version de package.json (sinon la mise à jour se tromperait).
+          if [[ "${{ github.ref }}" == refs/tags/v* && "${{ github.ref_name }}" != "v$VERSION" ]]; then
+            echo "L'étiquette ${{ github.ref_name }} ne correspond pas à la version $VERSION" >&2
+            exit 1
+          fi
+          mkdir -p out
+          cp "$B"/dmg/*.dmg out/
+          cp "$B/macos/Grillon.app.tar.gz" "out/Grillon_${VERSION}_universal.app.tar.gz"
+          cp "$B/macos/Grillon.app.tar.gz.sig" "out/Grillon_${VERSION}_universal.app.tar.gz.sig"
+          node scripts/make-latest-json.mjs "$VERSION" "out/Grillon_${VERSION}_universal.app.tar.gz.sig" \
+            "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Grillon_${VERSION}_universal.app.tar.gz" CHANGELOG.md > out/latest.json
+          ls -la out
       - uses: actions/upload-artifact@v4
         with:
           name: Grillon-mac
-          path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          path: out/*
           if-no-files-found: error
       - name: Publier dans les Releases (étiquette v…)
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg --title "Grillon ${{ github.ref_name }}" --notes "Application Mac (Intel et Apple Silicon). Non signée : au premier lancement, Réglages Système → Confidentialité et sécurité → « Ouvrir quand même »."
+          gh release create "${{ github.ref_name }}" out/*.dmg out/*.app.tar.gz out/latest.json --title "Grillon ${{ github.ref_name }}" --notes "Application Mac (Intel et Apple Silicon). Non signée : au premier lancement, Réglages Système → Confidentialité et sécurité → « Ouvrir quand même ». Les versions suivantes se mettent à jour toutes seules (Fichier → Rechercher les mises à jour…)."
