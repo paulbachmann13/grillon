@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.12.2] — 2026-10-18
+
+### Corrigé
+- Mise à jour automatique : quand Grillon est lancé depuis le .dmg ou le dossier Téléchargements, macOS l'exécute en lecture seule (« App Translocation ») et la mise à jour échouait avec « Read-only file system ». Grillon explique maintenant qu'il faut le glisser dans Applications, éjecter le disque et le relancer depuis Applications.
+
 ## [1.12.1] — 2026-10-18
 
 ### Corrigé

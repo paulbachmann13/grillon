@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { runUpdateCheck, type AvailableUpdate, type Deps } from '../../src/app/updater';
+import { isTranslocatedPath, runUpdateCheck, type AvailableUpdate, type Deps } from '../../src/app/updater';
 
 function deps(overrides: Partial<Deps> = {}, update: AvailableUpdate | null = null) {
   const log: string[] = [];
@@ -11,6 +11,7 @@ function deps(overrides: Partial<Deps> = {}, update: AvailableUpdate | null = nu
     status: vi.fn((m: string) => void log.push(`status:${m}`)),
     relaunch: vi.fn(async () => void log.push('relaunch')),
     beforeRestart: vi.fn(async () => void log.push('save')),
+    isTranslocated: async () => false,
     ...overrides,
   };
   return { d, log };
@@ -65,5 +66,20 @@ describe('mise à jour automatique', () => {
     const { d } = deps({ beforeRestart: () => Promise.reject(new Error('disque plein')) }, update());
     expect(await runUpdateCheck(d, true)).toBe('installed');
     expect(d.relaunch).toHaveBeenCalled();
+  });
+
+  it('lancée depuis le .dmg ou Téléchargements (lecture seule) : explique quoi faire, sans tenter l’installation', async () => {
+    const install = vi.fn(async () => undefined);
+    const { d, log } = deps({ isTranslocated: async () => true }, update(install));
+    expect(await runUpdateCheck(d, true)).toBe('error');
+    expect(install).not.toHaveBeenCalled();
+    expect(d.ask).not.toHaveBeenCalled();
+    expect(log[0]).toContain('La version 1.12.0 de Grillon est disponible');
+    expect(log[0]).toContain('dossier Applications');
+  });
+
+  it('reconnaît le chemin d’une application « translocalisée » par macOS', () => {
+    expect(isTranslocatedPath('/private/var/folders/nk/x/T/AppTranslocation/9E56DF82-6/d/Grillon.app/Contents/Resources')).toBe(true);
+    expect(isTranslocatedPath('/Applications/Grillon.app/Contents/Resources')).toBe(false);
   });
 });

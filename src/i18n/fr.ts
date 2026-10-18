@@ -185,6 +185,7 @@ export const fr = {
     progress: 'Téléchargement de la mise à jour : {percent} %',
     installed: 'Mise à jour installée : redémarrage…',
     failed: 'La mise à jour a échoué : {message}',
+    moveApp: 'La version {version} de Grillon est disponible, mais Grillon ne peut pas se mettre à jour depuis le disque d’installation ou le dossier Téléchargements.\n\nFaites glisser Grillon dans le dossier Applications, éjectez le disque Grillon, puis lancez Grillon depuis le dossier Applications.',
     upToDate: 'Vous utilisez la dernière version de Grillon ({version}).',
     checkFailed: 'Impossible de vérifier les mises à jour : {message}',
   },

@@ -20,7 +20,12 @@ export interface Deps {
   relaunch(): Promise<void>;
   /** Dernière sauvegarde automatique du classeur avant de redémarrer. */
   beforeRestart(): Promise<void>;
+  /** Vrai si macOS exécute Grillon depuis un emplacement temporaire en lecture seule (lancé depuis le .dmg ou Téléchargements). */
+  isTranslocated(): Promise<boolean>;
 }
+
+/** Chemin d'une application lancée depuis le .dmg ou Téléchargements : macOS la copie (« App Translocation ») en lecture seule. */
+export const isTranslocatedPath = (path: string): boolean => /\/AppTranslocation\//.test(path);
 
 export type UpdateResult = 'none' | 'declined' | 'installed' | 'error';
 
@@ -39,6 +44,11 @@ export async function runUpdateCheck(deps: Deps, silent: boolean): Promise<Updat
   if (!update) {
     if (!silent) await deps.tell(t('update.upToDate', { version: await deps.currentVersion() }));
     return 'none';
+  }
+  // Lancée depuis le .dmg ou Téléchargements, l'application ne peut pas se remplacer elle-même.
+  if (await deps.isTranslocated().catch(() => false)) {
+    await deps.tell(t('update.moveApp', { version: update.version }));
+    return 'error';
   }
   if (!(await deps.ask(t('update.available', { version: update.version, current: await deps.currentVersion() })))) return 'declined';
   try {
@@ -82,5 +92,9 @@ export async function tauriDeps(status: Deps['status'], beforeRestart: Deps['bef
     status,
     relaunch,
     beforeRestart,
+    async isTranslocated() {
+      const { resourceDir } = await import('@tauri-apps/api/path');
+      return isTranslocatedPath(await resourceDir());
+    },
   };
 }

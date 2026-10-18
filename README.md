@@ -66,16 +66,18 @@ Le dossier `src-tauri/` emballe l'appli web dans une vraie application Mac (Taur
 boîtes Ouvrir / Enregistrer natives, **Cmd+S réécrit le fichier d'origine**, double-clic sur un .xlsx ou .csv
 dans le Finder. L'accès aux fichiers est isolé dans `src/io/files.ts` et `src/io/tauri-files.ts`.
 
-- **Obtenir le .dmg** : GitHub → Actions → « Application Mac » → Run workflow, puis télécharger l'artefact
-  `Grillon-mac` (ou pousser une étiquette `v1.2.0` : le .dmg est publié dans les Releases).
-  Le .dmg est universel (Mac Intel et Apple Silicon).
+- **Obtenir le .dmg** : page [Releases](https://github.com/paulbachmann13/grillon/releases) du dépôt (le .dmg y est
+  publié à chaque étiquette `v1.2.0`). Le .dmg est universel (Mac Intel et Apple Silicon).
+- **Installer** : glisser Grillon dans Applications, **éjecter le disque**, puis lancer Grillon **depuis Applications**
+  (lancé depuis le .dmg ou Téléchargements, macOS l'exécute en lecture seule et la mise à jour automatique est impossible).
 - **Non signé** (pas de compte développeur Apple) : au premier lancement sur chaque Mac, ouvrir
   Réglages Système → Confidentialité et sécurité → « Ouvrir quand même ».
 - En local (sur un Mac avec Rust installé) : `npm run build:mac`.
 - **Plusieurs fenêtres**, comme Excel : Fichier → Nouveau et Fichier → Ouvrir (ou un double-clic dans le Finder)
   ouvrent un classeur dans sa propre fenêtre, sans fermer celui en cours (sauf si la fenêtre est encore vide et intacte).
-- **Mise à jour** : télécharger le nouveau .dmg (Actions → « Application Mac » → `Grillon-mac`) et remplacer
-  Grillon dans Applications ; les fichiers ne sont pas touchés.
+- **Mise à jour automatique** : Grillon propose les nouvelles versions au démarrage et dans Fichier → Rechercher les
+  mises à jour… (une fois installé dans Applications). Sinon, télécharger le nouveau .dmg et remplacer Grillon dans
+  Applications ; les fichiers ne sont pas touchés.
 - Limite : l'impression (Ctrl+P) dépend de la fenêtre web du système ; à vérifier sur Mac.
 
 ### Développer sur Mac (avec Claude Code)
