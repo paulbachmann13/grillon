@@ -951,3 +951,17 @@ body,
 .g-slicer-level { font: inherit; }
 .g-timeline-strip { display: flex; gap: 3px; padding: 6px; overflow-x: auto; flex: 1; align-items: stretch; }
 .g-timeline-strip button { flex: none; min-width: 56px; text-align: center; }
+
+/* Grille et ruban : pas de sélection de texte de la page (sinon un clic droit sous macOS colore tout le fond en bleu).
+   Les zones de saisie (cellule, barre de formule, champs) restent sélectionnables. */
+#univer {
+  -webkit-user-select: none;
+  user-select: none;
+}
+#univer input,
+#univer textarea,
+#univer [contenteditable],
+#univer [contenteditable] * {
+  -webkit-user-select: text;
+  user-select: text;
+}

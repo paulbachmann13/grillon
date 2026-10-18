@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.10.1] — 2026-10-18
+
+### Corrigé
+- Application Mac : un clic droit sur la grille colorait tout le fond en bleu (sélection de texte de la page par WebKit) ; la grille n'est plus sélectionnable comme du texte, les zones de saisie le restent.
+
 ## [1.10.0] — 2026-10-18
 
 ### Ajouté
