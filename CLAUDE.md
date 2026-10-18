@@ -84,6 +84,6 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 
 ## Idées pour la suite (voir docs/EXCEL-COMPARAISON.md)
 
-Triangles verts sur la grille, flèches de repérage, segments et chronologies, regroupement de dates et
+Triangles verts sur la grille, flèches de repérage, segments et chronologies dans le .xlsx (x14), regroupement de dates et
 « afficher les valeurs en » dans les tableaux croisés, protection du classeur et plages autorisées,
 orthographe, effets de thème, plus de formes, autres types de graphiques (boursier, surface…).

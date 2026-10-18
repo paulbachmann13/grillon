@@ -23,12 +23,12 @@ function wbOf(api: FUniver): FWorkbook | null {
   return api.getActiveWorkbook() as unknown as FWorkbook | null;
 }
 
-function getDefinition(ws: FWorksheet): PivotDefinition | null {
+export function getDefinition(ws: FWorksheet): PivotDefinition | null {
   const custom = ws.getCustomMetadata() as { grillon?: { pivot?: PivotDefinition } } | undefined;
   return custom?.grillon?.pivot ?? null;
 }
 
-function readSource(api: FUniver, def: Pick<PivotDefinition, 'sourceSheet' | 'sourceRange'>): Grid | null {
+export function readSource(api: FUniver, def: Pick<PivotDefinition, 'sourceSheet' | 'sourceRange'>): Grid | null {
   const ws = wbOf(api)?.getSheetByName(def.sourceSheet) as unknown as FWorksheet | null;
   if (!ws) return null;
   try {
@@ -39,7 +39,7 @@ function readSource(api: FUniver, def: Pick<PivotDefinition, 'sourceSheet' | 'so
   }
 }
 
-function writePivot(api: FUniver, target: FWorksheet, def: PivotDefinition): boolean {
+export function writePivot(api: FUniver, target: FWorksheet, def: PivotDefinition): boolean {
   const grid = readSource(api, def);
   if (!grid) return false;
   const out = computePivot(grid, def.config, FR_PIVOT_LABELS);

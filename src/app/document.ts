@@ -18,6 +18,7 @@ import { installGridShortcuts } from '../univer/grid-shortcuts';
 import { installViewRibbon } from '../univer/view-ribbon';
 import { installBasics } from '../univer/basics';
 import { installPageBreaks } from '../univer/page-breaks';
+import { installSlicers } from '../univer/slicers';
 import { installCellFormat } from '../univer/cell-format';
 import { installOutlineGutter } from '../univer/outline-gutter';
 import { installGridGrowth } from '../univer/grid-growth';
@@ -100,6 +101,7 @@ export class DocumentController {
         installShapes(this.api);
         installQuickAnalysis(this.api);
         installPivot(this.api);
+        installSlicers(this.api);
         installGridShortcuts(this.api);
         installViewRibbon(this.api, () => this.print(), () => this.pageSetup(), (mode) => this.changeTheme(mode));
         installGridGrowth(this.api);

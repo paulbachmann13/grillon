@@ -176,6 +176,17 @@ export const fr = {
     now: 'Calculer maintenant (F9)',
     manualBadge: 'Calcul manuel : appuyez sur F9 pour calculer',
   },
+  slicer: {
+    insert: { slicer: 'Segment', timeline: 'Chronologie' },
+    pick: { slicer: 'Choisissez le champ à filtrer avec des boutons.', timeline: 'Choisissez le champ de dates à filtrer.' },
+    field: 'Champ',
+    clear: 'Effacer le filtre',
+    missing: 'Les données de ce segment sont introuvables.',
+    noData: 'Sélectionnez une cellule dans un tableau (avec une ligne d’en-têtes) ou dans un tableau croisé dynamique.',
+    noDates: 'Aucune colonne de dates n’a été trouvée dans ces données.',
+    allPeriods: 'Toutes les périodes',
+    level: { years: 'Années', quarters: 'Trimestres', months: 'Mois', days: 'Jours' },
+  },
   theme: {
     themes: 'Thèmes',
     colors: 'Couleurs',

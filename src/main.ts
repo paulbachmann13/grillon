@@ -1,6 +1,7 @@
 import { DocumentController } from './app/document';
 import { CHART_COMPONENT, createChartComponent } from './charts/chart-view';
 import { createShapeComponent, SHAPE_COMPONENT } from './charts/shape-view';
+import { createSlicerComponent, SLICER_COMPONENT } from './univer/slicers';
 import { createSparklineComponent, SPARKLINE_COMPONENT } from './charts/sparkline-view';
 import { setupPwa } from './app/pwa';
 import { installShortcuts } from './app/shortcuts';
@@ -17,6 +18,7 @@ const api = setupUniver(document.getElementById('univer')!);
 api.registerComponent(CHART_COMPONENT, createChartComponent(api) as never);
 api.registerComponent(SPARKLINE_COMPONENT, createSparklineComponent(api) as never);
 api.registerComponent(SHAPE_COMPONENT, createShapeComponent(api) as never);
+api.registerComponent(SLICER_COMPONENT, createSlicerComponent(api) as never);
 
 let topbar: Topbar | undefined;
 const doc = new DocumentController(api, {

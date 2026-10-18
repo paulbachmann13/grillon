@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.10.0] — 2026-10-18
+
+### Ajouté
+- **Segments** et **chronologies** (Insertion) : des boutons posés sur la feuille qui filtrent un tableau (lignes masquées) ou un tableau croisé dynamique (filtre du champ). Clic : un seul élément ; Ctrl / ⌘ / Maj : ajouter ou retirer ; ✕ : effacer le filtre. Les éléments sans donnée (selon les autres filtres) sont grisés.
+- Chronologie : années, trimestres, mois ou jours ; un clic choisit une période, Maj étend la plage.
+- Plusieurs segments et chronologies se combinent (ET) ; supprimer un segment rend les lignes masquées et retire son filtre du tableau croisé. Les segments sont enregistrés avec le classeur.
+
 ## [1.9.0] — 2026-10-18
 
 ### Ajouté

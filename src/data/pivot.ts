@@ -39,6 +39,8 @@ export interface PivotDefinition {
   outCol?: number;
   /** Nom du tableau croisé (dans le .xlsx). */
   name?: string;
+  /** Colonnes source dont le filtre est posé par un segment ou une chronologie. */
+  slicerCols?: number[];
 }
 
 export interface PivotLabels {

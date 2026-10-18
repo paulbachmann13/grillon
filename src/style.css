@@ -933,3 +933,21 @@ body,
 .g-pb-label { position: absolute; display: flex; align-items: center; justify-content: center; font: 700 clamp(24px, 6vw, 72px) system-ui, sans-serif; color: rgba(120, 130, 150, 0.28); overflow: hidden; }
 .g-pb-bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 10px; font-size: 12px; background: rgba(43, 108, 212, 0.92); color: #fff; pointer-events: none; }
 .g-pb-bar button { pointer-events: auto; margin-left: 8px; padding: 1px 10px; border: 1px solid #fff; border-radius: 4px; background: transparent; color: #fff; font: inherit; cursor: pointer; }
+
+/* Segments et chronologies */
+.g-slicer { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; background: var(--grillon-bg); color: var(--grillon-fg); border: 1px solid var(--grillon-border); border-radius: 4px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18); font-size: 12px; overflow: hidden; }
+.g-slicer-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 5px 8px; background: var(--grillon-menu-hover); border-bottom: 1px solid var(--grillon-border); cursor: move; }
+.g-slicer-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-slicer-clear { border: 1px solid transparent; background: none; color: inherit; border-radius: 3px; cursor: pointer; padding: 0 5px; }
+.g-slicer-clear:disabled { opacity: 0.35; cursor: default; }
+.g-slicer-clear:not(:disabled):hover { border-color: var(--grillon-accent); }
+.g-slicer-items { display: flex; flex-direction: column; gap: 3px; padding: 6px; overflow: auto; }
+.g-slicer-items button, .g-timeline-strip button { text-align: left; padding: 4px 8px; border: 1px solid var(--grillon-border); border-radius: 3px; background: var(--grillon-bg); color: inherit; font: inherit; cursor: pointer; }
+.g-slicer-items button.selected, .g-timeline-strip button.selected { background: var(--grillon-accent); border-color: var(--grillon-accent); color: #fff; }
+.g-slicer-items button:not(.selected):not(.empty) { background: var(--grillon-menu-hover); }
+.g-slicer-items button.empty:not(.selected) { color: var(--grillon-muted); background: transparent; border-style: dashed; }
+.g-slicer-empty { padding: 8px; color: var(--grillon-muted); }
+.g-slicer-sub { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; color: var(--grillon-muted); }
+.g-slicer-level { font: inherit; }
+.g-timeline-strip { display: flex; gap: 3px; padding: 6px; overflow-x: auto; flex: 1; align-items: stretch; }
+.g-timeline-strip button { flex: none; min-width: 56px; text-align: center; }

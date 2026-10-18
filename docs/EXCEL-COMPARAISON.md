@@ -46,7 +46,7 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 | Graphiques boursier, surface, compartimentage, rayons de soleil, Pareto, cartes | Non | |
 | Graphique croisé dynamique | Non | |
 | Mini-graphiques | Oui | |
-| Segments, chronologies | Non | |
+| Segments, chronologies | Partiel | Sur les tableaux (plage avec en-têtes) et les tableaux croisés de Grillon ; enregistrés dans le classeur Grillon mais pas dans le .xlsx (seules les lignes masquées le sont) ; pas de style de segment ni de colonnes multiples |
 | Lien | Oui | |
 | Commentaire (fil de discussion), note | Partiel | Notes uniquement |
 | En-tête et pied de page | Oui | Via Mise en page |
