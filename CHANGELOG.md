@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.12.1] — 2026-10-18
+
+### Corrigé
+- Barre de formule : les flèches gauche / droite déplacent le curseur dans la formule (comme Excel). Avant, elles déplaçaient la plage de cellules de la formule (`A1:A3` devenait `Y1000`). Maj + flèche sélectionne du texte.
+
 ## [1.12.0] — 2026-10-18
 
 ### Ajouté

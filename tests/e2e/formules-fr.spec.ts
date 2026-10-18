@@ -72,3 +72,29 @@ test('la fenêtre Espion montre la formule en français', async ({ page }) => {
   await dialog.getByTestId('watch-add').click();
   await expect(dialog.getByTestId('watch-row')).toContainText('=SI(SOMME(A1:A3)>5;0,5;"non")');
 });
+
+// Univer traitait la barre de formule comme une saisie de références : une flèche changeait « A1:A3 » en « Y1000 ».
+test('barre de formule : les flèches déplacent le curseur dans le texte, pas la plage', async ({ page }) => {
+  await run(page, `ws.getRange('C1').setFormula('=SUM(A1:A3)+1'); wb.setActiveRange(ws.getRange('C1'));`);
+  await page.waitForTimeout(500);
+  // Clic dans la barre de formule, à droite du texte : le curseur est à la fin.
+  await page.mouse.click(600, 155);
+  await page.waitForTimeout(400);
+  await page.keyboard.press('ArrowLeft');
+  await page.waitForTimeout(150);
+  await page.keyboard.type('2', { delay: 40 });
+  await page.keyboard.press('Enter');
+  await expect.poll(() => formulaOf(page, 'C1')).toBe('=SUM(A1:A3)+21');
+  await expect.poll(() => shown(page, 'C1')).toBe('27');
+});
+
+test('modification avec F2 : les flèches déplacent aussi le curseur', async ({ page }) => {
+  await run(page, `ws.getRange('C1').setFormula('=SUM(A1:A3)+1'); wb.setActiveRange(ws.getRange('C1'));`);
+  await page.waitForTimeout(400);
+  await page.keyboard.press('F2');
+  await page.waitForTimeout(300);
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.type('2', { delay: 40 });
+  await page.keyboard.press('Enter');
+  await expect.poll(() => formulaOf(page, 'C1')).toBe('=SUM(A1:A3)+21');
+});
