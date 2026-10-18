@@ -7,7 +7,9 @@ import type { FUniver } from '@univerjs/presets';
 import type { FWorkbook, FWorksheet } from '@univerjs/sheets/facade';
 import { t } from '../i18n';
 import type { IBorderStyleData, IStyleData, IWorkbookData } from '../model/univer-types';
-import { hfToCssContent, parseRowRange, PAPER_SIZES, printZoom, DEFAULT_PAGE, type HeaderFooterSpec, type PageSetup } from '../data/page-setup';
+import { hasBreaks } from '../data/page-breaks';
+import { computeLayout } from '../data/page-layout';
+import { hfToCssContent, parseRowRange, PAPER_SIZES, DEFAULT_PAGE, type HeaderFooterSpec, type PageSetup } from '../data/page-setup';
 import { columnToLetters, rangeFromA1 } from '../io/xlsx/units';
 import { actionButton, box, checkbox, field, openDialog, select } from '../ui/dialog';
 import { getPageSetup } from './page-setup-store';
@@ -17,7 +19,12 @@ export interface PrintOptions {
   /** Mise en page effective (réglages de la feuille, éventuellement modifiés dans la boîte d'impression). */
   page: PageSetup;
   fileName: string;
+  /** Une seule page (à partir de 0) : sert à l'aperçu, qui montre les vraies pages. */
+  pageIndex?: number;
 }
+
+/** Hauteur de la ligne des lettres de colonne quand les en-têtes sont imprimés. */
+const HEADING_ROW_PX = 20;
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const color = (c?: { rgb?: string | null | void } | null | void) => (c && c.rgb ? c.rgb : undefined);
@@ -55,6 +62,11 @@ function styleCss(s: IStyleData | null | undefined): string {
 
 /** Construit le document HTML imprimable d'une feuille. */
 export function buildPrintHtml(api: FUniver, opts: PrintOptions): string | null {
+  return buildPrint(api, opts)?.html ?? null;
+}
+
+/** Document HTML imprimable et nombre de pages (sauts manuels et automatiques compris). */
+export function buildPrint(api: FUniver, opts: PrintOptions): { html: string; pageCount: number } | null {
   const wb = api.getActiveWorkbook() as unknown as FWorkbook | null;
   const ws = wb?.getActiveSheet() as unknown as FWorksheet | undefined;
   if (!wb || !ws) return null;
@@ -91,48 +103,75 @@ export function buildPrintHtml(api: FUniver, opts: PrintOptions): string | null 
   const styles = data.styles ?? {};
   const resolve = (s: unknown): IStyleData | null => (typeof s === 'string' ? (styles[s] ?? null) : ((s as IStyleData) ?? null));
   // Fusions : cellule maître (colspan/rowspan) et cellules couvertes.
-  const covered = new Set<string>();
+  const covered = new Map<string, { row: number; col: number }>();
   const spans = new Map<string, { rs: number; cs: number }>();
   for (const m of sheet?.mergeData ?? []) {
     spans.set(`${m.startRow},${m.startColumn}`, { rs: m.endRow - m.startRow + 1, cs: m.endColumn - m.startColumn + 1 });
-    for (let r = m.startRow; r <= m.endRow; r++) for (let c = m.startColumn; c <= m.endColumn; c++) if (r !== m.startRow || c !== m.startColumn) covered.add(`${r},${c}`);
+    for (let r = m.startRow; r <= m.endRow; r++) for (let c = m.startColumn; c <= m.endColumn; c++) if (r !== m.startRow || c !== m.startColumn) covered.set(`${r},${c}`, { row: m.startRow, col: m.startColumn });
   }
   const widths = Array.from({ length: cols }, (_, i) => (sheet?.columnData?.[c1 + i]?.hd ? 0 : ws.getColumnWidth(c1 + i)));
-  const tableWidth = widths.reduce((a, b) => a + b, 0) + (opts.page.headings ? 34 : 0);
   const page = opts.page;
   const headings = !!page.headings;
-  const rowHtml = (r: number): string => {
+  const headingW = headings ? 34 : 0;
+  const rowHidden = (r: number) => !!sheet?.rowData?.[r]?.hd;
+  const rowPx = (r: number) => (rowHidden(r) ? 0 : ws.getRowHeight(r));
+  const titles = parseRowRange(page.titleRows);
+  const isTitle = (r: number) => !!titles && r >= titles.first && r <= titles.last;
+  // Lignes de titre répétées en haut de chaque page (celles hors de la zone imprimée comprises).
+  const titleRows: number[] = [];
+  if (titles) for (let r = titles.first; r <= titles.last; r++) if (!rowHidden(r)) titleRows.push(r);
+  const repeatedHeight = titleRows.reduce((h, r) => h + ws.getRowHeight(r), 0) + (headings ? HEADING_ROW_PX : 0);
+  // Pages : les mêmes que dans l'aperçu des sauts de page (sauts manuels et automatiques).
+  const layout = computeLayout({
+    page,
+    rows: { from: r1, to: r2 },
+    cols: { from: c1, to: c2 },
+    rowSize: (r) => (isTitle(r) ? 0 : rowPx(r)),
+    colSize: (c) => widths[c - c1],
+    repeatedHeight,
+    repeatedWidth: headingW,
+  });
+  const zoom = layout.zoom;
+  const only = opts.pageIndex === undefined ? undefined : layout.pages[Math.min(Math.max(0, opts.pageIndex), layout.pages.length - 1)];
+  const rowStarts = new Set(only ? [] : layout.rowPages.slice(1).map((p) => p.start));
+  const rowHtml = (r: number, band: { start: number; end: number }): string => {
     const i = r - r1;
-    if (sheet?.rowData?.[r]?.hd) return '';
+    if (rowHidden(r)) return '';
     const cells: string[] = headings ? [`<th class="rh">${r + 1}</th>`] : [];
-    for (let j = 0; j < cols; j++) {
-      const c = c1 + j;
-      if (covered.has(`${r},${c}`) || !widths[j]) continue;
+    for (let c = band.start; c <= band.end; c++) {
+      const j = c - c1;
+      const master = covered.get(`${r},${c}`);
+      // Une fusion dont la cellule principale est sur une autre page se lit comme une cellule vide.
+      if ((master && master.col >= band.start) || !widths[j]) continue;
       const cell = sheet?.cellData?.[r]?.[c];
       const span = spans.get(`${r},${c}`);
+      const colspan = span ? Math.min(span.cs, band.end - c + 1) : 0;
       const value = display[i]?.[j] ?? '';
       const numeric = typeof cell?.v === 'number' || cell?.t === 2;
       const css = `${numeric ? 'text-align:right;' : ''}${styleCss(resolve(cell?.s))}`;
-      cells.push(`<td${span ? ` rowspan="${span.rs}" colspan="${span.cs}"` : ''}${css ? ` style="${css}"` : ''}>${esc(value)}</td>`);
+      cells.push(`<td${span ? ` rowspan="${span.rs}" colspan="${colspan}"` : ''}${css ? ` style="${css}"` : ''}>${esc(value)}</td>`);
     }
-    return `<tr style="height:${ws.getRowHeight(r)}px">${cells.join('')}</tr>`;
+    const breakBefore = rowStarts.has(r) ? 'break-before:page;' : '';
+    return `<tr style="${breakBefore}height:${ws.getRowHeight(r)}px">${cells.join('')}</tr>`;
   };
-  const titles = parseRowRange(page.titleRows);
-  const headRows: string[] = [];
-  const body: string[] = [];
-  for (let r = r1; r <= r2; r++) {
-    if (titles && r >= titles.first && r <= titles.last) headRows.push(rowHtml(r));
-    else body.push(rowHtml(r));
-  }
-  // Lignes de titre hors de la zone imprimée : répétées en haut de chaque page.
-  if (titles) for (let r = titles.first; r <= titles.last && r < r1; r++) headRows.unshift(rowHtml(r));
-  if (headings) {
-    const letters = Array.from({ length: cols }, (_, j) => (widths[j] ? `<th class="ch">${columnToLetters(c1 + j)}</th>` : '')).join('');
-    headRows.unshift(`<tr><th class="rh"></th>${letters}</tr>`);
-  }
+  // Une table par bande de colonnes (Excel imprime de haut en bas, puis de gauche à droite).
+  const tables = (only ? [only.cols] : layout.colPages).map((band, k) => {
+    const bandWidths = widths.slice(band.start - c1, band.end - c1 + 1);
+    const tableWidth = bandWidths.reduce((a, b) => a + b, 0) + headingW;
+    const headRows: string[] = [];
+    if (headings) {
+      const letters = bandWidths.map((w, j) => (w ? `<th class="ch">${columnToLetters(band.start + j)}</th>` : '')).join('');
+      headRows.push(`<tr><th class="rh"></th>${letters}</tr>`);
+    }
+    for (const r of titleRows) headRows.push(rowHtml(r, band));
+    const body: string[] = [];
+    for (let r = only ? only.rows.start : r1; r <= (only ? only.rows.end : r2); r++) if (!isTitle(r)) body.push(rowHtml(r, band));
+    const colsHtml = (headings ? ['<col style="width:34px">'] : []).concat(bandWidths.filter(Boolean).map((w) => `<col style="width:${w}px">`)).join('');
+    return `<table${k ? ' class="band"' : ''} style="width:${tableWidth}px"><colgroup>${colsHtml}</colgroup>${headRows.length ? `<thead>${headRows.join('')}</thead>` : ''}<tbody>${body.join('')}</tbody></table>`;
+  });
   // Graphiques et images : capturés depuis l'écran.
   const extras: string[] = [];
-  if (!opts.selectionOnly) {
+  if (!opts.selectionOnly && (!only || only.n === layout.pages.length)) {
     document.querySelectorAll<HTMLCanvasElement>('.g-chart-canvas canvas').forEach((cv) => {
       try {
         extras.push(`<img class="chart" src="${cv.toDataURL('image/png')}" alt="">`);
@@ -148,8 +187,6 @@ export function buildPrintHtml(api: FUniver, opts: PrintOptions): string | null 
       }
     }
   }
-  const zoom = printZoom(page, tableWidth);
-  const colsHtml = (headings ? ['<col style="width:34px">'] : []).concat(widths.filter(Boolean).map((w) => `<col style="width:${w}px">`)).join('');
   const paper = PAPER_SIZES[page.paper ?? DEFAULT_PAGE.paper];
   const m = page.margins ?? DEFAULT_PAGE.margins;
   const now = new Date();
@@ -159,17 +196,19 @@ export function buildPrintHtml(api: FUniver, opts: PrintOptions): string | null 
       .filter((k) => hf?.[k])
       .map((k) => `@${prefix}-${k} { content: ${hfToCssContent(hf![k]!, ctx)}; font: 9pt Calibri, Carlito, Arial, sans-serif; color: #000; }`)
       .join(' ');
-  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${esc(ws.getSheetName())}</title><style>
+  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${esc(ws.getSheetName())}</title><style>
 @page { size: ${paper.widthMm}mm ${paper.heightMm}mm${page.orientation === 'landscape' ? ' landscape' : ''}; margin: ${m.top}in ${m.right}in ${m.bottom}in ${m.left}in; ${boxes('top', page.header)} ${boxes('bottom', page.footer)} }
 body { margin: 0; font: 11pt Calibri, Carlito, Arial, sans-serif; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .sheet { zoom: ${zoom.toFixed(4)}; }
-table { border-collapse: collapse; table-layout: fixed; width: ${tableWidth}px; ${page.centerH ? 'margin: 0 auto;' : ''} }
+table { border-collapse: collapse; table-layout: fixed; ${page.centerH ? 'margin: 0 auto;' : ''} }
+table.band { break-before: page; }
 thead { display: table-header-group; }
 td { padding: 1px 3px; overflow: hidden; white-space: nowrap; vertical-align: bottom; ${page.gridlines ? 'border: 1px solid #c8c8c8;' : ''} }
 th.rh, th.ch { background: #f0f0f0; border: 1px solid #c8c8c8; font-weight: 400; font-size: 9pt; text-align: center; }
 tr { page-break-inside: avoid; }
 img { display: block; margin-top: 12px; max-width: 100%; page-break-inside: avoid; }
-</style></head><body><div class="sheet"><table><colgroup>${colsHtml}</colgroup>${headRows.length ? `<thead>${headRows.join('')}</thead>` : ''}<tbody>${body.join('')}</tbody></table>${extras.join('')}</div></body></html>`;
+</style></head><body><div class="sheet">${tables.join('')}${extras.join('')}</div></body></html>`;
+  return { html, pageCount: layout.pages.length };
 }
 
 function printHtml(html: string): void {
@@ -195,10 +234,10 @@ const MM_TO_PX = 96 / 25.4;
 
 /**
  * Aperçu avant impression (comme le panneau de droite d'Excel) : une page aux proportions du
- * papier, marges comprises, et la navigation entre les pages. Le découpage est celui du navigateur
- * à l'impression, au plus près (hauteur imprimable).
+ * papier, marges comprises, et la navigation entre les pages. Chaque page est celle du découpage
+ * réel (sauts manuels et automatiques) : on affiche le contenu de la page choisie.
  */
-function printPreview(): { el: HTMLElement; show(html: string, page: PageSetup): void } {
+function printPreview(): { el: HTMLElement; show(build: (pageIndex: number) => { html: string; pageCount: number } | null, page: PageSetup): void } {
   const el = document.createElement('div');
   el.className = 'g-print-preview';
   el.dataset.testid = 'print-preview';
@@ -224,11 +263,16 @@ function printPreview(): { el: HTMLElement; show(html: string, page: PageSetup):
   el.append(holder, nav);
   let index = 0;
   let pages = 1;
-  let pageHeight = 0;
+  let builder: ((pageIndex: number) => { html: string; pageCount: number } | null) | null = null;
 
   function go(i: number): void {
+    const built = builder?.(Math.max(0, i));
+    if (!built) return;
+    pages = Math.max(1, built.pageCount);
     index = Math.max(0, Math.min(pages - 1, i));
-    frame.contentWindow?.scrollTo(0, index * pageHeight);
+    // Si le nombre de pages a baissé, on redessine la dernière page.
+    const html = index === Math.max(0, i) ? built.html : (builder?.(index)?.html ?? built.html);
+    frame.srcdoc = html;
     label.textContent = t('print.pageOf', { n: index + 1, total: pages });
     prev.disabled = index === 0;
     next.disabled = index >= pages - 1;
@@ -236,7 +280,7 @@ function printPreview(): { el: HTMLElement; show(html: string, page: PageSetup):
 
   return {
     el,
-    show(html: string, page: PageSetup) {
+    show(build, page: PageSetup) {
       const paper = PAPER_SIZES[page.paper ?? DEFAULT_PAGE.paper];
       const landscape = page.orientation === 'landscape';
       const w = (landscape ? paper.heightMm : paper.widthMm) * MM_TO_PX;
@@ -247,15 +291,9 @@ function printPreview(): { el: HTMLElement; show(html: string, page: PageSetup):
       const scale = Math.min(1, 380 / w, 520 / h);
       Object.assign(sheet.style, { width: `${w}px`, height: `${h}px`, padding: `${top}px ${right}px ${bottom}px ${left}px`, transform: `scale(${scale})` });
       Object.assign(holder.style, { width: `${w * scale}px`, height: `${h * scale}px` });
-      pageHeight = h - top - bottom;
-      Object.assign(frame.style, { width: `${w - left - right}px`, height: `${pageHeight}px` });
-      frame.srcdoc = html;
-      frame.onload = () => {
-        const doc = frame.contentDocument;
-        const height = doc?.documentElement.scrollHeight ?? pageHeight;
-        pages = Math.max(1, Math.ceil((height - 2) / pageHeight));
-        go(Math.min(index, pages - 1));
-      };
+      Object.assign(frame.style, { width: `${w - left - right}px`, height: `${h - top - bottom}px` });
+      builder = build;
+      go(index);
     },
   };
 }
@@ -292,13 +330,15 @@ export async function printDialog(api: FUniver, fileName = ''): Promise<void> {
     return page;
   };
   const build = () => buildPrintHtml(api, { selectionOnly: what.value === 'selection', page: currentPage(), fileName });
-  const refresh = () => {
-    const html = build();
-    if (html) preview.show(html, currentPage());
-  };
+  const refresh = () => preview.show((pageIndex) => buildPrint(api, { selectionOnly: what.value === 'selection', page: currentPage(), fileName, pageIndex }), currentPage());
   for (const c of [orientation, what, gridlines.input, fit.input]) c.addEventListener('change', refresh);
   const setup = actionButton(t('print.pageSetup'), () => void import('./page-setup').then((m) => m.pageSetupDialog(api)).then(refresh));
-  const settings = box(t('print.help'), field(t('print.what'), what), field(t('print.orientation'), orientation), gridlines.el, fit.el, setup);
+  const fitNote = Object.assign(document.createElement('p'), { className: 'g-eval-status', textContent: t('pageBreaks.ignoredWithFit') });
+  fitNote.dataset.testid = 'print-fit-note';
+  const updateNote = () => (fitNote.hidden = !(fit.input.checked && hasBreaks(getPageSetup(api))));
+  fit.input.addEventListener('change', updateNote);
+  updateNote();
+  const settings = box(t('print.help'), field(t('print.what'), what), field(t('print.orientation'), orientation), gridlines.el, fit.el, fitNote, setup);
   settings.classList.add('g-print-settings');
   const layout = document.createElement('div');
   layout.className = 'g-print-layout';

@@ -616,6 +616,17 @@ export const fr = {
     textOverflow: 'Texte qui déborde',
     textOverflowTip: 'Laisser un texte trop long déborder sur les cellules vides voisines (sinon il est coupé au bord de la cellule)',
   },
+  pageBreaks: {
+    menu: 'Sauts de page',
+    insert: 'Insérer un saut de page',
+    remove: 'Supprimer le saut de page',
+    reset: 'Rétablir tous les sauts de page',
+    preview: 'Aperçu des sauts de page',
+    normal: 'Normal',
+    pageN: 'Page {n}',
+    hint: 'Bleu plein : saut manuel ; pointillés : saut automatique.',
+    ignoredWithFit: 'Les sauts de page manuels sont ignorés tant que « Ajuster à la largeur de la page » est coché (comme dans Excel).',
+  },
   pageSetup: {
     title: 'Mise en page',
     page: 'Page',

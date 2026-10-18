@@ -920,3 +920,16 @@ body,
 .g-theme-swatches span { width: 14px; height: 18px; border: 1px solid rgba(0, 0, 0, 0.15); margin-right: -1px; }
 .g-theme-custom { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 12px; }
 .g-theme-custom input[type=color] { width: 36px; height: 24px; padding: 0; border: 1px solid var(--grillon-border); background: none; }
+
+/* Aperçu des sauts de page */
+.g-pagebreaks { position: absolute; pointer-events: none; overflow: hidden; z-index: 8; }
+.g-pb-area { position: absolute; border: 2px solid #2b6cd4; box-sizing: border-box; }
+.g-pb-line { position: absolute; background: #2b6cd4; }
+.g-pb-line.auto { background: none; }
+.g-pb-h { height: 3px; margin-top: -1px; }
+.g-pb-v { width: 3px; margin-left: -1px; }
+.g-pb-h.auto { border-top: 2px dashed #2b6cd4; height: 0; }
+.g-pb-v.auto { border-left: 2px dashed #2b6cd4; width: 0; }
+.g-pb-label { position: absolute; display: flex; align-items: center; justify-content: center; font: 700 clamp(24px, 6vw, 72px) system-ui, sans-serif; color: rgba(120, 130, 150, 0.28); overflow: hidden; }
+.g-pb-bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 10px; font-size: 12px; background: rgba(43, 108, 212, 0.92); color: #fff; pointer-events: none; }
+.g-pb-bar button { pointer-events: auto; margin-left: 8px; padding: 1px 10px; border: 1px solid #fff; border-radius: 4px; background: transparent; color: #fff; font: inherit; cursor: pointer; }

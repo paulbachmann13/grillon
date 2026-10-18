@@ -31,7 +31,8 @@ import { readTables, TABLE_RESOURCE, type UniverTable, type UniverTableResource 
 import { richTextToDocument } from './rich-text';
 import { styleToUniver } from './styles';
 import { dateToSerial, EXCEL_DEFAULT_COL_WIDTH, EXCEL_DEFAULT_ROW_HEIGHT_PT, excelWidthToPx, fromA1, ptToPx, rangeFromA1 } from './units';
-import { fromExcelPageSetup, type ExcelPageSetupLike } from '../../data/page-setup';
+import { fromExcelPageSetup, type ExcelPageSetupLike, type PageSetup } from '../../data/page-setup';
+import { readBreaks, withBreaks } from '../../data/page-breaks';
 import { addSparklinesToResource, readSparklines, type SheetSparkline } from './sparklines';
 import type { PivotDefinition } from '../../data/pivot';
 import { readPivotTables } from './pivot-tables';
@@ -255,6 +256,8 @@ export interface SheetExtras {
   sparklines: SheetSparkline[];
   pivots: PivotDefinition[];
   protection: SheetProtection | null;
+  rowBreaks: number[];
+  colBreaks: number[];
 }
 
 function readCfStopIfTrue(sheetXml: string): Set<number> {
@@ -289,6 +292,8 @@ async function preprocess(data: ArrayBuffer | Uint8Array): Promise<{ bytes: Arra
       sparklines: readSparklines(xml),
       pivots: pivotsByPath.get(sheet.path) ?? [],
       protection: readSheetProtection(xml),
+      rowBreaks: readBreaks(xml, 'rowBreaks'),
+      colBreaks: readBreaks(xml, 'colBreaks'),
     });
     const stripped = removeWorksheetElement(xml, 'dataValidations');
     if (stripped.removed) {
@@ -352,6 +357,11 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
     }
     if (extra?.tables.length) tables[sheet.id] = { tables: extra.tables, tableFilteredOutRows: [] };
     if (extra?.charts.length) drawings[sheet.id] = chartsToDrawingResource(unitId, sheet.id, sheet, extra.charts);
+    if (extra?.rowBreaks.length || extra?.colBreaks.length) {
+      const custom = (sheet.custom ?? {}) as { grillon?: { page?: PageSetup } & Record<string, unknown> };
+      const page = withBreaks(custom.grillon?.page ?? {}, { rowBreaks: extra.rowBreaks, colBreaks: extra.colBreaks });
+      sheet.custom = { ...custom, grillon: { ...(custom.grillon ?? {}), page } } as never;
+    }
     if (extra?.protection) {
       const custom = (sheet.custom ?? {}) as { grillon?: Record<string, unknown> };
       sheet.custom = { ...custom, grillon: { ...(custom.grillon ?? {}), protection: extra.protection } } as never;

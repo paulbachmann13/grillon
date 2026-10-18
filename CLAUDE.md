@@ -86,4 +86,4 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 
 Triangles verts sur la grille, flèches de repérage, segments et chronologies, regroupement de dates et
 « afficher les valeurs en » dans les tableaux croisés, protection du classeur et plages autorisées,
-sauts de page manuels, orthographe, thèmes, plus de formes, autres types de graphiques (boursier, surface…).
+orthographe, effets de thème, plus de formes, autres types de graphiques (boursier, surface…).

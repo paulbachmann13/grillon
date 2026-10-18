@@ -17,6 +17,7 @@ import { installFormulasRibbon } from '../univer/formulas-ribbon';
 import { installGridShortcuts } from '../univer/grid-shortcuts';
 import { installViewRibbon } from '../univer/view-ribbon';
 import { installBasics } from '../univer/basics';
+import { installPageBreaks } from '../univer/page-breaks';
 import { installCellFormat } from '../univer/cell-format';
 import { installOutlineGutter } from '../univer/outline-gutter';
 import { installGridGrowth } from '../univer/grid-growth';
@@ -105,6 +106,7 @@ export class DocumentController {
         installBasics(this.api);
         installCellFormat(this.api);
         installOutlineGutter(this.api);
+        installPageBreaks(this.api, () => this.markDirtyPublic());
         installProtectionGuard(this.api);
         this.ribbonReady = true;
       }

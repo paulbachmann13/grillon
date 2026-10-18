@@ -3,6 +3,8 @@
  * d'impression, titres répétés, en-têtes et pieds de page, avec la conversion vers / depuis
  * les réglages d'Excel (« pageSetup », « headerFooter »).
  */
+import type { PageBreaks } from './page-breaks';
+
 export type PaperSize = 'A4' | 'A3' | 'A5' | 'Letter' | 'Legal';
 
 export interface HeaderFooterSpec {
@@ -20,7 +22,7 @@ export interface Margins {
   footer: number;
 }
 
-export interface PageSetup {
+export interface PageSetup extends PageBreaks {
   orientation?: 'portrait' | 'landscape';
   paper?: PaperSize;
   /** Marges en pouces, comme dans Excel. */
@@ -40,6 +42,7 @@ export interface PageSetup {
   headings?: boolean;
   header?: HeaderFooterSpec;
   footer?: HeaderFooterSpec;
+  /** Sauts de page manuels (rowBreaks, colBreaks hérités de PageBreaks). */
 }
 
 export const PAPER_SIZES: Record<PaperSize, { code: number; widthMm: number; heightMm: number; label: string }> = {

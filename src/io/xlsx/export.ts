@@ -24,6 +24,7 @@ import { documentToPlainText, documentToRichText } from './rich-text';
 import { styleFromUniver } from './styles';
 import { EXCEL_DEFAULT_COL_WIDTH, EXCEL_DEFAULT_ROW_HEIGHT_PT, pxToExcelWidth, pxToPt, rangeToA1 } from './units';
 import { toExcelPageSetup, type PageSetup } from '../../data/page-setup';
+import { colBreaksXml, rowBreaksXml } from '../../data/page-breaks';
 import { sparklinesOfSheet, writeSparklines, type SheetSparkline } from './sparklines';
 import type { PivotDefinition } from '../../data/pivot';
 import { writePivotTables, type PivotToWrite } from './pivot-tables';
@@ -234,6 +235,8 @@ interface SheetPostProcess {
   autoFilter?: UniverAutoFilter;
   tables: TableToWrite[];
   stopIfTruePriorities: number[];
+  rowBreaks?: number[];
+  colBreaks?: number[];
 }
 
 /** Texte d'une cellule d'en-tête de tableau. */
@@ -326,6 +329,9 @@ function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: Sheet
     const filter = filters[id];
     const ws = writeSheet(wb, xlWb, sheet, name, filter?.cachedFilteredOut);
     const p: SheetPostProcess = { name, charts: chartsOfSheet(drawings, id), sparklines: sparklinesOfSheet(drawings, id), tables: [], stopIfTruePriorities: [], pivot: (sheet.custom as { grillon?: { pivot?: PivotDefinition } } | undefined)?.grillon?.pivot, protection: (sheet.custom as { grillon?: { protection?: SheetProtection } } | undefined)?.grillon?.protection };
+    const pageOf = (sheet.custom as { grillon?: { page?: PageSetup } } | undefined)?.grillon?.page;
+    if (pageOf?.rowBreaks?.length) p.rowBreaks = pageOf.rowBreaks;
+    if (pageOf?.colBreaks?.length) p.colBreaks = pageOf.colBreaks;
     if (cf[id]?.length) {
       exportConditionalFormats(ws, cf[id]);
       cf[id].forEach((entry, i) => entry.stopIfTrue && p.stopIfTruePriorities.push(i + 1));
@@ -387,7 +393,7 @@ function addStopIfTrue(sheetXml: string, priorities: number[]): string {
 async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPostProcess[]): Promise<Uint8Array> {
   // Le thème est toujours écrit : celui qu'ExcelJS fournit par défaut est l'ancien Office 2007.
   const theme = themeOf(wb as never);
-  const needed = (p: SheetPostProcess) => p.autoFilter || p.tables.length || p.stopIfTruePriorities.length || p.charts.length || p.sparklines.length || !!p.pivot || !!p.protection;
+  const needed = (p: SheetPostProcess) => p.autoFilter || p.tables.length || p.stopIfTruePriorities.length || p.charts.length || p.sparklines.length || !!p.pivot || !!p.protection || !!p.rowBreaks || !!p.colBreaks;
   const zip = await loadZip(bytes);
   const sheets = await listSheets(zip);
   let tableId = 0;
@@ -402,6 +408,8 @@ async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPost
     let xml = await file.async('string');
     if (p.protection) xml = insertWorksheetElement(xml, 'sheetProtection', sheetProtectionXml(p.protection));
     if (p.autoFilter) xml = insertWorksheetElement(xml, 'autoFilter', buildAutoFilterXml(p.autoFilter));
+    if (p.rowBreaks) xml = insertWorksheetElement(xml, 'rowBreaks', rowBreaksXml(p.rowBreaks));
+    if (p.colBreaks) xml = insertWorksheetElement(xml, 'colBreaks', colBreaksXml(p.colBreaks));
     if (p.stopIfTruePriorities.length) xml = addStopIfTrue(xml, p.stopIfTruePriorities);
     if (p.tables.length) xml = await writeTables(zip, sheets[i].path, xml, p.tables, () => ++tableId, usedTableNames);
     if (p.charts.length) xml = await writeSheetCharts(zip, wb, p.name, sheets[i].path, xml, p.charts, counters);

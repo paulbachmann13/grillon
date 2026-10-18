@@ -59,7 +59,7 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 |---|---|---|
 | Thèmes (couleurs, polices, effets) | Partiel | Thèmes, Couleurs et Polices dans Vue, lus et écrits dans le .xlsx ; pas d'effets ; la palette d'Univer (sélecteur de couleur) n'affiche pas les couleurs du thème |
 | Marges, orientation, taille, zone d'impression, imprimer les titres | Oui | Boîte Mise en page |
-| Sauts de page manuels, aperçu des sauts de page | Non | |
+| Sauts de page manuels, aperçu des sauts de page | Oui | Insérer, supprimer, rétablir ; aperçu en lecture seule (pas de glisser des lignes bleues) ; ordre « de haut en bas puis à droite » uniquement |
 | Arrière-plan de feuille | Oui | (Univer) |
 | Mise à l'échelle (largeur, hauteur, %) | Oui | |
 | Quadrillage et en-têtes : afficher / imprimer | Oui | |

@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.9.0] — 2026-10-18
+
+### Ajouté
+- **Sauts de page manuels** (Vue → Sauts de page) : Insérer un saut de page (au-dessus et à gauche de la cellule active, ou ligne / colonne entière), Supprimer le saut de page, Rétablir tous les sauts de page. Lus et écrits dans le .xlsx (`rowBreaks`, `colBreaks`).
+- **Aperçu des sauts de page** (Vue) : zone imprimée encadrée, sauts manuels en bleu plein, sauts automatiques en pointillés, « Page n » en filigrane.
+- L'impression et l'aperçu avant impression suivent le même découpage en pages : sauts manuels, sauts automatiques, lignes de titre répétées ; une feuille plus large que la page est imprimée en plusieurs bandes de colonnes (de haut en bas, puis de gauche à droite). Comme dans Excel, « Ajuster à la largeur » ignore les sauts manuels.
+- L'aperçu avant impression montre le contenu réel de chaque page.
+
 ## [1.8.0] — 2026-10-18
 
 ### Ajouté
