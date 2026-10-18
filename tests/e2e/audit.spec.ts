@@ -87,7 +87,7 @@ test('Fenêtre Espion : ajouter, suivre la valeur, supprimer', async ({ page }) 
   const rows = dialog.getByTestId('watch-row');
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText('H1');
-  await expect(rows.first()).toContainText('=SUM(F1:F3)*2');
+  await expect(rows.first()).toContainText('=SOMME(F1:F3)*2');
   await rows.first().click();
   await dialog.getByTestId('watch-remove').click();
   await expect(rows).toHaveCount(0);

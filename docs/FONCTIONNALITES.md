@@ -35,6 +35,7 @@
 | Tableaux | **Mettre sous forme de tableau** (galerie de styles, « Mon tableau comporte des en-têtes »), **Style du tableau**, ligne d'en-tête, **ligne de totaux**, références structurées (`Ventes[Prix]`), filtres de tableau |
 
 ### Formules et analyse
+- **Formules en français** (`=SOMME(A1:A3;10)`, `=SI(…;…;…)`) : saisie, barre de formule, autocomplétion et aide en français ; le classeur et le .xlsx gardent les noms anglais.
 - Barre de formule avec **autocomplétion**, **aide sur les arguments**, **coloration des références**, **F4** (références absolues), insertion de fonction par catégorie (Univer).
 - **Somme automatique** (Σ), **Afficher les formules** (aussi dans Vue, Ctrl+`).
 - **Gestionnaire de noms**, **Repérer les antécédents / les dépendants**.
@@ -97,6 +98,7 @@
 
 | Limite | Contournement / plan |
 |---|---|
+| Formules en français : les formules des règles de mise en forme conditionnelle, de la validation des données et des noms définis, la boîte « Évaluer la formule » et l'option « Afficher les formules » restent en anglais (noms anglais, virgule). Une fonction récente sans nom français connu s'écrit en anglais. Comme dans Excel en français, `TRIM` désigne le taux de rendement interne modifié (MIRR) ; la fonction anglaise TRIM s'écrit `SUPPRESPACE`. | Utiliser les noms anglais dans ces boîtes. |
 | Segments et chronologies : ils ne sont pas écrits dans le .xlsx (un fichier ouvert dans Excel garde les lignes masquées, sans segment) et les segments d'un fichier Excel ne sont pas importés. Ils filtrent en masquant des lignes : les lignes masquées à la main dans la plage filtrée sont réaffichées quand le segment les retient. Dans un tableau croisé, les éléments des champs de dates sont les valeurs brutes de la source. Pas de plusieurs colonnes de boutons ni de styles de segment. | Utiliser les filtres automatiques pour un fichier destiné à Excel. |
 | Sauts de page : l'aperçu des sauts de page n'a pas de glisser-déposer des lignes bleues (utiliser Insérer / Supprimer) ni d'ordre des pages « vers la droite, puis vers le bas » ; le découpage automatique est calculé par Grillon (hauteurs de ligne et largeurs de colonne) et peut différer d'une page de celui d'Excel. Insérer / supprimer un saut ne s'annule pas avec Ctrl+Z. | — |
 | Thèmes : Univer ne garde pas le lien d'une cellule avec une couleur de thème. Changer de thème recolore les couleurs égales à celles du thème actuel (et leurs teintes standard), pas les couleurs choisies à la main ; les règles de mise en forme conditionnelle, les graphiques et les textes enrichis ne sont pas recolorés. Le changement recharge le classeur : Ctrl+Z ne l'annule pas (réappliquer l'ancien thème rétablit les couleurs). Le sélecteur de couleurs n'affiche pas la palette du thème. Pas d'effets de thème. | Réappliquer le thème précédent. |

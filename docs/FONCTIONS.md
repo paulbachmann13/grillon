@@ -1,8 +1,12 @@
 # Fonctions de formule
 
-Les formules s'écrivent avec les **noms de fonctions anglais d'Excel** (`SUM`, `IF`, `VLOOKUP`…),
-la virgule `,` comme séparateur d'arguments et le point `.` comme séparateur décimal dans la
-formule (comme dans un fichier .xlsx). L'affichage des résultats, lui, est à la française.
+Les formules s'écrivent **comme dans Excel en français** : noms de fonctions français (`SOMME`, `SI`,
+`RECHERCHEV`…), « ; » entre les arguments, virgule décimale, `VRAI` / `FAUX`, `{1\2;3\4}` pour une constante
+matricielle. Les formules en anglais (`=SUM(A1,B1)`) sont aussi acceptées. Le classeur et le fichier .xlsx gardent
+la forme anglaise (celle d'Excel dans le fichier) : la traduction se fait à la saisie et à l'affichage.
+Environ 400 fonctions ont un nom français (`src/data/formula-locale.ts`) ; une fonction sans équivalent connu
+(`MAP`, `SCAN`, `TOCOL`…) s'écrit avec son nom anglais. Les noms identiques dans les deux langues (`ABS`, `MAX`,
+`INDEX`…) ne changent pas. Les résultats s'affichent à la française.
 
 Le calcul est assuré par le moteur de formules d'Univer (Apache-2.0), dans un Web Worker.
 

@@ -62,6 +62,11 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
   d'une feuille (le fusionner).
 - Le calcul manuel met en pause `FormulaCalculationTriggerService` (champs privés) : à revérifier à chaque
   mise à jour d'Univer.
+- Formules françaises (`src/univer/french-formulas.ts`) : le classeur garde l'anglais. `next()` des intercepteurs de
+  cellule d'Univer ne chaîne pas et l'intercepteur du plugin de formules coupe la chaîne `BEFORE_CELL_EDIT` : on
+  enveloppe donc `writeCellInterceptor.fetchThroughInterceptors` (monkeypatch) pour traduire le résultat final ;
+  `AFTER_CELL_EDIT` est un intercepteur normal. Autocomplétion et aide : `IDescriptionService` est patché de la même
+  façon. À revérifier à chaque mise à jour d'Univer (tests `tests/e2e/formules-fr.spec.ts`).
 - Écriture .xlsx : ExcelJS puis post-traitement XML (ordre des éléments : `WORKSHEET_ORDER`). Tableaux croisés,
   mini-graphiques, formes, graphiques chartEx, protection sont écrits à la main.
 

@@ -7,6 +7,7 @@ import { openFile, saveAs, writeToHandle } from '../io/files';
 import { isTauri, openInNewWindow, pathOfHandle } from '../io/tauri-files';
 import type { IWorkbookData } from '../model/univer-types';
 import { installFrenchDisplay } from '../univer/french-display';
+import { installFrenchFormulas } from '../univer/french-formulas';
 import { installCharts } from '../charts/chart-view';
 import { installShapes } from '../charts/shape-view';
 import { installSparklines } from '../charts/sparkline-view';
@@ -88,6 +89,7 @@ export class DocumentController {
       const sheets = Object.fromEntries(Object.entries(data.sheets ?? {}).map(([id, sh]) => [id, { defaultStyle, ...sh }]));
       this.api.createWorkbook({ locale: LOCALE_FR as IWorkbookData['locale'], ...data, sheets, name: fileName.replace(/\.[^.]+$/, '') } as never);
       installFrenchDisplay(this.api);
+      installFrenchFormulas(this.api);
       installTextOverflow(this.api);
       // Feuilles protégées : la protection est réappliquée une fois le classeur prêt.
       setTimeout(() => void applyStoredProtection(this.api), 0);

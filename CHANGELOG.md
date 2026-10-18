@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.11.0] — 2026-10-18
+
+### Ajouté
+- **Formules en français**, comme Excel en français : on tape `=SOMME(A1:A10;B1)`, `=SI(A1>10;"grand";"petit")`, `=RECHERCHEV(A2;B:C;2;FAUX)`, avec « ; » entre les arguments et la virgule décimale (`0,196`). Environ 400 fonctions ont leur nom français ; la barre de formule, l'autocomplétion, l'aide de fonction, « Insérer une fonction » et la fenêtre Espion affichent les noms français.
+- Une formule saisie en anglais (`=SUM(A1,B1)`) fonctionne toujours. Le classeur et le fichier .xlsx gardent la forme anglaise, donc rien ne change pour Excel.
+
 ## [1.10.1] — 2026-10-18
 
 ### Corrigé

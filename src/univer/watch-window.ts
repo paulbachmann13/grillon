@@ -4,6 +4,7 @@
  */
 import type { FUniver } from '@univerjs/presets';
 import type { FWorkbook, FWorksheet } from '@univerjs/sheets/facade';
+import { englishToFrench } from '../data/formula-locale';
 import { addWatch, removeWatch, sortByColumn, type WatchItem } from '../data/watch';
 import { t } from '../i18n';
 import { toA1 } from '../io/xlsx/units';
@@ -29,7 +30,7 @@ function rowsOf(wb: FWorkbook): Row[] {
     const ws = sheetOf(wb, item);
     if (!ws) continue;
     const range = ws.getRange(item.row, item.col);
-    out.push({ item: { ...item, sheetName: ws.getSheetName() }, cell: toA1(item.row, item.col), value: String(range.getDisplayValue?.() ?? range.getValue() ?? ''), formula: range.getFormula() ?? '' });
+    out.push({ item: { ...item, sheetName: ws.getSheetName() }, cell: toA1(item.row, item.col), value: String(range.getDisplayValue?.() ?? range.getValue() ?? ''), formula: englishToFrench(range.getFormula() ?? '') });
   }
   return out;
 }
