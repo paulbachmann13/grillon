@@ -30,6 +30,14 @@ function saveChoice(choice: ThemeChoice): void {
   }
 }
 
+/** Choix d'apparence (Automatique, Clair, Sombre) : lu et changé aussi depuis l'écran Paramètres. */
+export type { ThemeChoice };
+export const themeChoice = (): ThemeChoice => readChoice();
+export function setThemeChoice(api: FUniver, choice: ThemeChoice): void {
+  saveChoice(choice);
+  applyTheme(api, choice);
+}
+
 const media = () => matchMedia('(prefers-color-scheme: dark)');
 
 export function applyTheme(api: FUniver, choice: ThemeChoice = readChoice()): void {

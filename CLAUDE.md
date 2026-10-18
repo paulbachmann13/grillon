@@ -81,6 +81,13 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 - Le code Rust n'a longtemps été écrit sans pouvoir le compiler localement : sur le Mac, lancer
   `npm run tauri dev` pour le vérifier.
 
+## Écran d'accueil
+
+- `src/app/start-screen.ts` (interface), `src/data/recent.ts` (logique testée), `src/storage/recent.ts` (liste dans localStorage,
+  handles du navigateur dans IndexedDB), `src/app/settings.ts`. Le numéro de version vient de `package.json` (`__APP_VERSION__`, vite.config.ts).
+- Il s'affiche au démarrage si rien n'est à reprendre (session absente ou déjà enregistrée) ; les tests e2e posent
+  `localStorage['grillon-no-home']` (dans `gotoApp`) pour l'éviter ; `tests/e2e/home.spec.ts` le teste sans ce réglage.
+
 ## Mises à jour automatiques (application Mac)
 
 - Plugin `tauri-plugin-updater` : `src/app/updater.ts` (logique testée) ; vérification discrète 5 s après le démarrage

@@ -4,6 +4,7 @@ import { createShapeComponent, SHAPE_COMPONENT } from './charts/shape-view';
 import { createSlicerComponent, SLICER_COMPONENT } from './univer/slicers';
 import { createSparklineComponent, SPARKLINE_COMPONENT } from './charts/sparkline-view';
 import { setupPwa } from './app/pwa';
+import { autoUpdateEnabled } from './app/settings';
 import { installShortcuts } from './app/shortcuts';
 import { Topbar } from './app/topbar';
 import { t } from './i18n';
@@ -36,6 +37,15 @@ setupPwa(
 // Accès pour les tests de bout en bout et le débogage.
 (window as unknown as { grillon: unknown }).grillon = { api, doc };
 
+/** Les tests de bout en bout posent ce réglage pour travailler directement sur le classeur vide. */
+const homeDisabled = (): boolean => {
+  try {
+    return localStorage.getItem('grillon-no-home') === '1';
+  } catch {
+    return false;
+  }
+};
+
 async function start(): Promise<void> {
   const secondary = isTauri() ? secondaryWindowLabel() : null;
   if (secondary) {
@@ -46,15 +56,29 @@ async function start(): Promise<void> {
     if (path) await doc.openHandle(tauriHandleFromPath(path), true);
     else doc.newWorkbook();
   } else {
-    if (await doc.restore()) topbar?.setStatus(t('status.restored'), 'success');
-    else doc.newWorkbook();
+    let showHome = false;
+    if (await doc.restore()) {
+      if (doc.dirty) topbar?.setStatus(t('status.restored'), 'success');
+      else {
+        // Dernière session déjà enregistrée dans un fichier (il est dans les récents) : comme Excel, on repart de l'accueil.
+        doc.newWorkbook();
+        showHome = true;
+      }
+    } else {
+      doc.newWorkbook();
+      showHome = true;
+    }
     // Application de bureau : fichiers ouverts depuis le Finder (double-clic) avant le démarrage ;
     // les suivants arrivent dans leur propre fenêtre (côté natif).
     if (isTauri()) {
-      for (const path of await takeStartupOpens()) await doc.openHandle(tauriHandleFromPath(path));
-      // Mise à jour : vérification discrète quelques secondes après le démarrage (jamais pendant les tests).
-      setTimeout(() => void doc.checkForUpdates(true), 5000);
+      const opened = await takeStartupOpens();
+      for (const path of opened) await doc.openHandle(tauriHandleFromPath(path));
+      if (opened.length) showHome = false;
+      // Mise à jour : vérification discrète quelques secondes après le démarrage (désactivable dans Paramètres).
+      if (autoUpdateEnabled()) setTimeout(() => void doc.checkForUpdates(true), 5000);
     }
+    // Rien à reprendre : écran d'accueil, comme Excel (les tests de bout en bout le désactivent).
+    if (showHome && !homeDisabled()) void doc.showHome('home', true);
   }
 
   // Ouverture de fichiers par glisser-déposer.

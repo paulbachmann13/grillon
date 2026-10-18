@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.13.0] — 2026-10-18
+
+### Ajouté
+- **Écran d'accueil**, comme celui d'Excel : au démarrage (quand il n'y a rien à reprendre) et par Fichier → Accueil. Menu vert à gauche (Accueil, Nouveau, Ouvrir, Paramètres), tuiles « Classeur vide », « Ouvrir un classeur » et « Importer un fichier CSV », liste des **fichiers récents** (nom, dossier, date ; ✕ pour retirer un fichier) et **numéro de version**.
+- **Paramètres** (Fichier → Paramètres) : apparence (automatique, clair, sombre), débordement du texte, recherche des mises à jour au démarrage (désactivable) et « Rechercher maintenant », À propos avec la version.
+- Une session déjà enregistrée n'est plus rouverte automatiquement derrière l'accueil ; un travail non enregistré, lui, est toujours repris.
+
 ## [1.12.2] — 2026-10-18
 
 ### Corrigé

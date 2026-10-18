@@ -23,6 +23,7 @@ body,
 }
 
 #app {
+  position: relative;
   display: flex;
   flex-direction: column;
   /* iOS : la barre d'adresse change la hauteur visible. */
@@ -965,3 +966,43 @@ body,
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* Écran d'accueil (comme Excel) */
+.g-start { position: absolute; top: calc(36px + env(safe-area-inset-top)); left: 0; right: 0; bottom: 0; z-index: 50; display: flex; background: var(--grillon-bg); color: var(--grillon-fg); }
+.g-start[hidden] { display: none; }
+.g-start-nav { flex: none; width: 220px; display: flex; flex-direction: column; gap: 2px; padding: 16px 10px; background: var(--grillon-accent); color: #fff; box-sizing: border-box; }
+.g-start-brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 18px; font-size: 20px; font-weight: 700; }
+.g-start-brand img { border-radius: 8px; background: #fff; }
+.g-start-nav-item { text-align: left; padding: 9px 12px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-size: 14px; cursor: pointer; }
+.g-start-nav-item:hover { background: rgba(255, 255, 255, 0.14); }
+.g-start-nav-item.active { background: rgba(255, 255, 255, 0.24); font-weight: 600; }
+.g-start-spacer { flex: 1; }
+.g-start-version { padding: 10px 12px 0; font-size: 12px; opacity: 0.85; }
+.g-start-main { flex: 1; min-width: 0; overflow: auto; padding: 28px clamp(20px, 5vw, 64px); box-sizing: border-box; }
+.g-start-main h1 { margin: 0 0 4px; font-size: 28px; font-weight: 600; }
+.g-start-main h2 { margin: 28px 0 8px; font-size: 16px; font-weight: 600; }
+.g-start-sub { margin: 0 0 18px; color: var(--grillon-muted); }
+.g-start-back { margin: -8px 0 12px -8px; padding: 6px 8px; border: 0; background: none; color: var(--grillon-accent); font: inherit; cursor: pointer; }
+.g-start-tiles { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; }
+.g-start-tile { display: flex; align-items: center; gap: 14px; width: 270px; padding: 16px; border: 1px solid var(--grillon-border); border-radius: 10px; background: var(--grillon-menu-bg); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.g-start-tile:hover, .g-start-tile:focus-visible { border-color: var(--grillon-accent); box-shadow: 0 0 0 1px var(--grillon-accent); outline: none; }
+.g-start-tile-icon { flex: none; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 10px; background: var(--grillon-menu-hover); color: var(--grillon-accent); }
+.g-start-tile-text { display: flex; flex-direction: column; gap: 3px; }
+.g-start-tile-text small { color: var(--grillon-muted); font-size: 12px; line-height: 1.3; }
+.g-start-recent-row { display: flex; align-items: center; border-bottom: 1px solid var(--grillon-border); }
+.g-start-recent-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 9px 8px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.g-start-recent-open:hover { background: var(--grillon-menu-hover); }
+.g-start-recent-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.g-start-recent-text strong, .g-start-recent-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-start-recent-text small { color: var(--grillon-muted); font-size: 12px; }
+.g-start-recent-when { flex: none; color: var(--grillon-muted); font-size: 12px; }
+.g-start-recent-forget { flex: none; width: 30px; height: 30px; border: 0; border-radius: 6px; background: none; color: var(--grillon-muted); cursor: pointer; }
+.g-start-recent-forget:hover { background: var(--grillon-menu-hover); color: var(--grillon-fg); }
+.g-start-empty { color: var(--grillon-muted); }
+.g-start-settings { max-width: 640px; display: flex; flex-direction: column; gap: 14px; }
+.g-start-settings fieldset { border: 1px solid var(--grillon-border); border-radius: 8px; display: flex; flex-direction: column; gap: 8px; padding: 10px 14px 14px; }
+.g-start-settings .g-check { display: flex; align-items: center; gap: 8px; }
+.g-start-button { align-self: flex-start; height: 32px; padding: 0 14px; border: 1px solid var(--grillon-border); border-radius: 6px; background: var(--grillon-bg); color: inherit; font: inherit; cursor: pointer; }
+.g-start-button:hover { border-color: var(--grillon-accent); }
+.g-start-about p { margin: 4px 0; }
+@media (max-width: 640px) { .g-start { flex-direction: column; } .g-start-nav { width: auto; flex-direction: row; flex-wrap: wrap; padding: 8px; } .g-start-brand { padding: 0 8px; } .g-start-spacer { display: none; } .g-start-version { display: none; } .g-start-tile { width: 100%; } }

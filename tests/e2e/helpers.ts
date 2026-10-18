@@ -16,6 +16,8 @@ export async function useFallbackFilePickers(page: Page): Promise<void> {
 }
 
 export async function gotoApp(page: Page, fresh = true): Promise<void> {
+  // Les tests travaillent directement sur le classeur vide : pas d'écran d'accueil (voir tests/e2e/home.spec.ts).
+  await page.addInitScript(() => localStorage.setItem('grillon-no-home', '1'));
   if (fresh) {
     await page.goto('./');
     await page.evaluate(

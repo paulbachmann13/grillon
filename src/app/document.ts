@@ -27,6 +27,9 @@ import { installGridGrowth } from '../univer/grid-growth';
 import { installTextOverflow } from '../univer/text-overflow';
 import { printDialog } from './print';
 import type { ThemeMode } from './theme-dialog';
+import type { StartPane, StartScreen } from './start-screen';
+import type { RecentFile } from '../data/recent';
+import { forgetRecent, recentHandle, rememberFile } from '../storage/recent';
 import { csvImportDialog } from './csv-import';
 import { installPivot } from '../univer/pivot-ui';
 import { installHomeRibbon } from '../univer/home-ribbon';
@@ -57,6 +60,7 @@ export class DocumentController {
   private loading = false;
   private ribbonReady = false;
   private autosaveTimer: ReturnType<typeof setTimeout> | undefined;
+  private home: StartScreen | undefined;
 
   constructor(
     private readonly api: FUniver,
@@ -123,6 +127,7 @@ export class DocumentController {
       // Univer émet des mutations pendant quelques ticks après la création (calcul des formules…).
       setTimeout(() => (this.loading = false), 0);
     }
+    this.home?.hide();
     this.events.onChange();
   }
 
@@ -185,6 +190,7 @@ export class DocumentController {
         const { importXlsxAsync } = await import('../io/xlsx/xlsx-client');
         const data = await importXlsxAsync(bytes, { name });
         this.load(data, name, handle);
+        void rememberFile(handle, name);
       } else if (/\.(csv|txt|tsv)$/i.test(name)) {
         const { csvToWorkbook } = await import('../io/csv');
         const choice = await csvImportDialog(name, bytes);
@@ -219,6 +225,7 @@ export class DocumentController {
       const bytes = await this.exportXlsxBytes();
       if (await writeToHandle(this.handle, bytes)) {
         this.dirty = false;
+        void rememberFile(this.handle, this.fileName);
         this.events.onStatus(t('status.savedTo', { name: this.fileName }), 'success');
         this.events.onChange();
         void this.autosaveNow();
@@ -244,6 +251,7 @@ export class DocumentController {
       if (handle) {
         this.handle = handle;
         this.fileName = handle.name;
+        void rememberFile(handle, handle.name);
         this.events.onStatus(t('status.savedTo', { name: handle.name }), 'success');
       } else {
         this.events.onStatus(t('status.downloaded', { name }), 'success');
@@ -353,6 +361,48 @@ export class DocumentController {
     if (loaded && sheet) loaded.setActiveSheet(sheet);
     this.markDirty();
     this.events.onStatus(t('theme.applied', { name: next.name }), 'success');
+  }
+
+  /** Écran d'accueil (Nouveau, Ouvrir, récents, Paramètres). `atLaunch` : au démarrage, il n'y a pas de classeur où revenir. */
+  async showHome(pane: StartPane = 'home', atLaunch = false): Promise<void> {
+    if (!this.home) {
+      const { StartScreen } = await import('./start-screen');
+      this.home = new StartScreen(this.api, {
+        newBlank: () => void this.newFromHome(),
+        openFile: () => this.open(),
+        importCsv: () => this.importCsv(),
+        openRecent: (file) => this.openRecent(file),
+        checkUpdates: () => this.checkForUpdates(false),
+      });
+      if (isTauri()) {
+        try {
+          const { homeDir } = await import('@tauri-apps/api/path');
+          this.home.home = (await homeDir()).replace(/\/$/, '');
+        } catch {
+          /* chemins affichés en entier */
+        }
+      }
+    }
+    this.home.show(pane, !atLaunch);
+  }
+
+  /** « Classeur vide » depuis l'accueil : le classeur vide déjà là sert tel quel ; sinon un nouveau classeur (comme Fichier → Nouveau). */
+  private async newFromHome(): Promise<void> {
+    if (this.isPristine()) return void this.home?.hide();
+    if (await this.newInNewWindow()) return;
+    if (await this.confirmDiscard()) this.newWorkbook();
+  }
+
+  async openRecent(file: RecentFile): Promise<void> {
+    const handle = await recentHandle(file);
+    try {
+      if (!handle) throw new Error('inaccessible');
+      await this.openHandle(handle);
+    } catch {
+      await forgetRecent(file.id);
+      this.events.onStatus(t('home.missing', { name: file.name }), 'error');
+      await this.showHome('home');
+    }
   }
 
   /** Fichier → Rechercher les mises à jour (application de bureau) ; `silent` : vérification discrète au démarrage. */

@@ -57,6 +57,7 @@ export class Topbar {
     this.menu.hidden = true;
 
     const items: MenuItem[] = [
+      { id: 'home', label: t('home.title'), run: () => doc.showHome('home') },
       { id: 'new', label: t('file.new'), run: async () => ((await doc.newInNewWindow()) ? undefined : this.confirmThen(() => doc.newWorkbook())) },
       { id: 'open', label: t('file.open'), shortcut: `${mod}O`, run: () => doc.open() },
       { id: 'save', label: t('file.save'), shortcut: `${mod}S`, run: () => doc.save(), separatorBefore: true },
@@ -67,7 +68,8 @@ export class Topbar {
       { id: 'unprotect', label: t('protection.menuUnprotect'), run: () => doc.unprotectSheet() },
       { id: 'page-setup', label: t('file.pageSetup'), run: () => doc.pageSetup(), separatorBefore: true },
       { id: 'print', label: t('file.print'), shortcut: `${mod}P`, run: () => doc.print() },
-      ...(isTauri() ? [{ id: 'update', label: t('update.check'), run: () => doc.checkForUpdates(false), separatorBefore: true }] : []),
+      { id: 'settings', label: t('home.nav.settings'), run: () => doc.showHome('settings'), separatorBefore: true },
+      ...(isTauri() ? [{ id: 'update', label: t('update.check'), run: () => doc.checkForUpdates(false) }] : []),
     ];
     for (const item of items) {
       if (item.separatorBefore) {

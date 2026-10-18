@@ -1,11 +1,15 @@
+import { readFileSync } from 'node:fs';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
 
 // GitHub Pages sert l'app sous /grillon/ ; en local (dev, Tauri) on reste à la racine.
 const base = process.env.GRILLON_BASE ?? '/';
 
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
+
 export default defineConfig({
   base,
+  define: { __APP_VERSION__: JSON.stringify(version) },
   build: { target: 'es2022', chunkSizeWarningLimit: 8000 },
   worker: { format: 'es' },
   // Sous Windows, certains dossiers sont redirigés (chemin « réel » différent) : sans cette
