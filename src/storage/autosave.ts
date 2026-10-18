@@ -48,25 +48,62 @@ async function tx<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => ID
   }
 }
 
-export async function saveAutosave(entry: AutosaveEntry): Promise<void> {
-  if (!enabled) return;
+async function put(key: string, entry: AutosaveEntry): Promise<void> {
   try {
-    await tx('readwrite', (s) => s.put(entry, KEY));
+    await tx('readwrite', (s) => s.put(entry, key));
   } catch {
     // Certains navigateurs refusent de cloner un FileSystemFileHandle : on réessaie sans.
     const { handle, ...rest } = entry;
-    await tx('readwrite', (s) => s.put({ ...rest, path: pathOfHandle(handle) }, KEY));
+    await tx('readwrite', (s) => s.put({ ...rest, path: pathOfHandle(handle) }, key));
   }
 }
 
-export async function loadAutosave(): Promise<AutosaveEntry | null> {
-  if (!enabled) return null;
+async function get(key: string): Promise<AutosaveEntry | null> {
   try {
-    const entry = ((await tx('readonly', (s) => s.get(KEY))) as AutosaveEntry | undefined) ?? null;
+    const entry = ((await tx('readonly', (s) => s.get(key))) as AutosaveEntry | undefined) ?? null;
     if (entry && !entry.handle && entry.path) entry.handle = tauriHandleFromPath(entry.path);
     return entry;
   } catch {
     return null;
+  }
+}
+
+export async function saveAutosave(entry: AutosaveEntry): Promise<void> {
+  if (!enabled) return;
+  await put(KEY, entry);
+}
+
+export async function loadAutosave(): Promise<AutosaveEntry | null> {
+  if (!enabled) return null;
+  return get(KEY);
+}
+
+/**
+ * Brouillon : le travail non enregistré de la dernière session. Au démarrage, Grillon s'ouvre sur l'écran d'accueil
+ * et propose de le reprendre (« Reprendre ») au lieu de le rouvrir d'office. Un seul brouillon est gardé.
+ */
+const DRAFT_KEY = 'draft';
+
+/** Met de côté la sauvegarde automatique si elle contient des modifications non enregistrées. */
+export async function stashDraft(): Promise<AutosaveEntry | null> {
+  if (!enabled) return null;
+  const entry = await get(KEY);
+  if (!entry?.dirty || !entry.data?.sheetOrder?.length) return loadDraft();
+  await put(DRAFT_KEY, entry);
+  return entry;
+}
+
+export async function loadDraft(): Promise<AutosaveEntry | null> {
+  if (!enabled) return null;
+  return get(DRAFT_KEY);
+}
+
+export async function clearDraft(): Promise<void> {
+  if (!enabled) return;
+  try {
+    await tx('readwrite', (s) => s.delete(DRAFT_KEY));
+  } catch {
+    /* rien à effacer */
   }
 }
 

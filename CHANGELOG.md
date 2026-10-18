@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.13.1] — 2026-10-18
+
+### Modifié
+- Grillon s'ouvre **toujours sur l'écran d'accueil**, au lieu de rouvrir le dernier classeur. Le travail non enregistré de la dernière session apparaît en haut des récents (« Reprendre : … », ✕ pour le supprimer après confirmation) ; un classeur enregistré se rouvre depuis les récents.
+
 ## [1.13.0] — 2026-10-18
 
 ### Ajouté

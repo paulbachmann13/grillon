@@ -20,6 +20,11 @@ export interface StartActions {
   importCsv(): void | Promise<void>;
   openRecent(file: RecentFile): void | Promise<void>;
   checkUpdates(): void | Promise<void>;
+  /** Travail non enregistré de la dernière session (nom, date de la dernière sauvegarde automatique). */
+  draft(): Promise<{ name: string; savedAt: number } | null>;
+  resumeDraft(): void | Promise<void>;
+  /** Renvoie vrai si le brouillon a bien été supprimé (l'utilisateur confirme). */
+  discardDraft(): Promise<boolean>;
 }
 
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] => {
@@ -32,6 +37,7 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
 const PLUS = '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 const FOLDER = '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>';
 const TABLE = '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4zM4 10h16M10 4v16"/></svg>';
+const RESUME = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#b54708" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 108-8M4 4v5h5"/></svg>';
 const FILE = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1f7a4d" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6"/></svg>';
 
 export class StartScreen {
@@ -153,6 +159,31 @@ export class StartScreen {
   private recentList(): HTMLElement {
     const box = el('div', 'g-start-recent');
     box.append(el('h2', undefined, t('home.recent')));
+    const drafts = el('div', 'g-start-drafts');
+    box.append(drafts);
+    void this.actions.draft().then((draft) => {
+      if (!draft) return;
+      const row = el('div', 'g-start-recent-row g-start-draft');
+      row.dataset.testid = 'start-draft';
+      const open = el('button', 'g-start-recent-open');
+      open.type = 'button';
+      const icon = el('span', 'g-start-recent-icon');
+      icon.innerHTML = RESUME;
+      const text = el('span', 'g-start-recent-text');
+      text.append(el('strong', undefined, t('home.resume', { name: draft.name })), el('small', undefined, t('home.resumeHint')));
+      open.append(icon, text, el('span', 'g-start-recent-when', formatWhen(draft.savedAt)));
+      open.addEventListener('click', () => void this.actions.resumeDraft());
+      const discard = el('button', 'g-start-recent-forget', '✕');
+      discard.type = 'button';
+      discard.title = t('home.discard');
+      discard.setAttribute('aria-label', t('home.discard'));
+      discard.dataset.testid = 'start-discard-draft';
+      discard.addEventListener('click', async () => {
+        if (await this.actions.discardDraft()) row.remove();
+      });
+      row.append(open, discard);
+      drafts.append(row);
+    });
     const list = loadRecent();
     if (!list.length) {
       const empty = el('p', 'g-start-empty', t('home.noRecent'));

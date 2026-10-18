@@ -73,17 +73,57 @@ test('Fichier → Paramètres ouvre les paramètres au-dessus du classeur', asyn
   await expect(home(page).getByTestId('start-back')).toBeVisible();
 });
 
-test('une session à reprendre : pas d’écran d’accueil au démarrage', async ({ page }) => {
+// Session précédente : on la fabrique avec le réglage des tests (qui masque l'accueil), puis on relance « comme un vrai démarrage ».
+async function previousSession(page: Page, dirty: boolean) {
   await page.addInitScript(() => localStorage.setItem('grillon-no-home', '1'));
   await page.goto('./');
   await waitReady(page);
-  await page.evaluate(`(() => { window.grillon.api.getActiveWorkbook().getActiveSheet().getRange('A1').setValue('à reprendre'); return window.grillon.doc.autosaveNow(); })()`);
+  if (dirty) await page.evaluate(`window.grillon.api.getActiveWorkbook().getActiveSheet().getRange('A1').setValue('à reprendre')`);
+  await page.evaluate(`window.grillon.doc.autosaveNow()`);
   await page.addInitScript(() => localStorage.removeItem('grillon-no-home'));
   await page.reload();
   await waitReady(page);
-  await page.waitForTimeout(800);
-  await expect(home(page)).toHaveCount(0);
-  expect(await page.evaluate(`window.grillon.api.getActiveWorkbook().getActiveSheet().getRange('A1').getValue()`)).toBe('à reprendre');
+}
+const a1 = (page: Page) => page.evaluate(`window.grillon.api.getActiveWorkbook().getActiveSheet().getRange('A1').getValue()`);
+
+test('travail non enregistré : on arrive sur l’accueil, qui propose de le reprendre', async ({ page }) => {
+  await previousSession(page, true);
+  await expect(home(page)).toBeVisible();
+  // Pas rouvert d'office : le classeur derrière est vide.
+  expect(await a1(page)).toBeNull();
+  const draft = home(page).getByTestId('start-draft');
+  await expect(draft).toContainText('Reprendre : Classeur1.xlsx');
+  await expect(draft).toContainText('Travail non enregistré');
+  await draft.getByRole('button').first().click();
+  await expect(home(page)).toBeHidden();
+  expect(await a1(page)).toBe('à reprendre');
+  expect(await page.evaluate(`window.grillon.doc.dirty`)).toBe(true);
+  // Une fois repris, le brouillon n'est plus proposé.
+  await page.getByTestId('file-menu').click();
+  await page.getByTestId('file-home').click();
+  await expect(home(page).getByTestId('start-draft')).toHaveCount(0);
+});
+
+test('dernière session déjà enregistrée : accueil sans « Reprendre »', async ({ page }) => {
+  await previousSession(page, false);
+  await expect(home(page)).toBeVisible();
+  await expect(home(page).getByTestId('start-draft')).toHaveCount(0);
+});
+
+test('supprimer le travail non enregistré : confirmation, puis il n’est plus proposé', async ({ page }) => {
+  await previousSession(page, true);
+  const draft = home(page).getByTestId('start-draft');
+  await expect(draft).toBeVisible();
+  page.once('dialog', (d) => void d.dismiss());
+  await draft.getByTestId('start-discard-draft').click();
+  await expect(draft).toBeVisible();
+  page.once('dialog', (d) => void d.accept());
+  await draft.getByTestId('start-discard-draft').click();
+  await expect(draft).toHaveCount(0);
+  await page.reload();
+  await waitReady(page);
+  await expect(home(page)).toBeVisible();
+  await expect(home(page).getByTestId('start-draft')).toHaveCount(0);
 });
 
 test('fichiers récents : liste, retrait d’un fichier, fichier introuvable', async ({ page }) => {
@@ -110,15 +150,4 @@ test('fichiers récents : liste, retrait d’un fichier, fichier introuvable', a
   // Retrait manuel.
   await home(page).getByTestId('start-forget').click();
   await expect(home(page).getByTestId('start-no-recent')).toBeVisible();
-});
-
-test('dernière session déjà enregistrée : on repart de l’accueil (un travail non enregistré, lui, est repris)', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('grillon-no-home', '1'));
-  await page.goto('./');
-  await waitReady(page);
-  await page.evaluate(`window.grillon.doc.autosaveNow()`);
-  await page.addInitScript(() => localStorage.removeItem('grillon-no-home'));
-  await page.reload();
-  await waitReady(page);
-  await expect(home(page)).toBeVisible();
 });

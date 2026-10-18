@@ -57,15 +57,13 @@ async function start(): Promise<void> {
     else doc.newWorkbook();
   } else {
     let showHome = false;
-    if (await doc.restore()) {
-      if (doc.dirty) topbar?.setStatus(t('status.restored'), 'success');
-      else {
-        // Dernière session déjà enregistrée dans un fichier (il est dans les récents) : comme Excel, on repart de l'accueil.
-        doc.newWorkbook();
-        showHome = true;
-      }
+    if (homeDisabled()) {
+      // Mode des tests de bout en bout : comme avant, on reprend d'office la dernière session.
+      if (await doc.restore()) topbar?.setStatus(t('status.restored'), 'success');
+      else doc.newWorkbook();
     } else {
-      doc.newWorkbook();
+      // Toujours l'accueil : le travail non enregistré de la dernière session y est proposé (« Reprendre »).
+      await doc.startFromHome();
       showHome = true;
     }
     // Application de bureau : fichiers ouverts depuis le Finder (double-clic) avant le démarrage ;
@@ -78,7 +76,7 @@ async function start(): Promise<void> {
       if (autoUpdateEnabled()) setTimeout(() => void doc.checkForUpdates(true), 5000);
     }
     // Rien à reprendre : écran d'accueil, comme Excel (les tests de bout en bout le désactivent).
-    if (showHome && !homeDisabled()) void doc.showHome('home', true);
+    if (showHome) void doc.showHome('home', true);
   }
 
   // Ouverture de fichiers par glisser-déposer.

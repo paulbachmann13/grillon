@@ -34,7 +34,7 @@ import { csvImportDialog } from './csv-import';
 import { installPivot } from '../univer/pivot-ui';
 import { installHomeRibbon } from '../univer/home-ribbon';
 import { LOCALE_FR } from '../model/univer-types';
-import { clearAutosave, loadAutosave, saveAutosave } from '../storage/autosave';
+import { clearAutosave, clearDraft, loadAutosave, loadDraft, saveAutosave, stashDraft } from '../storage/autosave';
 import { confirmAsync } from './confirm';
 import { applyStoredProtection, installProtectionGuard } from '../univer/protection';
 
@@ -373,6 +373,9 @@ export class DocumentController {
         importCsv: () => this.importCsv(),
         openRecent: (file) => this.openRecent(file),
         checkUpdates: () => this.checkForUpdates(false),
+        draft: () => this.draftInfo(),
+        resumeDraft: () => this.resumeDraft(),
+        discardDraft: () => this.discardDraft(),
       });
       if (isTauri()) {
         try {
@@ -416,6 +419,33 @@ export class DocumentController {
   /** Impression / export PDF de la feuille active. */
   print(): Promise<void> {
     return printDialog(this.api, this.fileName);
+  }
+
+  /** Démarrage : met de côté le travail non enregistré de la dernière session (proposé sur l'accueil) et repart d'un classeur vide. */
+  async startFromHome(): Promise<void> {
+    await stashDraft();
+    this.newWorkbook();
+  }
+
+  /** Brouillon proposé sur l'écran d'accueil : nom et date, ou null. */
+  async draftInfo(): Promise<{ name: string; savedAt: number } | null> {
+    const draft = await loadDraft();
+    return draft ? { name: draft.fileName, savedAt: draft.savedAt } : null;
+  }
+
+  /** « Reprendre » : rouvre le travail non enregistré tel qu'il était. */
+  async resumeDraft(): Promise<void> {
+    const draft = await loadDraft();
+    if (!draft?.data?.sheetOrder?.length) return;
+    this.load(draft.data, draft.fileName, draft.handle, true);
+    await clearDraft();
+    this.markDirty();
+  }
+
+  async discardDraft(): Promise<boolean> {
+    if (!(await confirmAsync(t('home.discardDraft')))) return false;
+    await clearDraft();
+    return true;
   }
 
   /** Restaure la session précédente. Renvoie true si un classeur a été restauré. */
