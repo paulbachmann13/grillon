@@ -67,6 +67,9 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
   enveloppe donc `writeCellInterceptor.fetchThroughInterceptors` (monkeypatch) pour traduire le résultat final ;
   `AFTER_CELL_EDIT` est un intercepteur normal. Autocomplétion et aide : `IDescriptionService` est patché de la même
   façon. À revérifier à chaque mise à jour d'Univer (tests `tests/e2e/formules-fr.spec.ts`).
+- Formules partagées d'Univer : une formule étendue (autoFill, Remplir, collage) n'est portée que par la première cellule du
+  groupe (`f` + `si`) ; les autres n'ont que `si` et une valeur. L'export doit les reconstruire (`shiftFormula`,
+  `src/data/formula-shift.ts`) sinon elles sont écrites comme des nombres. Tout code qui lit `cell.f` directement doit y penser.
 - Écriture .xlsx : ExcelJS puis post-traitement XML (ordre des éléments : `WORKSHEET_ORDER`). Tableaux croisés,
   mini-graphiques, formes, graphiques chartEx, protection sont écrits à la main.
 

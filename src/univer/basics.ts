@@ -6,6 +6,7 @@
  */
 import { INTERCEPTOR_POINT, IEditorBridgeService, IconManager, SheetInterceptorService } from '@univerjs/preset-sheets-core';
 import { CommandType, ICommandService, InterceptorEffectEnum, type FUniver } from '@univerjs/presets';
+import { FormulaDataModel } from '@univerjs/engine-formula';
 import { createElement, type ComponentType } from 'react';
 import { autoSumPlan, type AutoSumFunction } from '../data/autosum';
 import { t } from '../i18n';
@@ -130,6 +131,7 @@ export function installBasics(api: Api): void {
   const injector = (api as unknown as { _injector: { get<T>(id: unknown): T } })._injector;
   const commands = injector.get<ICommandService>(ICommandService);
   const editor = injector.get<IEditorBridgeService>(IEditorBridgeService);
+  const formulas = injector.get<FormulaDataModel>(FormulaDataModel);
   injector.get<IconManager>(IconManager).register({
     GrillonSigmaIcon: icon('M12 3H4.5L8.5 8l-4 5H12'),
     GrillonFillIcon: icon('M8 2v9M4.5 8L8 11.5 11.5 8M3 14h10'),
@@ -140,7 +142,12 @@ export function installBasics(api: Api): void {
   injector.get<SheetInterceptorService>(SheetInterceptorService).intercept(INTERCEPTOR_POINT.CELL_CONTENT, {
     effect: InterceptorEffectEnum.Value,
     priority: 0,
-    handler: (cell, _location, next) => (showFormulas && cell?.f ? next({ ...cell, v: cell.f, t: STRING as never }) : next(cell)),
+    handler: (cell, location, next) => {
+      if (!showFormulas || !cell) return next(cell);
+      // Une cellule étendue (formule partagée) n'a que `si` : le modèle de formules en connaît le texte.
+      const f = cell.f ?? (cell.si ? formulas.getFormulaStringByCell(location.row, location.col, location.subUnitId, location.unitId) : null);
+      return f ? next({ ...cell, v: f, t: STRING as never }) : next(cell);
+    },
   });
   const toggleFormulas = () => {
     showFormulas = !showFormulas;

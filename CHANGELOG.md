@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.13.3] — 2026-10-22
+
+### Corrigé
+- **Formules étendues perdues à l'enregistrement** : quand on étendait une formule (poignée de recopie, Remplir, copier-coller), seule la première cellule gardait sa formule dans le .xlsx ; les autres étaient écrites comme de simples nombres, et à la réouverture les formules avaient disparu. Chaque cellule est maintenant écrite avec sa propre formule (références décalées comme à la recopie). « Afficher les formules » (Ctrl+`) montre aussi la formule des cellules étendues. Les fichiers déjà enregistrés avec ce défaut ne peuvent pas être réparés : les cellules concernées contiennent des nombres, il faut y remettre la formule.
+
 ## [1.13.2] — 2026-10-18
 
 ### Modifié

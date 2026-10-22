@@ -25,6 +25,7 @@ import { styleFromUniver } from './styles';
 import { EXCEL_DEFAULT_COL_WIDTH, EXCEL_DEFAULT_ROW_HEIGHT_PT, pxToExcelWidth, pxToPt, rangeToA1 } from './units';
 import { toExcelPageSetup, type PageSetup } from '../../data/page-setup';
 import { colBreaksXml, rowBreaksXml } from '../../data/page-breaks';
+import { shiftFormula } from '../../data/formula-shift';
 import { sparklinesOfSheet, writeSparklines, type SheetSparkline } from './sparklines';
 import type { PivotDefinition } from '../../data/pivot';
 import { writePivotTables, type PivotToWrite } from './pivot-tables';
@@ -162,13 +163,26 @@ function writeSheet(
     return styleFromUniver(s);
   };
 
+  // Formules partagées d'Univer (cellules remplies ou recopiées) : seule la première cellule du groupe porte la formule,
+  // les autres n'ont que l'identifiant `si`. On retrouve leur formule en décalant celle de la première.
+  const sharedMasters = new Map<string, { row: number; col: number; f: string }>();
+  for (const [rk, cols] of Object.entries(sheet.cellData ?? {})) {
+    for (const [ck, cell] of Object.entries(cols ?? {}) as [string, ICellData | undefined][]) {
+      if (cell?.si && typeof cell.f === 'string' && cell.f.startsWith('=')) sharedMasters.set(String(cell.si), { row: Number(rk), col: Number(ck), f: cell.f });
+    }
+  }
+
   for (const [rk, cols] of Object.entries(sheet.cellData ?? {})) {
     if (!cols) continue;
     const row = ws.getRow(Number(rk) + 1);
     for (const [ck, cell] of Object.entries(cols) as [string, ICellData | undefined][]) {
       if (!cell) continue;
       const xc = row.getCell(Number(ck) + 1);
-      const f = typeof cell.f === 'string' && cell.f.startsWith('=') ? cell.f.slice(1) : undefined;
+      let f = typeof cell.f === 'string' && cell.f.startsWith('=') ? cell.f.slice(1) : undefined;
+      if (f === undefined && cell.si) {
+        const master = sharedMasters.get(String(cell.si));
+        if (master) f = shiftFormula(master.f, Number(rk) - master.row, Number(ck) - master.col).slice(1);
+      }
       let v = cellValue(cell);
       if (v === null && cell.p) v = documentToPlainText(cell.p) || null;
       const rich = !f && cell.p ? documentToRichText(cell.p) : null;
