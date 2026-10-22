@@ -83,9 +83,13 @@ function borderToUniver(b: Partial<Border> | undefined, theme: string[]): IBorde
   return { s: s as IBorderStyleData['s'], cl: { rgb: excelColorToCss(b.color as ExcelColor, theme) ?? '#000000' } };
 }
 
+/** Noms de style de bordure d'Excel : certaines API d'Univer les rangent tels quels au lieu du code numérique. */
+const EXCEL_BORDER_NAMES = new Set(['thin', 'medium', 'thick', 'dotted', 'dashed', 'double', 'hair', 'mediumDashed', 'dashDot', 'mediumDashDot', 'dashDotDot', 'mediumDashDotDot', 'slantDashDot']);
+
 function borderFromUniver(b: IBorderStyleData | null | undefined | void): Partial<Border> | undefined {
   if (!b || !b.s) return undefined;
-  const style = BORDER_FROM_UNIVER[b.s];
+  const raw = b.s as unknown;
+  const style = typeof raw === 'string' ? (EXCEL_BORDER_NAMES.has(raw) ? (raw as Border['style']) : undefined) : BORDER_FROM_UNIVER[b.s];
   if (!style) return undefined;
   const argb = cssToArgb(b.cl?.rgb);
   return argb ? { style, color: { argb } } : { style };

@@ -70,6 +70,11 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 - Formules partagées d'Univer : une formule étendue (autoFill, Remplir, collage) n'est portée que par la première cellule du
   groupe (`f` + `si`) ; les autres n'ont que `si` et une valeur. L'export doit les reconstruire (`shiftFormula`,
   `src/data/formula-shift.ts`) sinon elles sont écrites comme des nombres. Tout code qui lit `cell.f` directement doit y penser.
+- Tri : Univer réordonne les lignes (`sheet.command.reorder-range`) sans adapter les formules ; `src/univer/sort-formulas.ts`
+  ajoute, via `interceptCommand`, les mutations qui décalent chaque formule de sa ligne (comme Excel ; une seule annulation).
+- À l'ouverture, Univer reprend les valeurs enregistrées sans recalculer : `DocumentController.load` lance un calcul complet
+  (sinon les formules qui débordent n'affichent que leur 1re valeur). ExcelJS n'écrit pas une ligne sans cellule ni hauteur :
+  on donne une hauteur aux lignes masquées. `tests/e2e/persistence.spec.ts` vérifie formules et valeurs après enregistrement.
 - Écriture .xlsx : ExcelJS puis post-traitement XML (ordre des éléments : `WORKSHEET_ORDER`). Tableaux croisés,
   mini-graphiques, formes, graphiques chartEx, protection sont écrits à la main.
 
@@ -107,9 +112,11 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 
 ## Pas encore vérifié (à tester sur un vrai Mac / avec le vrai Excel)
 
-- Ouverture dans Microsoft Excel des tableaux croisés dynamiques et des graphiques chartEx écrits par Grillon.
-- Impression (⌘P) dans l'application Mac (WKWebView).
-- ⌘C / ⌘V / ⌘Z, ouverture par double-clic dans le Finder, plusieurs fenêtres.
+- Vérifié le 18/10 dans Excel (AppleScript) : un tableau croisé écrit par Grillon s'ouvre et se calcule, 8 graphiques
+  classiques s'ouvrent, les sauts de page sont relus. Pas encore vérifié : graphiques chartEx (cascade, entonnoir…), thèmes.
+- Vérifié dans WebKit (moteur de l'app Mac) : ⌘C / ⌘V / ⌘Z, ⌘B… ; l'app Mac compile et se lance, la mise à jour automatique
+  fonctionne (1.12 → 1.13). Pas encore vérifié : impression (⌘P) dans l'app Mac, double-clic dans le Finder, plusieurs fenêtres,
+  bouton Coller du ruban (autorisation du presse-papiers de WebKit).
 
 ## Idées pour la suite (voir docs/EXCEL-COMPARAISON.md)
 

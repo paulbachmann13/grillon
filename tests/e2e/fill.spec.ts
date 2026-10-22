@@ -60,3 +60,15 @@ test('« Afficher les formules » montre aussi la formule des cellules étendues
   await expect.poll(() => run<string>(page, `return ws.getRange('B4').getDisplayValue();`)).toBe('=A4+100');
   expect(await run<string>(page, `return ws.getRange('B2').getDisplayValue();`)).toBe('=A2+100');
 });
+
+// À l'ouverture, Univer reprenait les valeurs enregistrées sans recalculer : une formule qui déborde n'affichait que sa 1re valeur.
+test('formules qui débordent (SEQUENCE, TRIER) : toutes les valeurs après réouverture', async ({ page }) => {
+  await gotoApp(page);
+  await run(page, `ws.getRange('A1:A4').setValues([[3], [1], [2], [5]]); ws.getRange('F1').setFormula('=SEQUENCE(3)'); ws.getRange('H1').setFormula('=SORT(A1:A4)');`);
+  const shown = () => run<string[]>(page, `return ['F1', 'F2', 'F3', 'H1', 'H2', 'H3', 'H4'].map((a) => ws.getRange(a).getDisplayValue());`);
+  await expect.poll(shown).toEqual(['1', '2', '3', '1', '2', '3', '5']);
+  await page.evaluate(`window.grillon.doc.exportXlsxBytes().then((b) => window.__b = b)`);
+  await page.evaluate(`window.grillon.doc.openBytes('deborde.xlsx', window.__b)`);
+  await expect(page.getByTestId('doc-title')).toHaveText(/^deborde/);
+  await expect.poll(shown).toEqual(['1', '2', '3', '1', '2', '3', '5']);
+});

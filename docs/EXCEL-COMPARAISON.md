@@ -86,7 +86,7 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 | Récupérer des données : texte/CSV | Oui | Assistant d'import |
 | Récupérer des données : web, base de données, Power Query | Non | Hors périmètre (local) |
 | Actualiser tout | Partiel | Tableaux croisés : un par un |
-| Trier, filtrer, filtre avancé, effacer, réappliquer | Oui | |
+| Trier, filtrer, filtre avancé, effacer, réappliquer | Oui | Au tri, les formules suivent leur ligne (références relatives décalées), comme Excel |
 | Convertir, remplissage instantané, supprimer les doublons, validation | Oui | |
 | Consolider | Non | |
 | Relations, modèle de données | Non | |

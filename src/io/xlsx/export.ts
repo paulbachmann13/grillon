@@ -89,10 +89,10 @@ function writeSheet(
   const defaultRowHeight = sheet.defaultRowHeight ? pxToPt(sheet.defaultRowHeight) : EXCEL_DEFAULT_ROW_HEIGHT_PT;
 
   const freeze = sheet.freeze;
-  const frozen = !!freeze && (freeze.xSplit > 0 || freeze.ySplit > 0) && freeze.startRow >= 0 && freeze.startColumn >= 0;
-  const view: Partial<ExcelJS.WorksheetView> = frozen
-    ? { state: 'frozen', xSplit: freeze!.xSplit, ySplit: freeze!.ySplit, topLeftCell: undefined }
-    : { state: 'normal' };
+  // Univer met -1 dans startRow / startColumn pour la direction non figée (« Figer la ligne supérieure » : startColumn = -1).
+  const xSplit = freeze && freeze.startColumn >= 0 ? Math.max(0, freeze.xSplit) : 0;
+  const ySplit = freeze && freeze.startRow >= 0 ? Math.max(0, freeze.ySplit) : 0;
+  const view: Partial<ExcelJS.WorksheetView> = xSplit > 0 || ySplit > 0 ? { state: 'frozen', xSplit, ySplit, topLeftCell: undefined } : { state: 'normal' };
   if (sheet.showGridlines === 0) view.showGridLines = false;
   if (sheet.zoomRatio && sheet.zoomRatio !== 1) view.zoomScale = Math.round(sheet.zoomRatio * 100);
   if (sheet.rightToLeft) view.rightToLeft = true;
@@ -138,7 +138,11 @@ function writeSheet(
     if (!rd) continue;
     const row = ws.getRow(Number(k) + 1);
     if (rd.h !== undefined && rd.h !== sheet.defaultRowHeight) row.height = pxToPt(rd.h);
-    if (rd.hd) row.hidden = true;
+    if (rd.hd) {
+      row.hidden = true;
+      // ExcelJS n'écrit pas une ligne sans cellule ni hauteur : une ligne masquée vide redeviendrait visible.
+      if (!row.height) row.height = defaultRowHeight;
+    }
     const rowLevel = outlineLevel(rd.custom);
     if (rowLevel) {
       row.outlineLevel = rowLevel;
@@ -148,7 +152,11 @@ function writeSheet(
     if (st) (row as unknown as { style: Partial<ExcelJS.Style> }).style = st;
   }
   // Excel ne réapplique pas les filtres à l'ouverture : les lignes filtrées doivent être masquées.
-  for (const r of filteredOutRows) ws.getRow(r + 1).hidden = true;
+  for (const r of filteredOutRows) {
+    const row = ws.getRow(r + 1);
+    row.hidden = true;
+    if (!row.height) row.height = defaultRowHeight;
+  }
   if (maxRowLevel) ws.properties.outlineLevelRow = maxRowLevel;
   if (maxColLevel) ws.properties.outlineLevelCol = maxColLevel;
 

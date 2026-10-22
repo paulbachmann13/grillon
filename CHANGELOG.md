@@ -6,6 +6,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Corrigé
 - **Formules étendues perdues à l'enregistrement** : quand on étendait une formule (poignée de recopie, Remplir, copier-coller), seule la première cellule gardait sa formule dans le .xlsx ; les autres étaient écrites comme de simples nombres, et à la réouverture les formules avaient disparu. Chaque cellule est maintenant écrite avec sa propre formule (références décalées comme à la recopie). « Afficher les formules » (Ctrl+`) montre aussi la formule des cellules étendues. Les fichiers déjà enregistrés avec ce défaut ne peuvent pas être réparés : les cellules concernées contiennent des nombres, il faut y remettre la formule.
+- **Tri avec des formules** : les lignes étaient réordonnées sans adapter les formules, et les résultats devenaient faux (après un tri, « 8 » gardait « =A3*10 » et affichait 30). Comme dans Excel, chaque formule suit maintenant sa ligne ; un seul Ctrl+Z annule le tri et les formules.
+- **Formules qui débordent** (SEQUENCE, TRIER, FILTRE…) : à la réouverture, seule la première valeur s'affichait ; le classeur est recalculé à l'ouverture (sauf en calcul manuel).
+- **Volets figés** : « Figer la ligne supérieure » (ou la première colonne seule) n'était pas enregistré dans le .xlsx.
+- **Lignes masquées vides** : une ligne masquée sans contenu redevenait visible à la réouverture.
+- Bordures posées par certains scripts (style en texte) : elles sont maintenant enregistrées.
+
+## [1.13.2]
 
 ## [1.13.2] — 2026-10-18
 

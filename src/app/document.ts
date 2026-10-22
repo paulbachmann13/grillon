@@ -9,6 +9,7 @@ import type { IWorkbookData } from '../model/univer-types';
 import { installFrenchDisplay } from '../univer/french-display';
 import { installFrenchFormulas } from '../univer/french-formulas';
 import { installFormulaBarArrows } from '../univer/formula-arrows';
+import { installSortFormulas } from '../univer/sort-formulas';
 import { installCharts } from '../charts/chart-view';
 import { installShapes } from '../charts/shape-view';
 import { installSparklines } from '../charts/sparkline-view';
@@ -37,6 +38,7 @@ import { LOCALE_FR } from '../model/univer-types';
 import { clearAutosave, clearDraft, loadAutosave, loadDrafts, saveAutosave, stashDraft } from '../storage/autosave';
 import { confirmAsync } from './confirm';
 import { applyStoredProtection, installProtectionGuard } from '../univer/protection';
+import { isManualCalculation } from '../univer/calculation';
 
 /** CommandType.COMMAND = 0 : actions de l'utilisateur (les mutations internes, comme le calcul des formules, sont ignorées). */
 const COMMAND = 0;
@@ -96,6 +98,7 @@ export class DocumentController {
       installFrenchDisplay(this.api);
       installFrenchFormulas(this.api);
       installFormulaBarArrows(this.api);
+      installSortFormulas(this.api);
       installTextOverflow(this.api);
       // Feuilles protégées : la protection est réappliquée une fois le classeur prêt.
       setTimeout(() => void applyStoredProtection(this.api), 0);
@@ -127,6 +130,11 @@ export class DocumentController {
       // Univer émet des mutations pendant quelques ticks après la création (calcul des formules…).
       setTimeout(() => (this.loading = false), 0);
     }
+    // À l'ouverture, Univer reprend les valeurs enregistrées sans recalculer : une formule qui déborde (SEQUENCE, TRIER,
+    // FILTRE…) n'afficherait que sa première valeur. Comme Excel en calcul automatique, on recalcule tout.
+    setTimeout(() => {
+      if (!isManualCalculation()) (this.api as unknown as { getFormula?(): { executeCalculation(): void } }).getFormula?.().executeCalculation();
+    }, 0);
     this.home?.hide();
     this.events.onChange();
   }

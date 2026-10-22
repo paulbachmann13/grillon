@@ -197,6 +197,14 @@ export const fr = {
     discardDraft: 'Supprimer définitivement ce travail non enregistré ?',
     missing: 'Impossible de rouvrir « {name} » : le fichier a été déplacé ou supprimé. Il est retiré de la liste.',
     back: 'Retour au classeur',
+    when: {
+      today: 'Aujourd’hui, {time}',
+      yesterday: 'Hier',
+      daysAgo: 'Il y a {n} jours',
+      date: '{day} {month}',
+      dateYear: '{day} {month} {year}',
+      months: { 0: 'janv.', 1: 'févr.', 2: 'mars', 3: 'avr.', 4: 'mai', 5: 'juin', 6: 'juil.', 7: 'août', 8: 'sept.', 9: 'oct.', 10: 'nov.', 11: 'déc.' },
+    },
     version: 'Version {version}',
     settings: {
       title: 'Paramètres',

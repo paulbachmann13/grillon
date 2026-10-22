@@ -1,6 +1,8 @@
 /**
  * Fichiers récents de l'écran d'accueil. Logique pure : la liste est enregistrée par `storage/recent.ts`.
  */
+import { t } from '../i18n';
+
 export interface RecentFile {
   /** Identifiant stable : le chemin (application de bureau) ou un nom unique (navigateur, avec un handle). */
   id: string;
@@ -35,9 +37,7 @@ export function folderOf(path: string | undefined, home?: string): string {
   return folder === '~' ? '~' : folder;
 }
 
-const MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
-
-/** « Aujourd'hui, 14:05 », « Hier », « Il y a 3 jours », puis la date. */
+/** « Aujourd'hui, 14:05 », « Hier », « Il y a 3 jours », puis la date (textes dans src/i18n/fr.ts). */
 export function formatWhen(at: number, now = Date.now()): string {
   const day = (ms: number) => {
     const d = new Date(ms);
@@ -45,11 +45,12 @@ export function formatWhen(at: number, now = Date.now()): string {
   };
   const days = Math.round((day(now) - day(at)) / 86_400_000);
   const d = new Date(at);
-  const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  if (days <= 0) return `Aujourd’hui, ${hhmm}`;
-  if (days === 1) return 'Hier';
-  if (days < 7) return `Il y a ${days} jours`;
-  return `${d.getDate()} ${MONTHS[d.getMonth()]}${d.getFullYear() === new Date(now).getFullYear() ? '' : ` ${d.getFullYear()}`}`;
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  if (days <= 0) return t('home.when.today', { time });
+  if (days === 1) return t('home.when.yesterday');
+  if (days < 7) return t('home.when.daysAgo', { n: days });
+  const month = t(`home.when.months.${d.getMonth()}`);
+  return d.getFullYear() === new Date(now).getFullYear() ? t('home.when.date', { day: d.getDate(), month }) : t('home.when.dateYear', { day: d.getDate(), month, year: d.getFullYear() });
 }
 
 /** Valide ce qui vient du stockage (un tableau abîmé ne doit pas casser l'écran d'accueil). */
