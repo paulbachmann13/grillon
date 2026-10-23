@@ -92,6 +92,10 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 - Application Mac : WebKit ignore `print()` d'un cadre ; l'impression pose les pages dans la fenêtre (`#grillon-print`, visibles
   seulement à l'impression) et appelle `window.print` (remplacé par Tauri, autorisation `core:webview:allow-print`).
   Barre des menus en français (`french_menu` dans lib.rs) et `src-tauri/Info.plist` (langue fr) pour les fenêtres du système.
+- Lecture .xlsx : `src/io/xlsx/normalize.ts` remet les fichiers d'autres logiciels dans la forme qu'attend ExcelJS (balises
+  préfixées, feuilles « sheet.xml », lignes sans numéro…) puis retire ce que Grillon lit lui-même et qu'ExcelJS lit mal ou
+  lentement (tableaux, filtres, fusions, propriétés). Notes lues dans commentsN.xml (`readNotes`). Corpus de vérification :
+  les 353 fichiers de test d'Apache POI (`test-data/spreadsheet`), aller-retour import → export → import.
 - Calibri absente (Mac sans Office) : `src/app/fonts.ts` déclare Calibri → Carlito (OFL) avant le premier rendu.
 
 ## Application Mac (Tauri)
@@ -133,7 +137,8 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
   `~/Library/Containers/com.microsoft.Excel/Data/tmp/`.
 - Vérifié le 18/10 dans Excel (AppleScript) : un tableau croisé écrit par Grillon s'ouvre et se calcule, 8 graphiques
   classiques s'ouvrent, les sauts de page sont relus. Vérifié le 23/10 : les 4 graphiques chartEx et les segments (tableau,
-  tableau croisé) s'ouvrent sans réparation et s'affichent. Pas encore vérifié : thèmes, un vrai fichier créé par Excel.
+  tableau croisé) s'ouvrent sans réparation et s'affichent. Vérifié le 24/10 : 326 des 353 fichiers d'Apache POI (dont beaucoup
+  créés par Excel) font l'aller-retour sans perte de valeur ni de formule. Pas encore vérifié : thèmes.
 - Vérifié dans WebKit (moteur de l'app Mac) : ⌘C / ⌘V / ⌘Z, ⌘B… ; l'app Mac compile et se lance, la mise à jour automatique
   fonctionne (1.12 → 1.13). Vérifié le 23/10 : impression (fenêtre du Mac), menus en français, mise à jour 1.13.3 → 1.13.4. Pas encore vérifié : double-clic dans le Finder, plusieurs fenêtres,
   bouton Coller du ruban (autorisation du presse-papiers de WebKit).

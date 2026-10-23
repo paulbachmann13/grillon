@@ -2,6 +2,30 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.14.1] — 2026-10-24
+
+Vérifié sur les 353 fichiers .xlsx de test d'Apache POI (fichiers d'Excel, de LibreOffice, d'autres logiciels, et fichiers
+volontairement abîmés) : 326 s'ouvrent, s'enregistrent et se rouvrent avec exactement les mêmes valeurs et formules ;
+les fichiers abîmés sont refusés proprement.
+
+### Corrigé
+- **Notes sur une cellule vide** (sur un en-tête, une case libre…) : elles disparaissaient à l'ouverture d'un fichier Excel.
+- **Feuilles graphiques** (« Déplacer le graphique → Nouvelle feuille » dans Excel) : la feuille disparaissait ; elle s'ouvre
+  maintenant comme une feuille qui porte le graphique, à sa place parmi les onglets.
+- **Tableaux croisés faits à partir d'un tableau** (ou d'un nom) : ils n'étaient pas relus ; ils le sont, et s'actualisent.
+- **Tableau croisé sur des colonnes entières** (source « A:F ») : l'enregistrement plantait et l'actualisation pouvait figer
+  Grillon (un million de lignes parcourues) ; seules les lignes remplies sont lues, comme dans Excel.
+- **Beaucoup de cellules fusionnées** : un fichier de 50 000 fusions mettait 95 s à s'ouvrir et une minute à s'enregistrer ;
+  moins d'une seconde maintenant.
+- **Nombre avec un lien hypertexte** (numéro de dossier pointant vers une page…) : le nombre était remplacé par l'adresse
+  du lien.
+- **En-têtes de tableau** : une espace en fin d'en-tête était supprimée (et la colonne pouvait être renommée « …2 ») ; un
+  saut de ligne dans un en-tête est maintenant écrit comme Excel l'attend.
+- **Jeu d'icônes par défaut** (mise en forme conditionnelle) : les feux tricolores ne s'affichaient pas.
+- **Fichiers d'autres logiciels** (générateurs de rapports, Hancom, ONLYOFFICE…) qui ne s'ouvraient pas : balises préfixées,
+  feuilles sans numéro, lignes sans numéro, propriétés du document inhabituelles, tableaux avec filtres par icône, noms de
+  feuille trop longs, validations sur une plage « #REF! », références de graphique avec `xml:space`.
+
 ## [1.14.0] — 2026-10-23
 
 ### Ajouté

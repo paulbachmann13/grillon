@@ -14,6 +14,7 @@ import {
   LOCALE_FR,
   type ICellData,
   type IColumnData,
+  type IRange,
   type IRowData,
   type IStyleData,
   type IWorkbookData,
@@ -26,7 +27,8 @@ import { parseThemeColors } from './colors';
 import { parseTheme, sameTheme, DEFAULT_THEME, THEME_CUSTOM_KEY } from '../../data/theme';
 import { CF_RESOURCE, importConditionalFormats, type UniverCfResource } from './conditional-formatting';
 import { DV_RESOURCE, readDataValidations, type UniverDvResource, type UniverDvRule } from './data-validation';
-import { importNotes, NOTE_RESOURCE, type UniverNoteResource } from './notes';
+import { importNotes, NOTE_RESOURCE, readNotes, type SheetNotes, type UniverNoteResource } from './notes';
+import { normalizePackage, stripForExcelJs } from './normalize';
 import { listSheets, loadZip, removeWorksheetElement, zipToBytes } from './ooxml';
 import { readTables, TABLE_RESOURCE, type UniverTable, type UniverTableResource } from './tables';
 import { richTextToDocument } from './rich-text';
@@ -98,6 +100,8 @@ function convertValue(value: ExcelJS.CellValue): Pick<ICellData, 'v' | 't'> | nu
     if ('text' in value && 'hyperlink' in value) {
       const text = value.text as unknown;
       if (typeof text === 'string') return { v: text, t: CellValueType.STRING };
+      // Nombre avec un lien (numéro de dossier pointant vers une page…).
+      if (typeof text === 'number') return { v: text, t: CellValueType.NUMBER };
       if (text && typeof text === 'object' && 'richText' in text) {
         return { v: (text as ExcelJS.CellRichTextValue).richText.map((r) => r.text).join(''), t: CellValueType.STRING };
       }
@@ -131,7 +135,20 @@ function convertCell(cell: ExcelJS.Cell, registry: StyleRegistry): ICellData | n
   return out;
 }
 
-function convertWorksheet(ws: ExcelJS.Worksheet, registry: StyleRegistry): IWorksheetData {
+/** Cellules couvertes par une fusion, sauf la cellule en haut à gauche (« r,c »). */
+function mergedFollowers(merges: IRange[]): Set<string> {
+  const out = new Set<string>();
+  for (const m of merges) {
+    if ((m.endRow - m.startRow + 1) * (m.endColumn - m.startColumn + 1) > 100_000) continue;
+    for (let r = m.startRow; r <= m.endRow; r++) for (let c = m.startColumn; c <= m.endColumn; c++) if (r !== m.startRow || c !== m.startColumn) out.add(`${r},${c}`);
+  }
+  return out;
+}
+
+function convertWorksheet(ws: ExcelJS.Worksheet, registry: StyleRegistry, sheetMerges?: IRange[]): IWorksheetData {
+  // Fusions lues par Grillon (ExcelJS met des dizaines de secondes sur des milliers de fusions).
+  const merges = sheetMerges ?? ((ws.model as unknown as { merges?: string[] }).merges ?? []).map(rangeFromA1);
+  const followers = mergedFollowers(merges);
   const id = newId('sheet');
   const cellData: Record<number, Record<number, ICellData>> = {};
   const rowData: Record<number, Partial<IRowData>> = {};
@@ -165,7 +182,7 @@ function convertWorksheet(ws: ExcelJS.Worksheet, registry: StyleRegistry): IWork
       if (!cell) continue;
       if (cell.style?.protection?.locked === false) unlocked.push([r, c]);
       // Les cellules fusionnées « esclaves » sont ignorées : seule la cellule maître porte la valeur.
-      if (cell.isMerged && cell.master !== cell) {
+      if (followers.has(`${r},${c}`)) {
         const s = registry.idFor(cell.style);
         if (!s) continue;
         (cellData[r] ??= {})[c] = { s };
@@ -198,7 +215,6 @@ function convertWorksheet(ws: ExcelJS.Worksheet, registry: StyleRegistry): IWork
     if (Object.keys(cd).length) columnData[i] = cd;
   });
 
-  const merges = ((ws.model as unknown as { merges?: string[] }).merges ?? []).map(rangeFromA1);
   for (const m of merges) {
     maxRow = Math.max(maxRow, m.endRow);
     maxCol = Math.max(maxCol, m.endColumn);
@@ -259,6 +275,24 @@ export interface SheetExtras {
   protection: SheetProtection | null;
   rowBreaks: number[];
   colBreaks: number[];
+  /** Fusions de cellules (retirées du XML donné à ExcelJS). */
+  merges?: IRange[];
+  /** Notes (commentaires), lues par Grillon. */
+  notes?: SheetNotes;
+  /** Feuille graphique (sans cellules). */
+  chartSheet?: boolean;
+}
+
+function readMerges(sheetXml: string): IRange[] {
+  const out: IRange[] = [];
+  for (const m of sheetXml.matchAll(/<(?:\w+:)?mergeCell\b[^>]*\bref="([^"]+)"/g)) {
+    try {
+      out.push(rangeFromA1(m[1]));
+    } catch {
+      /* fusion illisible : ignorée */
+    }
+  }
+  return out;
 }
 
 function readCfStopIfTrue(sheetXml: string): Set<number> {
@@ -278,7 +312,7 @@ function readCfStopIfTrue(sheetXml: string): Set<number> {
 async function preprocess(data: ArrayBuffer | Uint8Array): Promise<{ bytes: ArrayBuffer | Uint8Array; extras: Map<string, SheetExtras>; slicers: ReadSlicersResult }> {
   const extras = new Map<string, SheetExtras>();
   const zip = await loadZip(data);
-  let modified = false;
+  let modified = await normalizePackage(zip);
   const pivotsByPath = await readPivotTables(zip);
   const slicers = await readSlicers(zip);
   for (const sheet of await listSheets(zip)) {
@@ -295,6 +329,9 @@ async function preprocess(data: ArrayBuffer | Uint8Array): Promise<{ bytes: Arra
       pivots: pivotsByPath.get(sheet.path) ?? [],
       protection: readSheetProtection(xml),
       rowBreaks: readBreaks(xml, 'rowBreaks'),
+      merges: readMerges(xml),
+      notes: await readNotes(zip, sheet.path),
+      chartSheet: /<(?:\w+:)?chartsheet\b/.test(xml.slice(0, 500)),
       colBreaks: readBreaks(xml, 'colBreaks'),
     });
     const stripped = removeWorksheetElement(xml, 'dataValidations');
@@ -303,6 +340,7 @@ async function preprocess(data: ArrayBuffer | Uint8Array): Promise<{ bytes: Arra
       modified = true;
     }
   }
+  if (await stripForExcelJs(zip, (await listSheets(zip)).map((s) => s.path))) modified = true;
   return { bytes: modified ? await zipToBytes(zip) : data, extras, slicers };
 }
 
@@ -336,11 +374,11 @@ export function workbookToUniver(
   const notes: UniverNoteResource = {};
   const unitId = options.id ?? newId('wb');
   wb.eachSheet((ws) => {
-    const sheet = convertWorksheet(ws, registry);
+    const sheet = convertWorksheet(ws, registry, extras.get(ws.name)?.merges);
     sheets[sheet.id] = sheet;
     sheetOrder.push(sheet.id);
     const extra = extras.get(ws.name);
-    const sheetNotes = importNotes(ws);
+    const sheetNotes = extra?.notes ?? importNotes(ws);
     if (Object.keys(sheetNotes).length) notes[sheet.id] = sheetNotes;
     const rules = importConditionalFormats(ws, sheet.id, theme, extra?.cfStopIfTrue);
     if (rules.length) cf[sheet.id] = rules;
@@ -384,6 +422,20 @@ export function workbookToUniver(
     if (extra?.sparklines.length) drawings[sheet.id] = addSparklinesToResource(unitId, sheet.id, sheet, extra.sparklines, drawings[sheet.id]);
     for (const s of slicers.slicers.filter((x) => x.sheet === ws.name)) drawings[sheet.id] = addSlicerToResource(drawings[sheet.id], unitId, sheet.id, sheet, s);
   });
+
+  // Feuilles graphiques (« Déplacer le graphique → nouvelle feuille ») : ExcelJS les ignore ; elles deviennent des
+  // feuilles qui portent leur graphique, à leur place dans l'ordre des onglets.
+  const known = new Set(sheetOrder.map((id) => sheets[id]!.name));
+  for (const [name, extra] of extras) {
+    if (known.has(name) || !extra.chartSheet) continue;
+    const id = newId('sheet');
+    const sheet: Partial<IWorksheetData> = { id, name, cellData: {}, rowCount: DEFAULT_ROW_COUNT, columnCount: DEFAULT_COLUMN_COUNT };
+    sheets[id] = sheet;
+    sheetOrder.push(id);
+    if (extra.charts.length) drawings[id] = chartsToDrawingResource(unitId, id, sheet, extra.charts);
+  }
+  const position = new Map([...extras.keys()].map((name, i) => [name, i]));
+  sheetOrder.sort((a, b) => (position.get(sheets[a]!.name ?? '') ?? 1e9) - (position.get(sheets[b]!.name ?? '') ?? 1e9));
 
   if (!sheetOrder.length) {
     const id = newId('sheet');

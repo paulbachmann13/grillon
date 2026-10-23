@@ -276,7 +276,8 @@ function ruleToUniver(rule: ExcelRule, topLeft: string, theme: string[]): Univer
       const cfvo = rule.cfvo ?? [];
       const n = cfvo.length;
       if (n < 2) return null;
-      const iconType = rule.iconSet ?? '3TrafficLights1';
+      // Jeu par défaut (sans attribut) : ExcelJS le nomme « 3TrafficLights », Excel « 3TrafficLights1 ».
+      const iconType = !rule.iconSet || rule.iconSet === '3TrafficLights' ? '3TrafficLights1' : rule.iconSet;
       // Univer teste les seuils du plus haut au plus bas ; l'icône 0 d'Univer est la meilleure,
       // l'icône 0 d'Excel la plus basse (sauf si « reverse »).
       const config = [];

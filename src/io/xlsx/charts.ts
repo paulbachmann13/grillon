@@ -13,7 +13,7 @@ import { buildChartExXml, chartColorsXml, chartExFrameXml, chartStyleXml, CT_CHA
 import type { ShapeSpec } from '../../charts/shape';
 import type { ICellData, IWorkbookData, IWorksheetData } from '../../model/univer-types';
 import { parseShapeAnchor, shapeXml } from './shapes';
-import { addContentTypeOverride, addRelationship, attrs, escapeXml, extractAll, extractElement, insertWorksheetElement, parseXml, readRelationships, resolveRelTarget } from './ooxml';
+import { addContentTypeOverride, addRelationship, attrs, escapeXml, extractAll, extractElement, insertWorksheetElement, parseXml, readRelationships, resolveRelTarget, textOf } from './ooxml';
 
 export const DRAWING_RESOURCE = 'SHEET_DRAWING_PLUGIN';
 export const CHART_COMPONENT_KEY = 'GrillonChart';
@@ -94,20 +94,19 @@ type Xml = Record<string, unknown>;
 const arr = <T>(v: T | T[] | undefined): T[] => (v === undefined ? [] : Array.isArray(v) ? v : [v]);
 
 function refOf(node: unknown): string | undefined {
-  const n = node as { strRef?: { f?: string }; numRef?: { f?: string } } | undefined;
-  return n?.strRef?.f ?? n?.numRef?.f;
+  const n = node as { strRef?: { f?: unknown }; numRef?: { f?: unknown } } | undefined;
+  return textOf(n?.strRef?.f) ?? textOf(n?.numRef?.f);
 }
 
 function literalOf(node: unknown): string | undefined {
-  const n = node as { v?: string } | undefined;
-  return typeof n?.v === 'string' ? n.v : undefined;
+  return textOf((node as { v?: unknown } | undefined)?.v);
 }
 
 function richText(node: unknown): string | undefined {
   // <c:title><c:tx><c:rich><a:p><a:r><a:t>…</a:t></a:r></a:p></c:rich></c:tx></c:title>
   const paras = arr((node as { tx?: { rich?: { p?: unknown } } })?.tx?.rich?.p);
   const text = paras
-    .map((p) => arr((p as { r?: unknown }).r).map((r) => String((r as { t?: unknown }).t ?? '')).join(''))
+    .map((p) => arr((p as { r?: unknown }).r).map((r) => textOf((r as { t?: unknown }).t) ?? '').join(''))
     .join('\n');
   return text || undefined;
 }
@@ -440,7 +439,7 @@ export async function readSheetCharts(zip: JSZip, sheetPath: string): Promise<Sh
     const xml = await file.async('string');
     const drawingRels = await readRelationships(zip, drawingPath);
     const relById = new Map(drawingRels.map((r) => [r.Id, r]));
-    for (const anchor of [...extractAll(xml, 'twoCellAnchor'), ...extractAll(xml, 'oneCellAnchor')]) {
+    for (const anchor of [...extractAll(xml, 'twoCellAnchor'), ...extractAll(xml, 'oneCellAnchor'), ...extractAll(xml, 'absoluteAnchor')]) {
       let spec: ChartSpec | null = null;
       let image: string | undefined;
       let shape: ShapeSpec | null = null;
@@ -469,8 +468,15 @@ export async function readSheetCharts(zip: JSZip, sheetPath: string): Promise<Sh
         const n = (name: string) => Number(new RegExp(`<xdr:${name}>(-?\\d+)</xdr:${name}>`).exec(el.xml)?.[1] ?? 0);
         return { column: n('col'), columnOffset: Math.round(n('colOff') / EMU_PER_PX), row: n('row'), rowOffset: Math.round(n('rowOff') / EMU_PER_PX) };
       };
-      const from = pos('from');
+      let from = pos('from');
       let to = pos('to');
+      // absoluteAnchor (feuilles graphiques, certaines images) : position en EMU, ramenée aux cellules par défaut.
+      const abs = !from && /<xdr:pos\b[^>]*\bx="(-?\d+)"[^>]*\by="(-?\d+)"/.exec(anchor.xml);
+      if (abs) {
+        const x = Math.max(0, Number(abs[1]) / EMU_PER_PX);
+        const y = Math.max(0, Number(abs[2]) / EMU_PER_PX);
+        from = { column: Math.floor(x / 64), columnOffset: Math.round(x % 64), row: Math.floor(y / 20), rowOffset: Math.round(y % 20) };
+      }
       if (!from) continue;
       if (!to) {
         // oneCellAnchor : taille donnée par <xdr:ext cx cy>.

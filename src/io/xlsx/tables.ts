@@ -91,7 +91,7 @@ export async function readTables(zip: JSZip, sheetPath: string): Promise<UniverT
       columns: (t.tableColumns?.tableColumn ?? []).map((c, i) => {
         const col: UniverTableColumn = {
           id: newId('col'),
-          displayName: c.name ?? `Colonne${i + 1}`,
+          displayName: c.name !== undefined ? decodeColumnName(String(c.name)) : `Colonne${i + 1}`,
           dataType: 'string',
           formula: '',
           showFilterButton: true,
@@ -116,6 +116,13 @@ export async function readTables(zip: JSZip, sheetPath: string): Promise<UniverT
   }
   return out;
 }
+
+/**
+ * Nom de colonne dans tableN.xml : Excel y écrit un saut de ligne « _x000a_ » (un vrai saut de ligne dans un attribut
+ * devient une espace à la lecture, et le nom ne correspond plus à la cellule).
+ */
+export const encodeColumnName = (name: string) => name.replace(/_(x[0-9A-Fa-f]{4})_/g, '_x005F_$1_').replace(/\r/g, '_x000d_').replace(/\n/g, '_x000a_');
+export const decodeColumnName = (name: string) => name.replace(/_x([0-9A-Fa-f]{4})_/g, (_m, hex: string) => String.fromCharCode(parseInt(hex, 16)));
 
 /** Nom de tableau valide pour Excel (lettre ou _ en tête, sans espace). */
 export function sanitizeTableName(name: string, used: Set<string>): string {
@@ -161,7 +168,7 @@ export async function writeTables(
         const col = table.columns[i];
         return `<tableColumn${attrs({
           id: i + 1,
-          name: colName,
+          name: encodeColumnName(colName),
           totalsRowLabel: totals ? col?.totalsRowLabel : undefined,
           totalsRowFunction: totals ? col?.totalsRowFunction : undefined,
         })}/>`;

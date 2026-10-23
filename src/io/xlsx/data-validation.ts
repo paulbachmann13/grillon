@@ -108,7 +108,14 @@ function toUniver(raw: RawDv, sheetId: string, sqref: string): UniverDvRule | nu
   const ranges = sqref
     .split(/\s+/)
     .filter(Boolean)
-    .map((ref) => ({ ...rangeFromA1(ref), sheetId }));
+    .flatMap((ref) => {
+      // Plage devenue « #REF! » (lignes supprimées dans Excel) : ignorée.
+      try {
+        return [{ ...rangeFromA1(ref), sheetId }];
+      } catch {
+        return [];
+      }
+    });
   if (!ranges.length) return null;
   const f1 = formulaText(raw.formula1);
   const f2 = formulaText(raw.formula2);

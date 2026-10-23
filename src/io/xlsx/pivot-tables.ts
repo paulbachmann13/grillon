@@ -88,6 +88,9 @@ function sourceFields(wb: IWorkbookData, def: PivotDefinition, slicerCols: numbe
     return null;
   }
   const cell = (row: number, col: number) => sheet.cellData?.[row]?.[col] as ICellData | undefined;
+  // Source en colonnes entières (A1:F1048576, fréquent dans Excel) : seulement jusqu'à la dernière ligne remplie.
+  const lastRow = Math.max(-1, ...Object.keys(sheet.cellData ?? {}).map(Number).filter((row) => Object.keys(sheet.cellData![row] ?? {}).length));
+  r = { ...r, endRow: Math.max(r.startRow, Math.min(r.endRow, lastRow)) };
   const fields: FieldInfo[] = [];
   const used = new Set([...def.config.rows, ...def.config.columns, ...def.config.filters.map((f) => f.col), ...slicerCols]);
   for (let c = r.startColumn; c <= r.endColumn; c++) {
@@ -259,6 +262,31 @@ function orderedItems(fieldXml: string): Scalar[] {
   return out;
 }
 
+/** Nom défini ou nom de tableau → feuille et plage (avec la ligne d'en-têtes). */
+async function resolveNamedSource(zip: JSZip, name: string): Promise<{ ref: string; sheet: string } | null> {
+  const wbXml = (await zip.file('xl/workbook.xml')?.async('string')) ?? '';
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const def = new RegExp(`<(?:\\w+:)?definedName\\b[^>]*\\bname="${esc}"[^>]*>([^<]*)<`, 'i').exec(wbXml)?.[1];
+  const m = def && /^'?(.+?)'?!\$?([A-Z]+)\$?(\d+):\$?([A-Z]+)\$?(\d+)$/.exec(def.replace(/&apos;/g, "'").replace(/''/g, "'").trim());
+  if (m) return { sheet: m[1], ref: `${m[2]}${m[3]}:${m[4]}${m[5]}` };
+  for (const sheet of await listSheets(zip)) {
+    for (const rel of (await readRelationships(zip, sheet.path)).filter((r) => r.Type.endsWith('/table'))) {
+      const xml = await zip.file(resolveRelTarget(sheet.path, rel.Target))?.async('string');
+      const head = xml && /<(?:\w+:)?table\b[^>]*>/.exec(xml)?.[0];
+      if (!head) continue;
+      const tableName = /\sdisplayName="([^"]*)"/.exec(head)?.[1] ?? /\sname="([^"]*)"/.exec(head)?.[1];
+      const ref = /\sref="([^"]*)"/.exec(head)?.[1];
+      if (ref && tableName?.toLowerCase() === name.toLowerCase()) {
+        // Sans la ligne de totaux.
+        const totals = Number(/\stotalsRowCount="(\d+)"/.exec(head)?.[1] ?? 0);
+        const r = rangeFromA1(ref);
+        return { sheet: sheet.name, ref: `${columnToLetters(r.startColumn)}${r.startRow + 1}:${columnToLetters(r.endColumn)}${r.endRow + 1 - totals}` };
+      }
+    }
+  }
+  return null;
+}
+
 /** Lit les tableaux croisés de chaque feuille (chemin de la feuille → définitions). */
 export async function readPivotTables(zip: JSZip): Promise<Map<string, PivotDefinition[]>> {
   const out = new Map<string, PivotDefinition[]>();
@@ -282,7 +310,10 @@ export async function readPivotTables(zip: JSZip): Promise<Map<string, PivotDefi
       if (!cacheXml) continue;
       const cache = parseXml<{ pivotCacheDefinition?: Xml }>(cacheXml).pivotCacheDefinition;
       const ws = (cache?.cacheSource as Xml | undefined)?.worksheetSource as { ref?: string; sheet?: string; name?: string } | undefined;
-      if (!ws?.ref) continue; // source nommée ou externe : non prise en charge
+      // Source nommée (nom défini ou tableau : « Tableau1 », ce qu'Excel écrit pour un tableau croisé fait d'un tableau).
+      const named = !ws?.ref && ws?.name ? await resolveNamedSource(zip, String(ws.name)) : null;
+      if (named) Object.assign(ws!, named);
+      if (!ws?.ref) continue; // source externe : non prise en charge
       const fieldBlocks = [...cacheXml.matchAll(/<(?:\w+:)?cacheField\b[^>]*?(?:\/>|>[\s\S]*?<\/(?:\w+:)?cacheField>)/g)].map((m) => m[0]);
       const items = fieldBlocks.map((b) => {
         const shared = /<(?:\w+:)?sharedItems\b[^>]*?(?:\/>|>[\s\S]*?<\/(?:\w+:)?sharedItems>)/.exec(b)?.[0] ?? '';

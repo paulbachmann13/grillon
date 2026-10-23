@@ -22,7 +22,7 @@ import { cssToArgb } from './colors';
 import { CF_RESOURCE, exportConditionalFormats, type UniverCfResource } from './conditional-formatting';
 import { documentToPlainText, documentToRichText } from './rich-text';
 import { styleFromUniver } from './styles';
-import { EXCEL_DEFAULT_COL_WIDTH, EXCEL_DEFAULT_ROW_HEIGHT_PT, pxToExcelWidth, pxToPt, rangeToA1 } from './units';
+import { columnToLetters, EXCEL_DEFAULT_COL_WIDTH, EXCEL_DEFAULT_ROW_HEIGHT_PT, pxToExcelWidth, pxToPt, rangeToA1 } from './units';
 import { toExcelPageSetup, type PageSetup } from '../../data/page-setup';
 import { colBreaksXml, rowBreaksXml } from '../../data/page-breaks';
 import { shiftFormula } from '../../data/formula-shift';
@@ -224,10 +224,8 @@ function writeSheet(
     }
   }
 
-  for (const m of sheet.mergeData ?? []) {
-    if (m.endRow === m.startRow && m.endColumn === m.startColumn) continue;
-    ws.mergeCells(rangeToA1(m));
-  }
+  // Les fusions sont écrites en post-traitement : ExcelJS compare chaque fusion à toutes les autres (des dizaines de
+  // secondes pour quelques milliers de fusions).
   return ws;
 }
 
@@ -262,6 +260,10 @@ interface SheetPostProcess {
   stopIfTruePriorities: number[];
   rowBreaks?: number[];
   colBreaks?: number[];
+  /** Fusions de cellules (« A1:B2 »). */
+  merges?: string[];
+  /** Nombres porteurs d'un lien : ExcelJS les écrit en texte, on les remet en nombres. */
+  numericLinks?: { ref: string; v: number }[];
 }
 
 /** Texte d'une cellule d'en-tête de tableau. */
@@ -320,8 +322,9 @@ function prepareTables(ws: ExcelJS.Worksheet, sheet: Partial<IWorksheetData>, ta
     const seen = new Set<string>();
     for (let c = table.range.startColumn; c <= table.range.endColumn; c++) {
       const i = c - table.range.startColumn;
-      let name = table.options.showHeader !== false ? headerText(sheet.cellData?.[table.range.startRow]?.[c]).trim() : '';
-      if (!name) name = table.columns[i]?.displayName || `Colonne${i + 1}`;
+      // Le texte exact de la cellule (espaces compris) : le changer modifierait la cellule de l'utilisateur.
+      let name = table.options.showHeader !== false ? headerText(sheet.cellData?.[table.range.startRow]?.[c]) : '';
+      if (!name.trim()) name = table.columns[i]?.displayName || `Colonne${i + 1}`;
       let unique = name;
       for (let k = 2; seen.has(unique.toLowerCase()); k++) unique = `${name}${k}`;
       seen.add(unique.toLowerCase());
@@ -360,6 +363,14 @@ function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: Sheet
       ...slicers.native.filter((s) => s.drawSheetId === id).map((s) => ({ slicer: { name: s.name, kind: s.table ? ('table' as const) : ('pivot' as const) }, from: s.from, to: s.to })),
     ];
     const p: SheetPostProcess = { name, charts, sparklines: sparklinesOfSheet(drawings, id), tables: [], stopIfTruePriorities: [], pivot: pivotOf(id), slicerCols: slicers.pivotSlicerCols[id], protection: (sheet.custom as { grillon?: { protection?: SheetProtection } } | undefined)?.grillon?.protection };
+    const numericLinks = Object.entries(sheet.cellData ?? {}).flatMap(([r, row]) =>
+      Object.entries(row as Record<string, ICellData>)
+        .filter(([, c]) => typeof c?.custom?.link === 'string' && typeof c.v === 'number' && !c.f && !c.si)
+        .map(([c, cell]) => ({ ref: `${columnToLetters(Number(c))}${Number(r) + 1}`, v: cell.v as number })),
+    );
+    if (numericLinks.length) p.numericLinks = numericLinks;
+    const merges = (sheet.mergeData ?? []).filter((m) => m.endRow > m.startRow || m.endColumn > m.startColumn).map(rangeToA1);
+    if (merges.length) p.merges = merges;
     const pageOf = (sheet.custom as { grillon?: { page?: PageSetup } } | undefined)?.grillon?.page;
     if (pageOf?.rowBreaks?.length) p.rowBreaks = pageOf.rowBreaks;
     if (pageOf?.colBreaks?.length) p.colBreaks = pageOf.colBreaks;
@@ -430,7 +441,7 @@ function addStopIfTrue(sheetXml: string, priorities: number[]): string {
 async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPostProcess[], slicers: SlicerPlan): Promise<Uint8Array> {
   // Le thème est toujours écrit : celui qu'ExcelJS fournit par défaut est l'ancien Office 2007.
   const theme = themeOf(wb as never);
-  const needed = (p: SheetPostProcess) => p.autoFilter || p.tables.length || p.stopIfTruePriorities.length || p.charts.length || p.sparklines.length || !!p.pivot || !!p.protection || !!p.rowBreaks || !!p.colBreaks;
+  const needed = (p: SheetPostProcess) => p.autoFilter || p.tables.length || p.stopIfTruePriorities.length || p.charts.length || p.sparklines.length || !!p.pivot || !!p.protection || !!p.rowBreaks || !!p.colBreaks || !!p.merges || !!p.numericLinks;
   const zip = await loadZip(bytes);
   const sheets = await listSheets(zip);
   let tableId = 0;
@@ -445,6 +456,10 @@ async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPost
     let xml = await file.async('string');
     if (p.protection) xml = insertWorksheetElement(xml, 'sheetProtection', sheetProtectionXml(p.protection));
     if (p.autoFilter) xml = insertWorksheetElement(xml, 'autoFilter', buildAutoFilterXml(p.autoFilter));
+    for (const { ref, v } of p.numericLinks ?? []) {
+      xml = xml.replace(new RegExp(`<c r="${ref}"([^>]*?) t="s"><v>\\d+</v></c>`), (_m, attrs: string) => `<c r="${ref}"${attrs}><v>${v}</v></c>`);
+    }
+    if (p.merges) xml = insertWorksheetElement(xml, 'mergeCells', `<mergeCells count="${p.merges.length}">${p.merges.map((ref) => `<mergeCell ref="${ref}"/>`).join('')}</mergeCells>`);
     if (p.rowBreaks) xml = insertWorksheetElement(xml, 'rowBreaks', rowBreaksXml(p.rowBreaks));
     if (p.colBreaks) xml = insertWorksheetElement(xml, 'colBreaks', colBreaksXml(p.colBreaks));
     if (p.stopIfTruePriorities.length) xml = addStopIfTrue(xml, p.stopIfTruePriorities);

@@ -20,6 +20,14 @@ const parser = new XMLParser({
     ['dataValidation', 'filterColumn', 'filter', 'customFilter', 'tableColumn', 'Relationship', 'sheet', 'dateGroupItem'].includes(name),
 });
 
+/** Texte d'un élément lu par parseXml : une chaîne, ou { '#text' } quand l'élément a des attributs (xml:space="preserve"). */
+export function textOf(node: unknown): string | undefined {
+  if (typeof node === 'string') return node;
+  if (typeof node === 'number' || typeof node === 'boolean') return String(node);
+  const t = (node as { '#text'?: unknown } | null | undefined)?.['#text'];
+  return t === undefined ? undefined : String(t);
+}
+
 export function parseXml<T = Record<string, unknown>>(xml: string): T {
   return parser.parse(xml) as T;
 }

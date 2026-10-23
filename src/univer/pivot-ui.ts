@@ -33,7 +33,9 @@ export function readSource(api: FUniver, def: Pick<PivotDefinition, 'sourceSheet
   if (!ws) return null;
   try {
     const r = rangeFromA1(def.sourceRange.replace(/\$/g, ''));
-    return ws.getRange(r.startRow, r.startColumn, r.endRow - r.startRow + 1, r.endColumn - r.startColumn + 1).getCellDataGrid() as Grid;
+    // Source en colonnes entières (« A:F », A1:F1048576, fréquent dans Excel) : seulement jusqu'à la dernière ligne remplie.
+    const endRow = Math.max(r.startRow, Math.min(r.endRow, ws.getLastRow()));
+    return ws.getRange(r.startRow, r.startColumn, endRow - r.startRow + 1, r.endColumn - r.startColumn + 1).getCellDataGrid() as Grid;
   } catch {
     return null;
   }
