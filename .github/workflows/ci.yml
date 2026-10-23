@@ -38,7 +38,15 @@ jobs:
       - name: Tests unitaires (dont ouverture dans LibreOffice)
         run: npm test
       - run: npm run fixtures
-      - run: npx playwright install --with-deps chromium webkit
+      # Le téléchargement des navigateurs se bloque parfois chez GitHub : chaque essai est limité à 6 minutes.
+      - name: Navigateurs de test
+        timeout-minutes: 20
+        run: |
+          for i in 1 2 3; do
+            timeout 360 npx playwright install --with-deps chromium webkit && exit 0
+            echo "Téléchargement bloqué, nouvel essai ($i)"
+          done
+          exit 1
       - name: Tests de bout en bout
         run: npm run test:e2e
       - uses: actions/upload-artifact@v4
