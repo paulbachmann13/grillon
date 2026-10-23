@@ -2,6 +2,17 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.13.4] — 2026-10-23
+
+### Corrigé
+- **Saisie à la française**, comme Excel en français :
+  - « 1.5 » valait 15 (le point était lu comme séparateur de milliers) : il vaut maintenant 1,5 ;
+  - « 1 234,5 », « 1 000 000 », « -1 234 » (espace des milliers) restaient du texte, ignoré par les sommes : ce sont des nombres ;
+  - « -12,50 € », « 1 250 € » : montants en euros ;
+  - « 3/4 » était le 4 mars : c'est le 3 avril ; « 31/12 », « 13/1 » (date sans année) sont des dates de l'année en cours ;
+  - VRAI / FAUX tapés (toutes casses) sont des valeurs logiques.
+  Une cellule déjà au format Texte, ou une saisie commençant par une apostrophe, reste du texte.
+
 ## [1.13.3] — 2026-10-22
 
 ### Corrigé

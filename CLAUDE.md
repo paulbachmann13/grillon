@@ -67,6 +67,9 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
   enveloppe donc `writeCellInterceptor.fetchThroughInterceptors` (monkeypatch) pour traduire le résultat final ;
   `AFTER_CELL_EDIT` est un intercepteur normal. Autocomplétion et aide : `IDescriptionService` est patché de la même
   façon. À revérifier à chaque mise à jour d'Univer (tests `tests/e2e/formules-fr.spec.ts`).
+- Saisie : l'analyse d'Univer (fr) lit « 1.5 » comme 15, « 3/4 » comme le 4 mars et laisse en texte « 1 234,5 », « 31/12 »,
+  VRAI. `src/univer/french-entry.ts` (intercepteur `AFTER_CELL_EDIT` prioritaire, logique dans `src/data/french-entry.ts`)
+  convertit ces saisies et arrête la chaîne (sinon l'intercepteur des formats relit la valeur). Test : `tests/e2e/saisie.spec.ts`.
 - Formules partagées d'Univer : une formule étendue (autoFill, Remplir, collage) n'est portée que par la première cellule du
   groupe (`f` + `si`) ; les autres n'ont que `si` et une valeur. L'export doit les reconstruire (`shiftFormula`,
   `src/data/formula-shift.ts`) sinon elles sont écrites comme des nombres. Tout code qui lit `cell.f` directement doit y penser.

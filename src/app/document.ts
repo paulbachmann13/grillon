@@ -8,6 +8,7 @@ import { isTauri, openInNewWindow, pathOfHandle } from '../io/tauri-files';
 import type { IWorkbookData } from '../model/univer-types';
 import { installFrenchDisplay } from '../univer/french-display';
 import { installFrenchFormulas } from '../univer/french-formulas';
+import { installFrenchEntry } from '../univer/french-entry';
 import { installFormulaBarArrows } from '../univer/formula-arrows';
 import { installSortFormulas } from '../univer/sort-formulas';
 import { installCharts } from '../charts/chart-view';
@@ -97,6 +98,7 @@ export class DocumentController {
       this.api.createWorkbook({ locale: LOCALE_FR as IWorkbookData['locale'], ...data, sheets, name: fileName.replace(/\.[^.]+$/, '') } as never);
       installFrenchDisplay(this.api);
       installFrenchFormulas(this.api);
+      installFrenchEntry(this.api);
       installFormulaBarArrows(this.api);
       installSortFormulas(this.api);
       installTextOverflow(this.api);

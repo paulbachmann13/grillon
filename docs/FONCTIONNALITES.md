@@ -35,6 +35,7 @@
 | Tableaux | **Mettre sous forme de tableau** (galerie de styles, « Mon tableau comporte des en-têtes »), **Style du tableau**, ligne d'en-tête, **ligne de totaux**, références structurées (`Ventes[Prix]`), filtres de tableau |
 
 ### Formules et analyse
+- **Saisie à la française** : « 1 234,5 », « -12,50 € », « 1.5 », « 3/4 » (3 avril), « 31/12 », VRAI / FAUX sont reconnus comme dans Excel en français.
 - **Formules en français** (`=SOMME(A1:A3;10)`, `=SI(…;…;…)`) : saisie, barre de formule, autocomplétion et aide en français ; le classeur et le .xlsx gardent les noms anglais.
 - Barre de formule avec **autocomplétion**, **aide sur les arguments**, **coloration des références**, **F4** (références absolues), insertion de fonction par catégorie (Univer).
 - **Somme automatique** (Σ), **Afficher les formules** (aussi dans Vue, Ctrl+`).
