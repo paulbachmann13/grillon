@@ -12,6 +12,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   - « 3/4 » était le 4 mars : c'est le 3 avril ; « 31/12 », « 13/1 » (date sans année) sont des dates de l'année en cours ;
   - VRAI / FAUX tapés (toutes casses) sont des valeurs logiques.
   Une cellule déjà au format Texte, ou une saisie commençant par une apostrophe, reste du texte.
+- **Tri de A à Z / de Z à A** (Accueil → Trier et filtrer, menu contextuel), comme Excel :
+  - avec une seule cellule sélectionnée, rien n'était trié : tout le tableau l'est maintenant ;
+  - avec une seule colonne sélectionnée, seule cette colonne était triée et **les notes ne correspondaient plus aux élèves** : les lignes restent maintenant entières (tout le tableau est trié) ;
+  - la ligne d'en-tête était triée avec les données : elle est reconnue (texte en gras ou au-dessus de nombres) et reste en haut ;
+  - les noms accentués étaient rangés après Z (« Éloïse » après « Zoé ») : ordre alphabétique français (É avec E, sans tenir compte de la casse, des tirets ni des apostrophes), aussi pour le tri personnalisé et le tri du filtre.
 
 ## [1.13.3] — 2026-10-22
 

@@ -11,6 +11,7 @@ import { installFrenchFormulas } from '../univer/french-formulas';
 import { installFrenchEntry } from '../univer/french-entry';
 import { installFormulaBarArrows } from '../univer/formula-arrows';
 import { installSortFormulas } from '../univer/sort-formulas';
+import { installSortUi } from '../univer/sort-ui';
 import { installCharts } from '../charts/chart-view';
 import { installShapes } from '../charts/shape-view';
 import { installSparklines } from '../charts/sparkline-view';
@@ -101,6 +102,7 @@ export class DocumentController {
       installFrenchEntry(this.api);
       installFormulaBarArrows(this.api);
       installSortFormulas(this.api);
+      installSortUi(this.api);
       installTextOverflow(this.api);
       // Feuilles protégées : la protection est réappliquée une fois le classeur prêt.
       setTimeout(() => void applyStoredProtection(this.api), 0);

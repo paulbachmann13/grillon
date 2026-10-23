@@ -11,6 +11,7 @@ import { t } from './i18n';
 import { isTauri, secondaryWindowLabel, takeStartupOpens, takeWindowOpen, tauriHandleFromPath } from './io/tauri-files';
 import { disableAutosave } from './storage/autosave';
 import { setupUniver } from './univer/setup';
+import { ICommandService } from '@univerjs/presets';
 import './style.css';
 import { guardDesktopClose } from './app/confirm';
 
@@ -35,7 +36,8 @@ setupPwa(
 );
 
 // Accès pour les tests de bout en bout et le débogage.
-(window as unknown as { grillon: unknown }).grillon = { api, doc };
+const commands = (api as unknown as { _injector: { get<T>(id: unknown): T } })._injector.get<{ hasCommand(id: string): boolean }>(ICommandService);
+(window as unknown as { grillon: unknown }).grillon = { api, doc, hasCommand: (id: string) => commands.hasCommand(id) };
 
 /** Les tests de bout en bout posent ce réglage pour travailler directement sur le classeur vide. */
 const homeDisabled = (): boolean => {

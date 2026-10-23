@@ -61,3 +61,11 @@ export async function display(page: Page, a1: string, sheet?: string): Promise<s
     { a1, sheet },
   );
 }
+
+/** Le tri et le filtre d'Univer enregistrent leurs commandes une fois la grille dessinée : on les attend. */
+export async function waitSortFilterReady(page: Page): Promise<void> {
+  await page.waitForFunction(() => {
+    const g = (window as unknown as { grillon?: { hasCommand?(id: string): boolean } }).grillon;
+    return !!g?.hasCommand?.('sheet.command.sort-range-asc') && !!g.hasCommand('sheet.command.smart-toggle-filter');
+  });
+}

@@ -75,6 +75,10 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
   `src/data/formula-shift.ts`) sinon elles sont écrites comme des nombres. Tout code qui lit `cell.f` directement doit y penser.
 - Tri : Univer réordonne les lignes (`sheet.command.reorder-range`) sans adapter les formules ; `src/univer/sort-formulas.ts`
   ajoute, via `interceptCommand`, les mutations qui décalent chaque formule de sa ligne (comme Excel ; une seule annulation).
+- Tri direct (A→Z, Z→A, ruban et menu contextuel) : Univer triait la seule sélection, sans en-tête, et rangeait É après Z.
+  `src/univer/sort-ui.ts` annule ces commandes (`BeforeCommandExecute`) et trie le tableau entier avec détection de
+  l'en-tête (`src/data/sort-detect.ts`) ; il ajoute une comparaison à la française (`registerCompareFn`). Les commandes
+  de tri et de filtre s'enregistrent après le premier rendu : les tests attendent `waitSortFilterReady`. Tests : `tests/e2e/tri-filtres.spec.ts`.
 - À l'ouverture, Univer reprend les valeurs enregistrées sans recalculer : `DocumentController.load` lance un calcul complet
   (sinon les formules qui débordent n'affichent que leur 1re valeur). ExcelJS n'écrit pas une ligne sans cellule ni hauteur :
   on donne une hauteur aux lignes masquées. `tests/e2e/persistence.spec.ts` vérifie formules et valeurs après enregistrement.
