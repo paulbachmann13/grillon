@@ -29,6 +29,7 @@ import { shiftFormula } from '../../data/formula-shift';
 import { sparklinesOfSheet, writeSparklines, type SheetSparkline } from './sparklines';
 import type { PivotDefinition } from '../../data/pivot';
 import { writePivotTables, type PivotToWrite } from './pivot-tables';
+import { planSlicers, tableFilterXml, tableKey, writeSlicers, type SlicerPlan } from './slicers';
 import { sheetProtectionXml, type SheetProtection } from '../../data/sheet-protection';
 import type { Rect } from '../../data/cell-locks';
 import { patchThemeXml, themeOf } from '../../data/theme';
@@ -253,6 +254,8 @@ interface SheetPostProcess {
   charts: SheetChart[];
   sparklines: SheetSparkline[];
   pivot?: PivotDefinition;
+  /** Colonnes de la source du tableau croisé filtrées par des segments. */
+  slicerCols?: number[];
   protection?: SheetProtection;
   autoFilter?: UniverAutoFilter;
   tables: TableToWrite[];
@@ -332,7 +335,7 @@ function prepareTables(ws: ExcelJS.Worksheet, sheet: Partial<IWorksheetData>, ta
   });
 }
 
-function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: SheetPostProcess[] } {
+function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: SheetPostProcess[]; slicers: SlicerPlan } {
   const xlWb = new ExcelJS.Workbook();
   xlWb.creator = 'Grillon';
   xlWb.created = new Date();
@@ -343,6 +346,8 @@ function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: Sheet
   const tables = readResource<UniverTableResource>(wb, TABLE_RESOURCE) ?? {};
   const drawings = readResource<DrawingResource>(wb, DRAWING_RESOURCE);
   const notes = readResource<UniverNoteResource>(wb, NOTE_RESOURCE) ?? {};
+  const pivotOf = (id: string) => (wb.sheets[id]?.custom as { grillon?: { pivot?: PivotDefinition } } | undefined)?.grillon?.pivot;
+  const slicers = planSlicers(wb, drawings as never, tables, filters, (id) => !!pivotOf(id)?.config.values.length);
   const post: SheetPostProcess[] = [];
   for (const id of wb.sheetOrder) {
     const sheet = wb.sheets[id];
@@ -350,7 +355,11 @@ function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: Sheet
     const name = sanitizeSheetName(sheet.name ?? '', used);
     const filter = filters[id];
     const ws = writeSheet(wb, xlWb, sheet, name, filter?.cachedFilteredOut);
-    const p: SheetPostProcess = { name, charts: chartsOfSheet(drawings, id), sparklines: sparklinesOfSheet(drawings, id), tables: [], stopIfTruePriorities: [], pivot: (sheet.custom as { grillon?: { pivot?: PivotDefinition } } | undefined)?.grillon?.pivot, protection: (sheet.custom as { grillon?: { protection?: SheetProtection } } | undefined)?.grillon?.protection };
+    const charts = [
+      ...chartsOfSheet(drawings, id),
+      ...slicers.native.filter((s) => s.drawSheetId === id).map((s) => ({ slicer: { name: s.name, kind: s.table ? ('table' as const) : ('pivot' as const) }, from: s.from, to: s.to })),
+    ];
+    const p: SheetPostProcess = { name, charts, sparklines: sparklinesOfSheet(drawings, id), tables: [], stopIfTruePriorities: [], pivot: pivotOf(id), slicerCols: slicers.pivotSlicerCols[id], protection: (sheet.custom as { grillon?: { protection?: SheetProtection } } | undefined)?.grillon?.protection };
     const pageOf = (sheet.custom as { grillon?: { page?: PageSetup } } | undefined)?.grillon?.page;
     if (pageOf?.rowBreaks?.length) p.rowBreaks = pageOf.rowBreaks;
     if (pageOf?.colBreaks?.length) p.colBreaks = pageOf.colBreaks;
@@ -364,7 +373,13 @@ function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: Sheet
       ws.autoFilter = rangeToA1(filter.ref);
       if (filter.filterColumns?.length) p.autoFilter = filter;
     }
-    if (tables[id]?.tables?.length) p.tables = prepareTables(ws, sheet, tables[id].tables);
+    const sheetTables = [...(tables[id]?.tables ?? []), ...(slicers.extraTables[id] ?? [])];
+    if (sheetTables.length) {
+      p.tables = prepareTables(ws, sheet, sheetTables).map((t) => {
+        const filterXml = tableFilterXml(slicers.tableFilters.get(tableKey(id, t.table.range.startRow, t.table.range.startColumn)));
+        return filterXml ? { ...t, filterXml } : t;
+      });
+    }
     post.push(p);
   }
 
@@ -393,7 +408,7 @@ function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: Sheet
       /* ressource illisible : ignorée */
     }
   }
-  return { xlWb, post };
+  return { xlWb, post, slicers };
 }
 
 /** Classeur ExcelJS équivalent (sans les éléments écrits en post-traitement XML). */
@@ -412,7 +427,7 @@ function addStopIfTrue(sheetXml: string, priorities: number[]): string {
 }
 
 /** Écrit dans le XML ce qu'ExcelJS ne sait pas écrire (critères de filtre, tableaux, stopIfTrue). */
-async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPostProcess[]): Promise<Uint8Array> {
+async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPostProcess[], slicers: SlicerPlan): Promise<Uint8Array> {
   // Le thème est toujours écrit : celui qu'ExcelJS fournit par défaut est l'ancien Office 2007.
   const theme = themeOf(wb as never);
   const needed = (p: SheetPostProcess) => p.autoFilter || p.tables.length || p.stopIfTruePriorities.length || p.charts.length || p.sparklines.length || !!p.pivot || !!p.protection || !!p.rowBreaks || !!p.colBreaks;
@@ -437,17 +452,20 @@ async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPost
     if (p.charts.length) xml = await writeSheetCharts(zip, wb, p.name, sheets[i].path, xml, p.charts, counters);
     if (p.sparklines.length) xml = writeSparklines(xml, p.sparklines);
     zip.file(sheets[i].path, xml);
-    if (p.pivot) pivots.push({ sheetPath: sheets[i].path, def: p.pivot });
+    if (p.pivot) pivots.push({ sheetPath: sheets[i].path, def: p.pivot, slicerCols: p.slicerCols });
   }
   // Les tableaux croisés touchent aussi le classeur (caches) : écrits après les feuilles.
-  if (pivots.length) await writePivotTables(zip, wb, pivots);
+  const writtenPivots = pivots.length ? await writePivotTables(zip, wb, pivots) : new Map();
+  // Segments : après les tableaux, les dessins et les tableaux croisés qu'ils relient.
+  const pathOfSheet = new Map(wb.sheetOrder.filter((id) => wb.sheets[id]).map((id, i) => [id, sheets[i]?.path]));
+  await writeSlicers(zip, slicers, (id) => pathOfSheet.get(id), writtenPivots);
   const themeFile = zip.file('xl/theme/theme1.xml');
   if (themeFile) zip.file('xl/theme/theme1.xml', patchThemeXml(await themeFile.async('string'), theme));
   return zipToBytes(zip);
 }
 
 export async function exportXlsx(wb: IWorkbookData): Promise<Uint8Array> {
-  const { xlWb, post } = buildWorkbook(wb);
+  const { xlWb, post, slicers } = buildWorkbook(wb);
   const buf = await xlWb.xlsx.writeBuffer();
-  return postProcess(wb, new Uint8Array(buf as ArrayBuffer), post);
+  return postProcess(wb, new Uint8Array(buf as ArrayBuffer), post, slicers);
 }

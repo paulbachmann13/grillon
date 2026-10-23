@@ -8,7 +8,8 @@
 import type JSZip from 'jszip';
 import type { AxisSpec, ChartSpec, ChartType, DataLabelsSpec, ErrorBarsSpec, Grouping, LabelPosition, MarkerShape, SeriesSpec, TrendlineSpec } from '../../charts/spec';
 import { DEFAULT_COLORS, groupingOf, isStatChart, PALETTES, parseSheetRef } from '../../charts/spec';
-import { buildChartExXml, chartExFrameXml, CT_CHARTEX, parseChartExXml, REL_CHARTEX } from './chartex';
+import { SLICER_COMPONENT_KEY, slicerFrameXml } from './slicers';
+import { buildChartExXml, chartColorsXml, chartExFrameXml, chartStyleXml, CT_CHART_COLORS, CT_CHART_STYLE, CT_CHARTEX, parseChartExXml, REL_CHART_COLORS, REL_CHART_STYLE, REL_CHARTEX } from './chartex';
 import type { ShapeSpec } from '../../charts/shape';
 import type { ICellData, IWorkbookData, IWorksheetData } from '../../model/univer-types';
 import { parseShapeAnchor, shapeXml } from './shapes';
@@ -57,6 +58,8 @@ export type DrawingResource = Record<string, { data: Record<string, DrawingItem>
 /** Graphique (spec) ou image (data URL) ancré dans la feuille. */
 export interface SheetChart {
   spec?: ChartSpec;
+  /** Segment d'Excel (cadre sle:slicer) : nom et sorte. */
+  slicer?: { name: string; kind: 'table' | 'pivot' };
   shape?: ShapeSpec;
   image?: string;
   from: CellAnchor;
@@ -538,6 +541,34 @@ export function chartsToDrawingResource(unitId: string, sheetId: string, sheet: 
   return { data, order };
 }
 
+/** Segment ou chronologie lu → entrée (composant flottant de Grillon) de la ressource de dessins. */
+export function addSlicerToResource(
+  resource: DrawingResource[string] | undefined,
+  unitId: string,
+  sheetId: string,
+  sheet: Partial<IWorksheetData>,
+  slicer: { spec: unknown; from: CellAnchor; to: CellAnchor },
+): DrawingResource[string] {
+  const out = resource ?? { data: {}, order: [] };
+  const id = `slicer${Date.now().toString(36)}${out.order.length}`;
+  const a = anchorToPx(sheet, slicer.from);
+  const b = anchorToPx(sheet, slicer.to);
+  out.data[id] = {
+    unitId,
+    subUnitId: sheetId,
+    drawingId: id,
+    drawingType: DRAWING_DOM_TYPE,
+    componentKey: SLICER_COMPONENT_KEY,
+    sheetTransform: { from: slicer.from, to: slicer.to },
+    axisAlignSheetTransform: { from: slicer.from, to: slicer.to },
+    transform: { left: a.x, top: a.y, width: Math.max(40, b.x - a.x), height: Math.max(40, b.y - a.y) },
+    data: slicer.spec as never,
+    allowTransform: true,
+  };
+  out.order.push(id);
+  return out;
+}
+
 // --- Écriture ---
 
 /** Valeurs d'une référence, pour les caches du graphique (Excel les affiche avant recalcul). */
@@ -865,6 +896,10 @@ export async function writeSheetCharts(
       );
       continue;
     }
+    if (c.slicer) {
+      anchors.push(`<xdr:twoCellAnchor editAs="oneCell">${anchorXml('from', c.from)}${anchorXml('to', c.to)}${slicerFrameXml(c.slicer.name, i + 2, c.slicer.kind)}<xdr:clientData/></xdr:twoCellAnchor>`);
+      continue;
+    }
     if (c.shape) {
       anchors.push(`<xdr:twoCellAnchor editAs="oneCell">${anchorXml('from', c.from)}${anchorXml('to', c.to)}${shapeXml(c.shape, i + 2, `Forme ${i + 1}`)}<xdr:clientData/></xdr:twoCellAnchor>`);
       continue;
@@ -876,6 +911,13 @@ export async function writeSheetCharts(
       const path = `xl/charts/chartEx${n}.xml`;
       zip.file(path, buildChartExXml(c.spec as never, (ref) => readValues(wb, ref, sheetName)));
       await addContentTypeOverride(zip, `/${path}`, CT_CHARTEX);
+      // Style et palette : sans eux, Excel supprime tout le dessin à l'ouverture.
+      zip.file(`xl/charts/style${n}.xml`, chartStyleXml());
+      zip.file(`xl/charts/colors${n}.xml`, chartColorsXml());
+      await addContentTypeOverride(zip, `/xl/charts/style${n}.xml`, CT_CHART_STYLE);
+      await addContentTypeOverride(zip, `/xl/charts/colors${n}.xml`, CT_CHART_COLORS);
+      await addRelationship(zip, path, REL_CHART_STYLE, `style${n}.xml`);
+      await addRelationship(zip, path, REL_CHART_COLORS, `colors${n}.xml`);
       const rid = await addRelationship(zip, drawingPath, REL_CHARTEX, `../charts/chartEx${n}.xml`);
       anchors.push(`<xdr:twoCellAnchor editAs="oneCell">${anchorXml('from', c.from)}${anchorXml('to', c.to)}${chartExFrameXml(c.spec.type as never, i + 2, `Graphique ${i + 1}`, rid)}<xdr:clientData/></xdr:twoCellAnchor>`);
       continue;

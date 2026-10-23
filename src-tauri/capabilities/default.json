@@ -12,6 +12,7 @@
     "dialog:allow-confirm",
     "core:window:allow-destroy",
     "core:window:allow-close",
+    "core:webview:allow-print",
     "updater:default",
     "process:allow-restart",
     {

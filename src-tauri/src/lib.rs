@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
+use tauri::menu::{AboutMetadata, Menu, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 #[derive(Default)]
@@ -57,8 +58,72 @@ async fn new_window(app: AppHandle, path: Option<String>) -> Result<(), String> 
     spawn_window(&app, path)
 }
 
+/// Barre des menus du Mac en français (celle de Tauri par défaut est en anglais). Les commandes d'édition
+/// restent les éléments du système : ⌘Z, ⌘C, ⌘V… arrivent ainsi à la page comme avant.
+fn french_menu<R: tauri::Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
+    let about = AboutMetadata { name: Some("Grillon".into()), ..Default::default() };
+    let sep = || PredefinedMenuItem::separator(app);
+    Menu::with_items(
+        app,
+        &[
+            &Submenu::with_items(
+                app,
+                "Grillon",
+                true,
+                &[
+                    &PredefinedMenuItem::about(app, Some("À propos de Grillon"), Some(about))?,
+                    &sep()?,
+                    &PredefinedMenuItem::services(app, Some("Services"))?,
+                    &sep()?,
+                    &PredefinedMenuItem::hide(app, Some("Masquer Grillon"))?,
+                    &PredefinedMenuItem::hide_others(app, Some("Masquer les autres"))?,
+                    &PredefinedMenuItem::show_all(app, Some("Tout afficher"))?,
+                    &sep()?,
+                    &PredefinedMenuItem::quit(app, Some("Quitter Grillon"))?,
+                ],
+            )?,
+            &Submenu::with_items(
+                app,
+                "Fichier",
+                true,
+                &[&PredefinedMenuItem::close_window(app, Some("Fermer la fenêtre"))?],
+            )?,
+            &Submenu::with_items(
+                app,
+                "Édition",
+                true,
+                &[
+                    &PredefinedMenuItem::undo(app, Some("Annuler"))?,
+                    &PredefinedMenuItem::redo(app, Some("Rétablir"))?,
+                    &sep()?,
+                    &PredefinedMenuItem::cut(app, Some("Couper"))?,
+                    &PredefinedMenuItem::copy(app, Some("Copier"))?,
+                    &PredefinedMenuItem::paste(app, Some("Coller"))?,
+                    &PredefinedMenuItem::select_all(app, Some("Tout sélectionner"))?,
+                ],
+            )?,
+            &Submenu::with_items(
+                app,
+                "Présentation",
+                true,
+                &[&PredefinedMenuItem::fullscreen(app, Some("Plein écran"))?],
+            )?,
+            &Submenu::with_items(
+                app,
+                "Fenêtre",
+                true,
+                &[
+                    &PredefinedMenuItem::minimize(app, Some("Réduire"))?,
+                    &PredefinedMenuItem::maximize(app, Some("Agrandir"))?,
+                ],
+            )?,
+        ],
+    )
+}
+
 pub fn run() {
     tauri::Builder::default()
+        .menu(|app| french_menu(app))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         // Mises à jour automatiques (Releases GitHub) : vérification et installation depuis l'interface.

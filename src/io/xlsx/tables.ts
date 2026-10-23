@@ -131,6 +131,8 @@ export interface TableToWrite {
   table: UniverTable;
   /** Noms d'en-tête effectivement écrits dans les cellules (uniques, non vides). */
   headerNames: string[];
+  /** Critères de filtre (<filterColumn>) posés par les segments. */
+  filterXml?: string;
 }
 
 /**
@@ -147,7 +149,7 @@ export async function writeTables(
 ): Promise<string> {
   if (!tables.length) return sheetXml;
   const relIds: string[] = [];
-  for (const { table, headerNames } of tables) {
+  for (const { table, headerNames, filterXml } of tables) {
     const id = nextTableId();
     const excel = table.meta?.excel ?? {};
     const totals = excel.totalsRowCount ?? 0;
@@ -176,10 +178,11 @@ export async function writeTables(
         headerRowCount: header ? undefined : 0,
         totalsRowCount: totals || undefined,
       })}>` +
-      (header && table.options.showAutoFilter !== false ? `<autoFilter ref="${rangeToA1(filterRange)}"/>` : '') +
+      (header && table.options.showAutoFilter !== false ? `<autoFilter ref="${rangeToA1(filterRange)}"${filterXml ? `>${filterXml}</autoFilter>` : '/>'}` : '') +
       `<tableColumns count="${headerNames.length}">${columns}</tableColumns>` +
       `<tableStyleInfo${attrs({
-        name: excelStyleName(table.options.tableStyleId, excel.styleName),
+        // Nom vide : tableau sans style (créé pour porter un segment).
+        name: excelStyleName(table.options.tableStyleId, excel.styleName) || undefined,
         showFirstColumn: excel.showFirstColumn ? 1 : 0,
         showLastColumn: excel.showLastColumn ? 1 : 0,
         showRowStripes: excel.showRowStripes === false ? 0 : 1,

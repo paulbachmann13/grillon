@@ -2,6 +2,19 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.14.0] — 2026-10-23
+
+### Ajouté
+- **Segments dans le .xlsx** : un segment sur un tableau ou sur un tableau croisé dynamique est écrit comme un vrai segment d'Excel (vérifié dans Excel pour Mac : le segment s'affiche avec ses choix, le tableau ou le tableau croisé est filtré). Une plage ordinaire filtrée par un segment devient, dans le fichier, un tableau sans style (Excel l'exige) ; Grillon la rouvre comme une simple plage. Les segments d'un fichier créé dans Excel sont relus.
+- **Chronologies** gardées dans le .xlsx pour Grillon (Excel ne connaît pas de chronologie sur un tableau ; il conserve cette information sans l'afficher).
+
+### Corrigé
+- **Graphiques cascade, entonnoir, histogramme et boîte à moustaches** : Excel « réparait » le fichier en supprimant tous les graphiques de la feuille. Il manquait le style et la palette qu'Excel exige pour ces graphiques ; l'entonnoir s'affichait aussi comme « non disponible ». Vérifié dans Excel pour Mac : les quatre s'ouvrent sans réparation et s'affichent.
+- **Impression dans l'application Mac** : « Imprimer… » montrait l'aperçu mais la fenêtre d'impression du Mac ne s'ouvrait pas. Elle s'ouvre maintenant (imprimante, PDF…), avec la seule feuille.
+- **Application Mac en français** : la barre des menus (Grillon, Fichier, Édition, Présentation, Fenêtre) et les fenêtres du système (impression, Dictée, Emoji…) étaient en anglais.
+- **Police Calibri** : sur un Mac sans Office (ou un iPad), les cellules s'affichaient en Times. Grillon fournit maintenant Carlito, police libre aux mêmes dimensions que Calibri, utilisée quand Calibri manque (comme LibreOffice).
+- **Tableaux croisés d'un fichier Excel** : un filtre de rapport ne gardait que le premier élément du cache (les autres choix étaient perdus).
+
 ## [1.13.4] — 2026-10-23
 
 ### Corrigé
@@ -27,8 +40,6 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Volets figés** : « Figer la ligne supérieure » (ou la première colonne seule) n'était pas enregistré dans le .xlsx.
 - **Lignes masquées vides** : une ligne masquée sans contenu redevenait visible à la réouverture.
 - Bordures posées par certains scripts (style en texte) : elles sont maintenant enregistrées.
-
-## [1.13.2]
 
 ## [1.13.2] — 2026-10-18
 

@@ -83,8 +83,9 @@ export function buildChartExXml(spec: ChartSpec & { type: StatChartType }, read:
 }
 
 /** Contenu d'une ancre de dessin pour un graphique chartEx (avec remplacement pour les anciens logiciels). */
-export function chartExFrameXml(type: StatChartType, id: number, name: string, rid: string): string {
-  const [prefix, ns] = type === 'funnel' ? ['cx2', 'http://schemas.microsoft.com/office/drawing/2015/10/21/chartex'] : ['cx1', 'http://schemas.microsoft.com/office/drawing/2015/9/8/chartex'];
+// Tous les types, entonnoir compris, sous « cx1 » : avec cx2 ou cx4, Excel pour Mac n'affiche que le remplacement (vérifié).
+export function chartExFrameXml(_type: StatChartType, id: number, name: string, rid: string): string {
+  const [prefix, ns] = ['cx1', 'http://schemas.microsoft.com/office/drawing/2015/9/8/chartex'];
   return (
     `<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><mc:Choice xmlns:${prefix}="${ns}" Requires="${prefix}">` +
     `<xdr:graphicFrame macro=""><xdr:nvGraphicFramePr><xdr:cNvPr${attrs({ id, name })}/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm>` +
@@ -154,4 +155,69 @@ export function parseChartExXml(xml: string): ChartSpec | null {
   }
   if (all[0]?.dataLabels === undefined && (type === 'waterfall' || type === 'funnel')) spec.dataLabels = { show: false };
   return spec;
+}
+
+// --- Style et palette du graphique : obligatoires pour Excel ---
+// Sans ces deux parties reliées à chaque graphique chartEx, Excel « répare » le fichier en supprimant tout le dessin
+// (vérifié avec Excel pour Mac : « Partie supprimée : /xl/drawings/drawing1.xml »). Les graphiques classiques s'en passent.
+
+export const CT_CHART_STYLE = 'application/vnd.ms-office.chartstyle+xml';
+export const CT_CHART_COLORS = 'application/vnd.ms-office.chartcolorstyle+xml';
+export const REL_CHART_STYLE = 'http://schemas.microsoft.com/office/2011/relationships/chartStyle';
+export const REL_CHART_COLORS = 'http://schemas.microsoft.com/office/2011/relationships/chartColorStyle';
+
+const NS_CS = 'http://schemas.microsoft.com/office/drawing/2012/chartStyle';
+const NS_A = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+
+/** Texte gris (comme Excel : 65 % de la couleur du texte) ; `size` en centièmes de point. */
+const textEntry = (size: number, lum = '65000', off = '35000', extra = '') =>
+  `<cs:fontRef idx="minor"><a:schemeClr val="tx1"><a:lumMod val="${lum}"/><a:lumOff val="${off}"/></a:schemeClr></cs:fontRef>${extra}<cs:defRPr sz="${size}"/>`;
+const refs = (fill = '<cs:fillRef idx="0"/>', ln = '<cs:lnRef idx="0"/>') => `${ln}${fill}<cs:effectRef idx="0"/>`;
+const lineSpPr = (w: number, lum: string, off: string) => `<cs:spPr><a:ln w="${w}" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="tx1"><a:lumMod val="${lum}"/><a:lumOff val="${off}"/></a:schemeClr></a:solidFill><a:round/></a:ln></cs:spPr>`;
+const plain = (name: string) => `<cs:${name}>${refs()}<cs:fontRef idx="minor"><a:schemeClr val="tx1"/></cs:fontRef></cs:${name}>`;
+
+/** Style du graphique (partie cs:chartStyle), proche du style par défaut d'Excel 2016. */
+export function chartStyleXml(): string {
+  const auto = '<cs:fillRef idx="0"><cs:styleClr val="auto"/></cs:fillRef>';
+  const autoLn = '<cs:lnRef idx="0"><cs:styleClr val="auto"/></cs:lnRef>';
+  const entries = [
+    `<cs:axisTitle>${refs()}${textEntry(1000)}</cs:axisTitle>`,
+    `<cs:categoryAxis>${refs()}${textEntry(900, '65000', '35000', lineSpPr(9525, '25000', '75000'))}</cs:categoryAxis>`,
+    `<cs:chartArea>${refs()}<cs:fontRef idx="minor"><a:schemeClr val="tx1"/></cs:fontRef><cs:spPr><a:solidFill><a:schemeClr val="bg1"/></a:solidFill><a:ln w="9525" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="tx1"><a:lumMod val="25000"/><a:lumOff val="75000"/></a:schemeClr></a:solidFill><a:round/></a:ln></cs:spPr><cs:defRPr sz="1330"/></cs:chartArea>`,
+    `<cs:dataLabel>${refs()}${textEntry(900, '75000', '25000')}</cs:dataLabel>`,
+    `<cs:dataLabelCallout>${refs()}<cs:fontRef idx="minor"><a:schemeClr val="dk1"><a:lumMod val="65000"/><a:lumOff val="35000"/></a:schemeClr></cs:fontRef><cs:spPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill><a:ln><a:solidFill><a:schemeClr val="dk1"><a:lumMod val="25000"/><a:lumOff val="75000"/></a:schemeClr></a:solidFill></a:ln></cs:spPr><cs:defRPr sz="900"/></cs:dataLabelCallout>`,
+    `<cs:dataPoint>${refs(auto)}<cs:fontRef idx="minor"><a:schemeClr val="tx1"/></cs:fontRef><cs:spPr><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></cs:spPr></cs:dataPoint>`,
+    `<cs:dataPoint3D>${refs(auto)}<cs:fontRef idx="minor"><a:schemeClr val="tx1"/></cs:fontRef><cs:spPr><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></cs:spPr></cs:dataPoint3D>`,
+    `<cs:dataPointLine>${autoLn}<cs:fillRef idx="0"/><cs:effectRef idx="0"/><cs:fontRef idx="minor"><a:schemeClr val="tx1"/></cs:fontRef><cs:spPr><a:ln w="28575" cap="rnd"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:round/></a:ln></cs:spPr></cs:dataPointLine>`,
+    `<cs:dataPointMarker>${autoLn}${auto}<cs:effectRef idx="0"/><cs:fontRef idx="minor"><a:schemeClr val="tx1"/></cs:fontRef><cs:spPr><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:ln w="9525"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></cs:spPr></cs:dataPointMarker>`,
+    '<cs:dataPointMarkerLayout symbol="circle" size="5"/>',
+    `<cs:dataPointWireframe>${autoLn}<cs:fillRef idx="0"/><cs:effectRef idx="0"/><cs:fontRef idx="minor"><a:schemeClr val="tx1"/></cs:fontRef><cs:spPr><a:ln w="9525" cap="rnd"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:round/></a:ln></cs:spPr></cs:dataPointWireframe>`,
+    `<cs:dataTable>${refs()}${textEntry(900, '65000', '35000', lineSpPr(9525, '15000', '85000'))}</cs:dataTable>`,
+    plain('downBar'),
+    plain('dropLine'),
+    plain('errorBar'),
+    plain('floor'),
+    `<cs:gridlineMajor>${refs()}<cs:fontRef idx="minor"><a:schemeClr val="tx1"/></cs:fontRef>${lineSpPr(9525, '15000', '85000')}</cs:gridlineMajor>`,
+    `<cs:gridlineMinor>${refs()}<cs:fontRef idx="minor"><a:schemeClr val="tx1"/></cs:fontRef>${lineSpPr(9525, '5000', '95000')}</cs:gridlineMinor>`,
+    plain('hiLoLine'),
+    plain('leaderLine'),
+    `<cs:legend>${refs()}${textEntry(900)}</cs:legend>`,
+    plain('plotArea'),
+    plain('plotArea3D'),
+    `<cs:seriesAxis>${refs()}${textEntry(900)}</cs:seriesAxis>`,
+    plain('seriesLine'),
+    `<cs:title>${refs()}${textEntry(1400)}</cs:title>`,
+    plain('trendline'),
+    `<cs:trendlineLabel>${refs()}${textEntry(900)}</cs:trendlineLabel>`,
+    plain('upBar'),
+    `<cs:valueAxis>${refs()}${textEntry(900)}</cs:valueAxis>`,
+    plain('wall'),
+  ];
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cs:chartStyle xmlns:cs="${NS_CS}" xmlns:a="${NS_A}" id="395">${entries.join('')}</cs:chartStyle>`;
+}
+
+/** Palette du graphique (partie cs:colorStyle) : les couleurs d'accentuation du thème, comme Excel. */
+export function chartColorsXml(): string {
+  const accents = [1, 2, 3, 4, 5, 6].map((n) => `<a:schemeClr val="accent${n}"/>`).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cs:colorStyle xmlns:cs="${NS_CS}" xmlns:a="${NS_A}" meth="cycle" id="10">${accents}<cs:variation/><cs:variation><a:lumMod val="60000"/></cs:variation><cs:variation><a:lumMod val="80000"/><a:lumOff val="20000"/></cs:variation><cs:variation><a:lumMod val="80000"/></cs:variation><cs:variation><a:lumMod val="60000"/><a:lumOff val="40000"/></cs:variation><cs:variation><a:lumMod val="50000"/></cs:variation><cs:variation><a:lumMod val="70000"/><a:lumOff val="30000"/></cs:variation><cs:variation><a:lumMod val="70000"/></cs:variation><cs:variation><a:lumMod val="50000"/><a:lumOff val="50000"/></cs:variation></cs:colorStyle>`;
 }

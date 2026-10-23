@@ -6,6 +6,7 @@
 import type { FUniver } from '@univerjs/presets';
 import type { FWorkbook, FWorksheet } from '@univerjs/sheets/facade';
 import { t } from '../i18n';
+import { isTauri } from '../io/tauri-files';
 import type { IBorderStyleData, IStyleData, IWorkbookData } from '../model/univer-types';
 import { hasBreaks } from '../data/page-breaks';
 import { computeLayout } from '../data/page-layout';
@@ -212,6 +213,7 @@ img { display: block; margin-top: 12px; max-width: 100%; page-break-inside: avoi
 }
 
 function printHtml(html: string): void {
+  if (isTauri()) return printInWindow(html);
   const frame = document.createElement('iframe');
   frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
   frame.setAttribute('aria-hidden', 'true');
@@ -228,6 +230,32 @@ function printHtml(html: string): void {
   // Laisse aux images (graphiques) le temps de se charger.
   if (doc.readyState === 'complete') setTimeout(go, 150);
   else frame.addEventListener('load', () => setTimeout(go, 150));
+}
+
+/**
+ * Application Mac : WebKit ignore `print()` d'un cadre, et Tauri n'imprime que la fenêtre entière (sa propre
+ * `window.print`). On pose donc les pages dans la fenêtre, visibles seulement à l'impression, et on imprime la fenêtre.
+ */
+function printInWindow(html: string): void {
+  const parsed = new DOMParser().parseFromString(html, 'text/html');
+  const css = [...parsed.querySelectorAll('style')].map((s) => s.textContent ?? '').join('\n');
+  document.getElementById('grillon-print')?.remove();
+  document.getElementById('grillon-print-style')?.remove();
+  const style = document.createElement('style');
+  style.id = 'grillon-print-style';
+  style.textContent =
+    '#grillon-print { display: none; }\n' +
+    `@media print {\n${css}\nhtml, body { height: auto !important; overflow: visible !important; background: #fff !important; }\n` +
+    'body > *:not(#grillon-print) { display: none !important; }\n#grillon-print { display: block; }\n}';
+  const root = document.createElement('div');
+  root.id = 'grillon-print';
+  root.innerHTML = parsed.body.innerHTML;
+  document.head.append(style);
+  document.body.append(root);
+  const go = () => window.print();
+  const images = [...root.querySelectorAll('img')].filter((img) => !img.complete);
+  if (!images.length) setTimeout(go, 150);
+  else void Promise.all(images.map((img) => new Promise((r) => { img.onload = img.onerror = r; }))).then(() => setTimeout(go, 150));
 }
 
 const MM_TO_PX = 96 / 25.4;

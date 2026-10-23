@@ -1,6 +1,6 @@
 [package]
 name = "grillon"
-version = "1.13.4"
+version = "1.14.0"
 description = "Grillon — tableur local et gratuit"
 license = "Apache-2.0"
 edition = "2021"

@@ -22,13 +22,28 @@ describe('graphiques chartEx (cascade, entonnoir, histogramme, boîte à moustac
     expect(rels).toContain('relationships/chartEx" Target="../charts/chartEx4.xml"');
     const drawing = await zip.file('xl/drawings/drawing1.xml')!.async('string');
     expect(drawing.match(/<mc:AlternateContent/g)).toHaveLength(4);
-    expect(drawing).toContain('Requires="cx2"'); // entonnoir
+    expect(drawing).not.toContain('Requires="cx2"'); // entonnoir : Excel ne l'affiche qu'avec cx1
     const waterfall = await zip.file('xl/charts/chartEx1.xml')!.async('string');
     expect(waterfall).toContain('layoutId="waterfall"');
     expect(waterfall).toContain('<cx:subtotals><cx:idx val="2"/></cx:subtotals>');
     expect(waterfall).toContain('<cx:pt idx="1">150</cx:pt>');
     const histogram = await zip.file('xl/charts/chartEx3.xml')!.async('string');
     expect(histogram).toContain('<cx:binning intervalClosed="r" overflow="140"><cx:binSize val="20"/></cx:binning>');
+  });
+
+  it('relie à chaque graphique un style et une palette (sinon Excel supprime le dessin)', async () => {
+    const zip = await JSZip.loadAsync(await exportXlsx(chartWorkbook([WATERFALL, FUNNEL])));
+    const types = await zip.file('[Content_Types].xml')!.async('string');
+    for (const n of [1, 2]) {
+      expect(types).toContain(`/xl/charts/style${n}.xml" ContentType="application/vnd.ms-office.chartstyle+xml"`);
+      expect(types).toContain(`/xl/charts/colors${n}.xml" ContentType="application/vnd.ms-office.chartcolorstyle+xml"`);
+      const rels = await zip.file(`xl/charts/_rels/chartEx${n}.xml.rels`)!.async('string');
+      expect(rels).toContain(`relationships/chartStyle" Target="style${n}.xml"`);
+      expect(rels).toContain(`relationships/chartColorStyle" Target="colors${n}.xml"`);
+      const style = await zip.file(`xl/charts/style${n}.xml`)!.async('string');
+      expect(style).toMatch(/<cs:dataPoint>.*<a:solidFill><a:schemeClr val="phClr"\/><\/a:solidFill>/);
+      expect(await zip.file(`xl/charts/colors${n}.xml`)!.async('string')).toContain('<a:schemeClr val="accent6"/>');
+    }
   });
 
   it('relit les graphiques à l’identique', async () => {

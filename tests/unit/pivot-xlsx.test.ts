@@ -48,6 +48,12 @@ describe('tableaux croisés dynamiques — .xlsx', () => {
     });
   });
 
+  it('relit un filtre sur des éléments qui ne sont pas les premiers du cache', async () => {
+    const def: PivotDefinition = { ...PIVOT_DEF, config: { ...PIVOT_DEF.config, columns: [1], filters: [{ col: 0, include: ['Nîmes', 'Paris'] }] } };
+    const back = pivotOf(await importXlsx(await exportXlsx(pivotWorkbook(def))));
+    expect(back?.config.filters).toEqual([{ col: 0, include: ['Nîmes', 'Paris'] }]);
+  });
+
   it('un classeur sans tableau croisé n’a pas de parties pivot', async () => {
     const wb = pivotWorkbook();
     delete (wb.sheets.s2 as { custom?: unknown }).custom;

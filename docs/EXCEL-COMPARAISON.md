@@ -42,11 +42,11 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 | Tableau | Oui | |
 | Images, formes, zones de texte | Oui | Formes simples (6) ; pas d'icônes, SmartArt, modèles 3D |
 | Graphiques (histogramme, courbes, secteurs, barres, aires, nuage, bulles, radar, combinés) | Oui | |
-| Graphiques cascade, entonnoir, histogramme statistique, boîte à moustaches | Oui | Format chartEx d'Excel 2016 |
+| Graphiques cascade, entonnoir, histogramme statistique, boîte à moustaches | Oui | Format chartEx d'Excel 2016, vérifié dans Excel pour Mac |
 | Graphiques boursier, surface, compartimentage, rayons de soleil, Pareto, cartes | Non | |
 | Graphique croisé dynamique | Non | |
 | Mini-graphiques | Oui | |
-| Segments, chronologies | Partiel | Sur les tableaux (plage avec en-têtes) et les tableaux croisés de Grillon ; enregistrés dans le classeur Grillon mais pas dans le .xlsx (seules les lignes masquées le sont) ; pas de style de segment ni de colonnes multiples |
+| Segments, chronologies | Partiel | Sur les tableaux (plage avec en-têtes) et les tableaux croisés de Grillon ; les segments sont de vrais segments d'Excel dans le .xlsx (et ceux d'Excel sont relus) ; les chronologies ne sont gardées que pour Grillon (pas de chronologie Excel) ; pas de style de segment ni de colonnes multiples |
 | Lien | Oui | |
 | Commentaire (fil de discussion), note | Partiel | Notes uniquement |
 | En-tête et pied de page | Oui | Via Mise en page |

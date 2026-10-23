@@ -20,7 +20,8 @@ import {
   type IWorksheetData,
 } from '../../model/univer-types';
 import { FILTER_RESOURCE, readAutoFilter, type UniverAutoFilter, type UniverFilterResource } from './auto-filter';
-import { chartsToDrawingResource, DRAWING_RESOURCE, readSheetCharts, type DrawingResource, type SheetChart } from './charts';
+import { addSlicerToResource, chartsToDrawingResource, DRAWING_RESOURCE, readSheetCharts, type DrawingResource, type SheetChart } from './charts';
+import { readSlicers, type ReadSlicersResult } from './slicers';
 import { parseThemeColors } from './colors';
 import { parseTheme, sameTheme, DEFAULT_THEME, THEME_CUSTOM_KEY } from '../../data/theme';
 import { CF_RESOURCE, importConditionalFormats, type UniverCfResource } from './conditional-formatting';
@@ -30,7 +31,7 @@ import { listSheets, loadZip, removeWorksheetElement, zipToBytes } from './ooxml
 import { readTables, TABLE_RESOURCE, type UniverTable, type UniverTableResource } from './tables';
 import { richTextToDocument } from './rich-text';
 import { styleToUniver } from './styles';
-import { dateToSerial, EXCEL_DEFAULT_COL_WIDTH, EXCEL_DEFAULT_ROW_HEIGHT_PT, excelWidthToPx, fromA1, ptToPx, rangeFromA1 } from './units';
+import { dateToSerial, EXCEL_DEFAULT_COL_WIDTH, EXCEL_DEFAULT_ROW_HEIGHT_PT, excelWidthToPx, fromA1, ptToPx, rangeFromA1, rangeToA1 } from './units';
 import { fromExcelPageSetup, type ExcelPageSetupLike, type PageSetup } from '../../data/page-setup';
 import { readBreaks, withBreaks } from '../../data/page-breaks';
 import { addSparklinesToResource, readSparklines, type SheetSparkline } from './sparklines';
@@ -274,11 +275,12 @@ function readCfStopIfTrue(sheetXml: string): Set<number> {
  * Lit les extras de chaque feuille et retire du XML les validations de données avant de
  * passer le fichier à ExcelJS (qui déplierait chaque plage cellule par cellule).
  */
-async function preprocess(data: ArrayBuffer | Uint8Array): Promise<{ bytes: ArrayBuffer | Uint8Array; extras: Map<string, SheetExtras> }> {
+async function preprocess(data: ArrayBuffer | Uint8Array): Promise<{ bytes: ArrayBuffer | Uint8Array; extras: Map<string, SheetExtras>; slicers: ReadSlicersResult }> {
   const extras = new Map<string, SheetExtras>();
   const zip = await loadZip(data);
   let modified = false;
   const pivotsByPath = await readPivotTables(zip);
+  const slicers = await readSlicers(zip);
   for (const sheet of await listSheets(zip)) {
     const file = zip.file(sheet.path);
     if (!file) continue;
@@ -301,17 +303,22 @@ async function preprocess(data: ArrayBuffer | Uint8Array): Promise<{ bytes: Arra
       modified = true;
     }
   }
-  return { bytes: modified ? await zipToBytes(zip) : data, extras };
+  return { bytes: modified ? await zipToBytes(zip) : data, extras, slicers };
 }
 
 export async function importXlsx(data: ArrayBuffer | Uint8Array, options: ImportOptions = {}): Promise<IWorkbookData> {
-  const { bytes, extras } = await preprocess(data);
+  const { bytes, extras, slicers } = await preprocess(data);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(bytes as ArrayBuffer);
-  return workbookToUniver(wb, options, extras);
+  return workbookToUniver(wb, options, extras, slicers);
 }
 
-export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = {}, extras = new Map<string, SheetExtras>()): IWorkbookData {
+export function workbookToUniver(
+  wb: ExcelJS.Workbook,
+  options: ImportOptions = {},
+  extras = new Map<string, SheetExtras>(),
+  slicers: ReadSlicersResult = { slicers: [], syntheticTables: [] },
+): IWorkbookData {
   const themes = (wb as unknown as { _themes?: Record<string, string> })._themes;
   const theme = parseThemeColors(themes?.theme1);
   const registry = new StyleRegistry(theme);
@@ -355,7 +362,10 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
         }
       }
     }
-    if (extra?.tables.length) tables[sheet.id] = { tables: extra.tables, tableFilteredOutRows: [] };
+    // Tableaux créés par Grillon pour porter un segment : ce n'étaient que des plages.
+    const synthetic = new Set(slicers.syntheticTables.filter((t) => t.sheet === ws.name).map((t) => t.ref));
+    const sheetTables = extra?.tables.filter((t) => !synthetic.has(rangeToA1(t.range))) ?? [];
+    if (sheetTables.length) tables[sheet.id] = { tables: sheetTables, tableFilteredOutRows: [] };
     if (extra?.charts.length) drawings[sheet.id] = chartsToDrawingResource(unitId, sheet.id, sheet, extra.charts);
     if (extra?.rowBreaks.length || extra?.colBreaks.length) {
       const custom = (sheet.custom ?? {}) as { grillon?: { page?: PageSetup } & Record<string, unknown> };
@@ -372,6 +382,7 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
       sheet.custom = { ...custom, grillon: { ...(custom.grillon ?? {}), pivot: extra.pivots[0] } } as never;
     }
     if (extra?.sparklines.length) drawings[sheet.id] = addSparklinesToResource(unitId, sheet.id, sheet, extra.sparklines, drawings[sheet.id]);
+    for (const s of slicers.slicers.filter((x) => x.sheet === ws.name)) drawings[sheet.id] = addSlicerToResource(drawings[sheet.id], unitId, sheet.id, sheet, s);
   });
 
   if (!sheetOrder.length) {
@@ -387,6 +398,8 @@ export function workbookToUniver(wb: ExcelJS.Workbook, options: ImportOptions = 
     for (const n of names) {
       // Les noms internes d'Excel (_xlnm.Print_Area, filtres…) ne sont pas des noms utilisateur.
       if (!n.name || n.name.startsWith('_xlnm.')) continue;
+      // Noms des caches de segments (« Segment_… » = #N/A) : internes à Excel.
+      if (!n.ranges.length || n.ranges.every((r) => /^#N\/A$/i.test(r.replace(/^=/, '')))) continue;
       const id = newId('name');
       const refs = n.ranges.map(normalizeSheetRef);
       map[id] = { id, name: n.name, formulaOrRefString: refs.join(',') };

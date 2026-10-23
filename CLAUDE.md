@@ -83,7 +83,16 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
   (sinon les formules qui débordent n'affichent que leur 1re valeur). ExcelJS n'écrit pas une ligne sans cellule ni hauteur :
   on donne une hauteur aux lignes masquées. `tests/e2e/persistence.spec.ts` vérifie formules et valeurs après enregistrement.
 - Écriture .xlsx : ExcelJS puis post-traitement XML (ordre des éléments : `WORKSHEET_ORDER`). Tableaux croisés,
-  mini-graphiques, formes, graphiques chartEx, protection sont écrits à la main.
+  mini-graphiques, formes, graphiques chartEx, segments, protection sont écrits à la main.
+- Graphiques chartEx : sans parties `style`/`colors` reliées à chaque graphique, Excel supprime tout le dessin ; l'entonnoir
+  doit être déclaré `Requires="cx1"` (cx2/cx4 : Excel pour Mac n'affiche que le remplacement).
+- Segments (`src/io/xlsx/slicers.ts`) : segment Excel = cache (classeur) + partie de feuille + cadre `sle:slicer`. Un segment de
+  plage exige un tableau Excel (créé sans style, retiré à la relecture grâce à l'état gardé dans `customXml/`). Les chronologies
+  (pas d'équivalent Excel sur un tableau) ne vivent que dans cette partie customXml.
+- Application Mac : WebKit ignore `print()` d'un cadre ; l'impression pose les pages dans la fenêtre (`#grillon-print`, visibles
+  seulement à l'impression) et appelle `window.print` (remplacé par Tauri, autorisation `core:webview:allow-print`).
+  Barre des menus en français (`french_menu` dans lib.rs) et `src-tauri/Info.plist` (langue fr) pour les fenêtres du système.
+- Calibri absente (Mac sans Office) : `src/app/fonts.ts` déclare Calibri → Carlito (OFL) avant le premier rendu.
 
 ## Application Mac (Tauri)
 
@@ -119,14 +128,18 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 
 ## Pas encore vérifié (à tester sur un vrai Mac / avec le vrai Excel)
 
+- Excel sur ce Mac n'a pas de licence : il ouvre et affiche les fichiers mais ne peut pas enregistrer (pas de fichier « créé par
+  Excel » possible ici). Captures : outils computer-use (fenêtre d'Excel) ; journaux de réparation dans
+  `~/Library/Containers/com.microsoft.Excel/Data/tmp/`.
 - Vérifié le 18/10 dans Excel (AppleScript) : un tableau croisé écrit par Grillon s'ouvre et se calcule, 8 graphiques
-  classiques s'ouvrent, les sauts de page sont relus. Pas encore vérifié : graphiques chartEx (cascade, entonnoir…), thèmes.
+  classiques s'ouvrent, les sauts de page sont relus. Vérifié le 23/10 : les 4 graphiques chartEx et les segments (tableau,
+  tableau croisé) s'ouvrent sans réparation et s'affichent. Pas encore vérifié : thèmes, un vrai fichier créé par Excel.
 - Vérifié dans WebKit (moteur de l'app Mac) : ⌘C / ⌘V / ⌘Z, ⌘B… ; l'app Mac compile et se lance, la mise à jour automatique
-  fonctionne (1.12 → 1.13). Pas encore vérifié : impression (⌘P) dans l'app Mac, double-clic dans le Finder, plusieurs fenêtres,
+  fonctionne (1.12 → 1.13). Vérifié le 23/10 : impression (fenêtre du Mac), menus en français, mise à jour 1.13.3 → 1.13.4. Pas encore vérifié : double-clic dans le Finder, plusieurs fenêtres,
   bouton Coller du ruban (autorisation du presse-papiers de WebKit).
 
 ## Idées pour la suite (voir docs/EXCEL-COMPARAISON.md)
 
-Triangles verts sur la grille, flèches de repérage, segments et chronologies dans le .xlsx (x14), regroupement de dates et
+Triangles verts sur la grille, flèches de repérage, chronologies Excel sur les tableaux croisés (x15), regroupement de dates et
 « afficher les valeurs en » dans les tableaux croisés, protection du classeur et plages autorisées,
 orthographe, effets de thème, plus de formes, autres types de graphiques (boursier, surface…).

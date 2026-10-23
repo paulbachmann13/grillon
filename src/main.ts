@@ -14,6 +14,7 @@ import { setupUniver } from './univer/setup';
 import { ICommandService } from '@univerjs/presets';
 import './style.css';
 import { guardDesktopClose } from './app/confirm';
+import { installFallbackFonts } from './app/fonts';
 
 const api = setupUniver(document.getElementById('univer')!);
 // Le composant graphique doit exister avant le chargement d'un classeur qui en contient.
@@ -49,6 +50,7 @@ const homeDisabled = (): boolean => {
 };
 
 async function start(): Promise<void> {
+  await installFallbackFonts();
   const secondary = isTauri() ? secondaryWindowLabel() : null;
   if (secondary) {
     // Fenêtre supplémentaire (Fichier > Nouveau / Ouvrir, double-clic dans le Finder) : un classeur

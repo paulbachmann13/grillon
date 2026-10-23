@@ -129,3 +129,22 @@ test('Enregistrer en .xlsx avec un segment : les lignes masquées sont écrites,
   const size = await page.evaluate(`window.grillon.doc.exportXlsxBytes().then((b) => b.length)`);
   expect(size).toBeGreaterThan(1000);
 });
+
+test('Segment et chronologie gardés dans le .xlsx : enregistrer puis rouvrir', async ({ page }) => {
+  await insert(page, 'slicer', '0');
+  await insert(page, 'timeline', '1');
+  await page.getByTestId('slicer-item').filter({ hasText: 'Nord' }).click();
+  await page.getByTestId('timeline').locator('[data-period="2024-03"]').click();
+  await expect.poll(() => hiddenRows(page)).toEqual([1, 2, 4, 5, 6]);
+  await page.evaluate(`(async () => { const d = window.grillon.doc; const b = await d.exportXlsxBytes(); await d.openBytes('segments.xlsx', b); })()`);
+  const items = page.getByTestId('slicer-item');
+  await expect(items).toHaveText(['Est', 'Nord', 'Sud']);
+  await expect(items.filter({ hasText: 'Nord' })).toHaveClass(/selected/);
+  await expect(page.getByTestId('timeline-range')).toHaveText('mars 2024');
+  expect(await hiddenRows(page)).toEqual([1, 2, 4, 5, 6]);
+  // La plage n'est pas devenue un tableau, et effacer les filtres rend toutes les lignes.
+  expect(await run<number>(page, `return Object.keys(JSON.parse(wb.save().resources.find((r) => r.name === 'SHEET_TABLE_PLUGIN')?.data ?? '{}')).length;`)).toBe(0);
+  await page.getByTestId('slicer').getByTestId('slicer-clear').click();
+  await page.getByTestId('timeline').getByTestId('slicer-clear').click();
+  await expect.poll(() => hiddenRows(page)).toEqual([]);
+});

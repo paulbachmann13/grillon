@@ -11,6 +11,7 @@ import { cellValue } from '../../data/cells';
 import type { PivotConfig, PivotDefinition, PivotFunction } from '../../data/pivot';
 import type { ICellData, IWorkbookData } from '../../model/univer-types';
 import { addContentTypeOverride, addRelationship, escapeXml, listSheets, parseXml, readRelationships, resolveRelTarget } from './ooxml';
+import { pivotCacheIdExt, type WrittenPivot } from './slicers';
 import { columnToLetters, rangeFromA1 } from './units';
 
 const NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
@@ -77,7 +78,7 @@ function sharedItemsXml(f: FieldInfo): string {
 }
 
 /** Lit la plage source d'un tableau croisé dans le classeur. */
-function sourceFields(wb: IWorkbookData, def: PivotDefinition): { fields: FieldInfo[]; rows: number } | null {
+function sourceFields(wb: IWorkbookData, def: PivotDefinition, slicerCols: number[] = []): { fields: FieldInfo[]; rows: number } | null {
   const sheet = Object.values(wb.sheets).find((s) => s.name === def.sourceSheet);
   if (!sheet) return null;
   let r: ReturnType<typeof rangeFromA1>;
@@ -88,7 +89,7 @@ function sourceFields(wb: IWorkbookData, def: PivotDefinition): { fields: FieldI
   }
   const cell = (row: number, col: number) => sheet.cellData?.[row]?.[col] as ICellData | undefined;
   const fields: FieldInfo[] = [];
-  const used = new Set([...def.config.rows, ...def.config.columns, ...def.config.filters.map((f) => f.col)]);
+  const used = new Set([...def.config.rows, ...def.config.columns, ...def.config.filters.map((f) => f.col), ...slicerCols]);
   for (let c = r.startColumn; c <= r.endColumn; c++) {
     const i = c - r.startColumn;
     const header = cellValue(cell(r.startRow, c));
@@ -113,13 +114,13 @@ function sourceFields(wb: IWorkbookData, def: PivotDefinition): { fields: FieldI
   return { fields, rows: r.endRow - r.startRow };
 }
 
-function cacheDefinitionXml(def: PivotDefinition, fields: FieldInfo[], records: number): string {
+function cacheDefinitionXml(def: PivotDefinition, fields: FieldInfo[], records: number, ext = ''): string {
   const cacheFields = fields.map((f) => `<cacheField name="${escapeXml(f.name)}" numFmtId="0">${sharedItemsXml(f)}</cacheField>`).join('');
   return (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
     `<pivotCacheDefinition xmlns="${NS}" xmlns:r="${NS_R}" r:id="rId1" refreshOnLoad="1" createdVersion="6" refreshedVersion="6" minRefreshableVersion="3" recordCount="${records}">` +
     `<cacheSource type="worksheet"><worksheetSource ref="${escapeXml(def.sourceRange.replace(/\$/g, ''))}" sheet="${escapeXml(def.sourceSheet)}"/></cacheSource>` +
-    `<cacheFields count="${fields.length}">${cacheFields}</cacheFields></pivotCacheDefinition>`
+    `<cacheFields count="${fields.length}">${cacheFields}</cacheFields>${ext}</pivotCacheDefinition>`
   );
 }
 
@@ -138,7 +139,7 @@ function cacheRecordsXml(fields: FieldInfo[], rows: number): string {
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + `<pivotCacheRecords xmlns="${NS}" xmlns:r="${NS_R}" count="${rows}">${out}</pivotCacheRecords>`;
 }
 
-export function pivotTableXml(def: PivotDefinition, fields: FieldInfo[], cacheId: number, name: string): string {
+export function pivotTableXml(def: PivotDefinition, fields: FieldInfo[], cacheId: number, name: string, slicerCols: number[] = []): string {
   const cfg = def.config;
   const top = def.outRow ?? 2;
   const left = def.outCol ?? 0;
@@ -149,7 +150,8 @@ export function pivotTableXml(def: PivotDefinition, fields: FieldInfo[], cacheId
       const data = cfg.values.some((v) => v.col === i);
       const filter = cfg.filters.find((x) => x.col === i);
       const attrs = `${axis ? ` axis="${axis}"` : ''}${data ? ' dataField="1"' : ''}${filter ? ' multipleItemSelectionAllowed="1"' : ''} showAll="0"`;
-      if (!axis || !f.items) return `<pivotField${attrs}/>`;
+      // Champ d'un segment hors des axes : ses éléments sont décrits quand même (comme Excel).
+      if (!f.items || (!axis && !slicerCols.includes(i))) return `<pivotField${attrs}/>`;
       const items = f.items.map((v, k) => `<item${filter && !filter.include.includes(labelOf(v)) ? ' h="1"' : ''} x="${k}"/>`).join('');
       return `<pivotField${attrs}><items count="${f.items.length + 1}">${items}<item t="default"/></items></pivotField>`;
     })
@@ -196,23 +198,35 @@ function addWorkbookPivotCaches(workbookXml: string, caches: { id: number; rid: 
 export interface PivotToWrite {
   sheetPath: string;
   def: PivotDefinition;
+  /** Colonnes de la source filtrées par des segments. */
+  slicerCols?: number[];
 }
 
-/** Écrit les tableaux croisés (cache, définition, relations) dans le paquet. */
-export async function writePivotTables(zip: JSZip, wb: IWorkbookData, items: PivotToWrite[]): Promise<void> {
+/** Écrit les tableaux croisés (cache, définition, relations) dans le paquet ; renvoie ce qu'il faut aux segments. */
+export async function writePivotTables(zip: JSZip, wb: IWorkbookData, items: PivotToWrite[]): Promise<Map<string, WrittenPivot>> {
   const caches: { id: number; rid: string }[] = [];
+  const written = new Map<string, WrittenPivot>();
   let n = 0;
   for (const item of items) {
-    const src = sourceFields(wb, item.def);
+    const slicerCols = item.slicerCols ?? [];
+    const src = sourceFields(wb, item.def, slicerCols);
     if (!src || !item.def.config.values.length) continue;
     n++;
     const cacheId = n;
+    const name = item.def.name ?? `TCD${n}`;
     const defPath = `xl/pivotCache/pivotCacheDefinition${n}.xml`;
     const recPath = `xl/pivotCache/pivotCacheRecords${n}.xml`;
     const tablePath = `xl/pivotTables/pivotTable${n}.xml`;
-    zip.file(defPath, cacheDefinitionXml(item.def, src.fields, src.rows));
+    zip.file(defPath, cacheDefinitionXml(item.def, src.fields, src.rows, slicerCols.length ? pivotCacheIdExt(cacheId) : ''));
     zip.file(recPath, cacheRecordsXml(src.fields, src.rows));
-    zip.file(tablePath, pivotTableXml(item.def, src.fields, cacheId, item.def.name ?? `TCD${n}`));
+    zip.file(tablePath, pivotTableXml(item.def, src.fields, cacheId, name, slicerCols));
+    written.set(item.sheetPath, {
+      name,
+      pivotCacheId: cacheId,
+      items: src.fields.map((f) => f.items?.map(labelOf)),
+      fieldNames: src.fields.map((f) => f.name),
+      hidden: new Map(item.def.config.filters.map((f) => [f.col, new Set((src.fields[f.col]?.items ?? []).map(labelOf).filter((l) => !f.include.includes(l)))])),
+    });
     await addRelationship(zip, defPath, REL.cacheRecords, `pivotCacheRecords${n}.xml`);
     await addRelationship(zip, tablePath, REL.cacheDefinition, `../pivotCache/pivotCacheDefinition${n}.xml`);
     await addRelationship(zip, item.sheetPath, REL.pivotTable, `../pivotTables/pivotTable${n}.xml`);
@@ -222,9 +236,10 @@ export async function writePivotTables(zip: JSZip, wb: IWorkbookData, items: Piv
     await addContentTypeOverride(zip, `/${recPath}`, CT.cacheRecords);
     await addContentTypeOverride(zip, `/${tablePath}`, CT.pivotTable);
   }
-  if (!caches.length) return;
+  if (!caches.length) return written;
   const wbFile = zip.file('xl/workbook.xml');
   if (wbFile) zip.file('xl/workbook.xml', addWorkbookPivotCaches(await wbFile.async('string'), caches));
+  return written;
 }
 
 type Xml = Record<string, unknown>;
@@ -268,9 +283,9 @@ export async function readPivotTables(zip: JSZip): Promise<Map<string, PivotDefi
       const cache = parseXml<{ pivotCacheDefinition?: Xml }>(cacheXml).pivotCacheDefinition;
       const ws = (cache?.cacheSource as Xml | undefined)?.worksheetSource as { ref?: string; sheet?: string; name?: string } | undefined;
       if (!ws?.ref) continue; // source nommée ou externe : non prise en charge
-      const fieldBlocks = [...cacheXml.matchAll(/<(?:\w+:)?cacheField\b[\s\S]*?(?:<\/(?:\w+:)?cacheField>|\/>)/g)].map((m) => m[0]);
+      const fieldBlocks = [...cacheXml.matchAll(/<(?:\w+:)?cacheField\b[^>]*?(?:\/>|>[\s\S]*?<\/(?:\w+:)?cacheField>)/g)].map((m) => m[0]);
       const items = fieldBlocks.map((b) => {
-        const shared = /<(?:\w+:)?sharedItems\b[\s\S]*?(?:<\/(?:\w+:)?sharedItems>|\/>)/.exec(b)?.[0] ?? '';
+        const shared = /<(?:\w+:)?sharedItems\b[^>]*?(?:\/>|>[\s\S]*?<\/(?:\w+:)?sharedItems>)/.exec(b)?.[0] ?? '';
         return orderedItems(shared.replace(/^<(?:\w+:)?sharedItems\b[^>]*>/, ''));
       });
       const pivotFields = arr(((table.pivotFields as Xml | undefined)?.pivotField) as Xml | Xml[] | undefined);
