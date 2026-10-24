@@ -27,13 +27,40 @@ export interface Deps {
 /** Chemin d'une application lancée depuis le .dmg ou Téléchargements : macOS la copie (« App Translocation ») en lecture seule. */
 export const isTranslocatedPath = (path: string): boolean => /\/AppTranslocation\//.test(path);
 
-export type UpdateResult = 'none' | 'declined' | 'installed' | 'error';
+export type UpdateResult = 'none' | 'declined' | 'installed' | 'error' | 'busy';
+
+/**
+ * Une seule vérification / installation à la fois. Sans cela, un clic sur « Rechercher les mises à jour » (menu Fichier ou
+ * accueil) pendant le téléchargement, ou la vérification automatique du démarrage, ouvrait une deuxième fenêtre
+ * « Installer » (et lançait un deuxième téléchargement). Après une installation réussie, le verrou reste pris : Grillon redémarre.
+ */
+let running = false;
+
+export async function runUpdateCheck(deps: Deps, silent: boolean): Promise<UpdateResult> {
+  if (running) {
+    if (!silent) await deps.tell(t('update.busy'));
+    return 'busy';
+  }
+  running = true;
+  let result: UpdateResult = 'error';
+  try {
+    result = await checkAndInstall(deps, silent);
+    return result;
+  } finally {
+    if (result !== 'installed') running = false;
+  }
+}
+
+/** Pour les tests : remet le verrou à zéro. */
+export const resetUpdateLock = (): void => {
+  running = false;
+};
 
 /**
  * `silent` : vérification au démarrage (pas de message si tout est à jour ou si la vérification échoue,
  * par exemple hors connexion). Sinon (demande de l'utilisateur) on répond toujours.
  */
-export async function runUpdateCheck(deps: Deps, silent: boolean): Promise<UpdateResult> {
+async function checkAndInstall(deps: Deps, silent: boolean): Promise<UpdateResult> {
   let update: AvailableUpdate | null;
   try {
     update = await deps.check();

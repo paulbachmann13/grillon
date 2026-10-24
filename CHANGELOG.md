@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.14.2] — 2026-10-24
+
+### Corrigé
+- **Mise à jour : fenêtre « Installer » qui revient pendant le téléchargement** (application Mac). Cliquer sur « Rechercher les mises à jour » (menu Fichier ou accueil) pendant que la mise à jour se téléchargeait, ou la vérification automatique du démarrage, ouvrait une deuxième fenêtre « Installer et redémarrer » et lançait un deuxième téléchargement. Une seule mise à jour peut maintenant se faire à la fois : un nouveau clic affiche « Une mise à jour est déjà en cours : Grillon redémarrera tout seul quand elle sera installée », et plus rien n'est proposé une fois la mise à jour installée.
+
 ## [1.14.1] — 2026-10-24
 
 Vérifié sur les 353 fichiers .xlsx de test d'Apache POI (fichiers d'Excel, de LibreOffice, d'autres logiciels, et fichiers

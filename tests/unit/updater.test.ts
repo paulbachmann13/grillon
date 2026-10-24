@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import { isTranslocatedPath, runUpdateCheck, type AvailableUpdate, type Deps } from '../../src/app/updater';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { isTranslocatedPath, resetUpdateLock, runUpdateCheck, type AvailableUpdate, type Deps } from '../../src/app/updater';
 
 function deps(overrides: Partial<Deps> = {}, update: AvailableUpdate | null = null) {
   const log: string[] = [];
@@ -20,6 +20,8 @@ function deps(overrides: Partial<Deps> = {}, update: AvailableUpdate | null = nu
 const update = (install = async (p: (r: number, t: number | undefined) => void) => (p(50, 100), p(100, 100))): AvailableUpdate => ({ version: '1.12.0', install });
 
 describe('mise à jour automatique', () => {
+  beforeEach(resetUpdateLock);
+
   it('à jour : silencieux au démarrage, message à la demande', async () => {
     const quiet = deps();
     expect(await runUpdateCheck(quiet.d, true)).toBe('none');
@@ -81,5 +83,38 @@ describe('mise à jour automatique', () => {
   it('reconnaît le chemin d’une application « translocalisée » par macOS', () => {
     expect(isTranslocatedPath('/private/var/folders/nk/x/T/AppTranslocation/9E56DF82-6/d/Grillon.app/Contents/Resources')).toBe(true);
     expect(isTranslocatedPath('/Applications/Grillon.app/Contents/Resources')).toBe(false);
+  });
+
+  it('une seule mise à jour à la fois : un deuxième clic pendant le téléchargement n’ouvre pas une deuxième fenêtre', async () => {
+    let finish!: () => void;
+    const slow = update(() => new Promise<void>((r) => (finish = r)));
+    const first = deps({}, slow);
+    const second = deps({}, slow);
+    const running = runUpdateCheck(first.d, false);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(await runUpdateCheck(second.d, false)).toBe('busy');
+    expect(second.d.ask).not.toHaveBeenCalled();
+    expect(second.log).toEqual(['tell:Une mise à jour est déjà en cours : Grillon redémarrera tout seul quand elle sera installée.']);
+    // La vérification discrète du démarrage, elle, ne dit rien.
+    const quiet = deps({}, slow);
+    expect(await runUpdateCheck(quiet.d, true)).toBe('busy');
+    expect(quiet.d.tell).not.toHaveBeenCalled();
+    finish();
+    expect(await running).toBe('installed');
+    expect(first.d.ask).toHaveBeenCalledTimes(1);
+  });
+
+  it('après une installation réussie, plus aucune proposition (Grillon redémarre)', async () => {
+    const { d } = deps({}, update());
+    expect(await runUpdateCheck(d, true)).toBe('installed');
+    const again = deps({}, update());
+    expect(await runUpdateCheck(again.d, true)).toBe('busy');
+    expect(again.d.ask).not.toHaveBeenCalled();
+  });
+
+  it('refus ou échec : on peut chercher de nouveau', async () => {
+    expect(await runUpdateCheck(deps({ ask: async () => false }, update()).d, false)).toBe('declined');
+    expect(await runUpdateCheck(deps({}, update(async () => Promise.reject(new Error('réseau')))).d, false)).toBe('error');
+    expect(await runUpdateCheck(deps({}, update()).d, false)).toBe('installed');
   });
 });

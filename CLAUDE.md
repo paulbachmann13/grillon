@@ -123,6 +123,7 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 - Plugin `tauri-plugin-updater` : `src/app/updater.ts` (logique testée) ; vérification discrète 5 s après le démarrage
   (fenêtre principale seulement) et Fichier → Rechercher les mises à jour. Point d'accès :
   `https://github.com/paulbachmann13/grillon/releases/latest/download/latest.json` (dans `tauri.conf.json`).
+- `runUpdateCheck` a un verrou : une seule vérification / installation à la fois (sinon une 2e fenêtre « Installer » s'ouvrait si on cliquait pendant le téléchargement) ; après une installation réussie le verrou reste pris (Grillon redémarre).
 - Signature des mises à jour : clé générée avec `npx tauri signer generate`. La clé **privée** est dans
   `~/.tauri/grillon-updater.key` (sauvegarde à garder : sans elle, plus aucune mise à jour possible pour les
   copies déjà installées) et dans le secret GitHub `TAURI_SIGNING_PRIVATE_KEY` ; la clé publique est dans `tauri.conf.json`.
