@@ -145,7 +145,7 @@ chaque test (`tests/e2e/excel-reference.spec.ts`).
 
 | Domaine | Résultat |
 |---|---|
-| 635 formules (maths, stats, logique, texte, dates, recherche, finance, ingénierie, base de données, usages courants) | 565 identiques ; 43 non vérifiables (fonction absente de cette version d'Excel, voir ci-dessous) ; 27 écarts acceptés (dont 17 nombres complexes) |
+| 635 formules (maths, stats, logique, texte, dates, recherche, finance, ingénierie, base de données, usages courants) | 566 identiques ; 43 non vérifiables (fonction absente de cette version d'Excel, voir ci-dessous) ; 26 écarts acceptés (dont 16 nombres complexes) |
 | 274 valeurs × formats de nombre | Identiques, aux écarts acceptés près |
 | Classeur relu dans Excel : polices, couleurs, bordures, alignements, rotation, retrait, largeurs, hauteurs, masquage, plan, fusions, volets, zoom, quadrillage, impression, noms, filtre, lien, validation, mise en forme conditionnelle, feuille masquée, protection | Conformes |
 | 353 fichiers de test d'Apache POI : ouverture, enregistrement, réouverture | 326 sans perte de valeur ni de formule ; 26 fichiers abîmés refusés ; 1 fichier d'attaque (bombe de chaînes) |
