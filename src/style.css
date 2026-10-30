@@ -1022,3 +1022,13 @@ body,
 .g-update-notes-label { margin: 0 0 2px; font-weight: 600; }
 .g-start-version-link { display: block; width: 100%; padding: 10px 12px 0; border: 0; background: none; color: inherit; font: inherit; font-size: 12px; text-align: left; opacity: 0.85; cursor: pointer; }
 .g-start-version-link:hover, .g-start-version-link:focus-visible { opacity: 1; text-decoration: underline; outline: none; }
+
+/* Demander à Claude (bêta) */
+.g-ask-text { box-sizing: border-box; width: 100%; padding: 8px; border: 1px solid var(--grillon-border); border-radius: 6px; background: var(--grillon-menu-bg); color: inherit; font: inherit; font-size: 13px; resize: vertical; }
+.g-ask-text[readonly] { font-family: ui-monospace, Menlo, monospace; font-size: 12px; opacity: 0.9; }
+.g-ask-heading { margin: 14px 0 2px; font-size: 13px; font-weight: 600; }
+.g-ask-summary { margin: 0 0 6px; font-size: 12px; color: var(--grillon-muted); }
+.g-ask-edits { max-height: 34vh; overflow: auto; margin-top: 6px; }
+.g-ask-edits table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.g-ask-edits th, .g-ask-edits td { padding: 4px 8px; border-bottom: 1px solid var(--grillon-border); text-align: left; vertical-align: top; word-break: break-word; }
+.g-ask-edits td:first-child { white-space: nowrap; font-weight: 600; }

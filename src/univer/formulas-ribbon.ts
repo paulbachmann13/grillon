@@ -163,6 +163,23 @@ async function goalSeekTool(api: FUniver): Promise<void> {
   if (!keep) (restore as (() => void) | null)?.();
 }
 
+/** Boutons « Demander à Claude » / « Coller la réponse » (fonctions bêta) : onglet Formules. */
+export function installAskClaudeRibbon(api: FUniver, ask: () => unknown, paste: () => unknown): void {
+  const injector = (api as unknown as { _injector: { get<T>(id: unknown): T } })._injector;
+  const commands = injector.get<ICommandService>(ICommandService);
+  injector.get<IconManager>(IconManager).register({
+    GrillonAskClaudeIcon: icon('M2 3h12v8H7l-3 3v-3H2zM5 6.5h6M5 8.5h4'),
+    GrillonPasteReplyIcon: icon('M5 2.5h6v2H5zM3.5 4h9v10h-9zM6 8h4M6 10.5h4'),
+  } as never);
+  for (const [id, iconName, title, run] of [
+    ['grillon.beta.ask-claude', 'GrillonAskClaudeIcon', t('askClaude.button'), ask],
+    ['grillon.beta.paste-reply', 'GrillonPasteReplyIcon', t('askClaude.paste'), paste],
+  ] as const) {
+    if (!commands.hasCommand(id)) commands.registerCommand({ id, type: CommandType.COMMAND, handler: () => (void run(), true) });
+    api.createMenu({ id, icon: iconName, title, tooltip: title, action: id }).appendTo([FORMULAS, FORMULAS_OTHERS]);
+  }
+}
+
 export function installFormulasRibbon(api: FUniver): void {
   const injector = (api as unknown as { _injector: { get<T>(id: unknown): T } })._injector;
   const commands = injector.get<ICommandService>(ICommandService);
