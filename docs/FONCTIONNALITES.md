@@ -80,7 +80,8 @@
 - **Sauvegarde automatique** dans IndexedDB, restauration à la réouverture.
 
 ### Affichage, impression, raccourcis
-- Vue : figer les volets, zoom, quadrillage, plein écran (Univer), **mode sombre**, **texte qui déborde**.
+
+- **Nouveautés et historique des versions** (Fichier, ou le numéro de version de l'accueil) : tout ce qui a été ajouté ou corrigé ; raconté automatiquement une fois après chaque mise à jour, et affiché dans la fenêtre « Installer ? » (application Mac).- Vue : figer les volets, zoom, quadrillage, plein écran (Univer), **mode sombre**, **texte qui déborde**.
 - **Mise en page** (Fichier, Vue) : papier (A4, A3, A5, Lettre, Légal), orientation, échelle ou ajustement en largeur, marges (normales, étroites, larges, personnalisées), centrage, **zone d'impression**, **lignes à répéter**, quadrillage, en-têtes de lignes et de colonnes, **en-têtes et pieds de page** (&P, &N, &D, &F, &A). Réglages par feuille, lus et écrits dans le .xlsx.
 - **Impression / export PDF** (Ctrl/⌘+P) : réglages et **aperçu des pages** côte à côte (comme Excel) ; feuille ou sélection, portrait/paysage, quadrillage, ajustement à la largeur.
 - Insérer : images, liens, notes, listes déroulantes, graphiques, tableau croisé dynamique.

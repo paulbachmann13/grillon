@@ -11,6 +11,7 @@ import { setTextOverflow, textOverflowEnabled } from '../univer/text-overflow';
 import type { FUniver } from '@univerjs/presets';
 import { autoUpdateEnabled, setAutoUpdate } from './settings';
 import { appVersion } from './version';
+import { showHistory } from './whats-new';
 
 export type StartPane = 'home' | 'new' | 'open' | 'settings';
 
@@ -121,8 +122,11 @@ export class StartScreen {
     };
     this.nav.append(item('home', t('home.nav.home')), item('new', t('home.nav.new')), item('open', t('home.nav.open')));
     this.nav.append(el('div', 'g-start-spacer'), item('settings', t('home.nav.settings')));
-    const version = el('div', 'g-start-version', t('home.version', { version: appVersion() }));
+    const version = el('button', 'g-start-version g-start-version-link', t('home.version', { version: appVersion() }));
+    version.type = 'button';
+    version.title = t('whatsNew.link');
     version.dataset.testid = 'start-version';
+    version.addEventListener('click', () => void showHistory());
     this.nav.append(version);
   }
 
@@ -265,7 +269,11 @@ export class StartScreen {
     }
 
     const about = el('div', 'g-start-about');
-    about.append(el('h2', undefined, t('home.settings.about')), el('p', undefined, t('home.version', { version: appVersion() })), el('p', 'g-start-sub', t('home.settings.aboutText')));
+    const history = el('button', 'g-start-button', t('whatsNew.link'));
+    history.type = 'button';
+    history.dataset.testid = 'setting-history';
+    history.addEventListener('click', () => void showHistory());
+    about.append(el('h2', undefined, t('home.settings.about')), el('p', undefined, t('home.version', { version: appVersion() })), el('p', 'g-start-sub', t('home.settings.aboutText')), history);
     pane.append(about);
     return pane;
   }

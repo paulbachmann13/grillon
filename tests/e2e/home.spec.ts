@@ -4,6 +4,8 @@ import { FIXTURE_DIR, useFallbackFilePickers, waitReady } from './helpers';
 
 // Ici on part « comme un vrai démarrage » : pas de réglage qui masque l'écran d'accueil.
 async function start(page: Page) {
+  // Version déjà vue : pas de fenêtre « Nouveautés » par-dessus l'accueil (tests/e2e/nouveautes.spec.ts la teste).
+  await page.addInitScript(() => localStorage.setItem('grillon-last-version', '999.0.0'));
   await page.goto('./');
   await waitReady(page);
 }
@@ -81,6 +83,7 @@ async function previousSession(page: Page, dirty: boolean) {
   if (dirty) await page.evaluate(`window.grillon.api.getActiveWorkbook().getActiveSheet().getRange('A1').setValue('à reprendre')`);
   await page.evaluate(`window.grillon.doc.autosaveNow()`);
   await page.addInitScript(() => localStorage.removeItem('grillon-no-home'));
+  await page.addInitScript(() => localStorage.setItem('grillon-last-version', '999.0.0'));
   await page.reload();
   await waitReady(page);
 }

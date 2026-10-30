@@ -1006,3 +1006,19 @@ body,
 .g-start-button:hover { border-color: var(--grillon-accent); }
 .g-start-about p { margin: 4px 0; }
 @media (max-width: 640px) { .g-start { flex-direction: column; } .g-start-nav { width: auto; flex-direction: row; flex-wrap: wrap; padding: 8px; } .g-start-brand { padding: 0 8px; } .g-start-spacer { display: none; } .g-start-version { display: none; } .g-start-tile { width: 100%; } }
+
+/* Nouveautés et historique des versions */
+.g-notes-body { max-height: min(62vh, 560px); overflow: auto; padding-right: 6px; }
+.g-release { margin: 0 0 18px; padding-bottom: 14px; border-bottom: 1px solid var(--grillon-border); }
+.g-release:last-child { border-bottom: 0; }
+.g-release h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 0 0 6px; font-size: 16px; font-weight: 600; }
+.g-release-date { font-size: 12px; font-weight: 400; color: var(--grillon-muted); }
+.g-notes h4 { margin: 12px 0 4px; font-size: 13px; font-weight: 600; color: var(--grillon-accent); }
+.g-notes p { margin: 4px 0; }
+.g-notes ul { margin: 2px 0 2px 18px; padding: 0; }
+.g-notes li { margin: 3px 0; line-height: 1.4; }
+.g-notes code { padding: 0 4px; border-radius: 3px; background: var(--grillon-menu-hover, rgba(127, 127, 127, 0.15)); font-size: 0.92em; }
+.g-update-notes { margin-top: 10px; max-height: 38vh; overflow: auto; padding: 8px 10px; border: 1px solid var(--grillon-border); border-radius: 6px; font-size: 13px; }
+.g-update-notes-label { margin: 0 0 2px; font-weight: 600; }
+.g-start-version-link { display: block; width: 100%; padding: 10px 12px 0; border: 0; background: none; color: inherit; font: inherit; font-size: 12px; text-align: left; opacity: 0.85; cursor: pointer; }
+.g-start-version-link:hover, .g-start-version-link:focus-visible { opacity: 1; text-decoration: underline; outline: none; }

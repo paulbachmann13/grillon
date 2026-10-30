@@ -15,6 +15,7 @@ import { ICommandService } from '@univerjs/presets';
 import './style.css';
 import { guardDesktopClose } from './app/confirm';
 import { installFallbackFonts } from './app/fonts';
+import { showWhatsNewIfUpdated } from './app/whats-new';
 
 const api = setupUniver(document.getElementById('univer')!);
 // Le composant graphique doit exister avant le chargement d'un classeur qui en contient.
@@ -38,7 +39,7 @@ setupPwa(
 
 // Accès pour les tests de bout en bout et le débogage.
 const commands = (api as unknown as { _injector: { get<T>(id: unknown): T } })._injector.get<{ hasCommand(id: string): boolean }>(ICommandService);
-(window as unknown as { grillon: unknown }).grillon = { api, doc, hasCommand: (id: string) => commands.hasCommand(id) };
+(window as unknown as { grillon: unknown }).grillon = { api, doc, hasCommand: (id: string) => commands.hasCommand(id), showWhatsNewIfUpdated };
 
 /** Les tests de bout en bout posent ce réglage pour travailler directement sur le classeur vide. */
 const homeDisabled = (): boolean => {
@@ -81,6 +82,8 @@ async function start(): Promise<void> {
     }
     // Rien à reprendre : écran d'accueil, comme Excel (les tests de bout en bout le désactivent).
     if (showHome) void doc.showHome('home', true);
+    // Grillon vient d'être mise à jour : ce qui a changé (les tests de bout en bout le désactivent, comme l'accueil).
+    if (!homeDisabled()) void showWhatsNewIfUpdated();
   }
 
   // Ouverture de fichiers par glisser-déposer.

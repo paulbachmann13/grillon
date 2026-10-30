@@ -12,6 +12,7 @@ Dépôt public : paulbachmann13/grillon — site : https://paulbachmann13.github
   logiciel). `docs/EXCEL-COMPARAISON.md` liste les commandes du ruban d'Excel et leur état : c'est la feuille de route.
 - **Composants gratuits uniquement**, licences vérifiées (Apache-2.0, MIT…). Jamais de paquet `@univerjs-pro/*`
   (payant) ; HyperFormula exclu (GPLv3).
+- Le `CHANGELOG.md` est **lu par l'utilisatrice dans l'application** (fenêtre de mise à jour, Nouveautés, historique) : phrases simples, ce que ça change pour elle, sans jargon (pas de noms de fonctions internes, de commandes ni de fichiers de code). Une entrée `## [X.Y.Z] — AAAA-MM-JJ` pour la version de `package.json` est obligatoire (testée), avec `### Ajouté` / `### Corrigé` / `### Modifié`.
 - Après chaque étape : mettre à jour `CHANGELOG.md` et `docs/` (FONCTIONNALITES.md, EXCEL-COMPARAISON.md,
   limites connues), puis un **court résumé avec le lien** du site à l'utilisateur.
 - **Commits** : Conventional Commits en français (`feat:`, `fix:`, `docs:`, `ci:`…). Pousser sur `main` :
@@ -123,6 +124,7 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 
 ## Mises à jour automatiques (application Mac)
 
+- Nouveautés : `src/data/changelog.ts` (lecture, testée) et `src/app/whats-new.ts` (fenêtres). Le CHANGELOG est embarqué dans l'application (`?raw`) ; la fenêtre « Installer ? » montre les notes de `latest.json` (`update.body`), et la première ouverture d'une nouvelle version raconte ce qui a changé depuis la dernière version vue (`localStorage['grillon-last-version']`).
 - Plugin `tauri-plugin-updater` : `src/app/updater.ts` (logique testée) ; vérification discrète 5 s après le démarrage
   (fenêtre principale seulement) et Fichier → Rechercher les mises à jour. Point d'accès :
   `https://github.com/paulbachmann13/grillon/releases/latest/download/latest.json` (dans `tauri.conf.json`).

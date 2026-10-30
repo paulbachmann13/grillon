@@ -7,6 +7,8 @@ import { t } from '../i18n';
 
 export interface AvailableUpdate {
   version: string;
+  /** Ce que la nouvelle version apporte (le CHANGELOG de cette version, écrit dans latest.json). */
+  notes?: string;
   /** Télécharge et installe ; `onProgress` reçoit les octets reçus et le total (s'il est connu). */
   install(onProgress: (received: number, total: number | undefined) => void): Promise<void>;
 }
@@ -14,7 +16,7 @@ export interface AvailableUpdate {
 export interface Deps {
   check(): Promise<AvailableUpdate | null>;
   currentVersion(): Promise<string>;
-  ask(message: string): Promise<boolean>;
+  ask(message: string, notes?: string): Promise<boolean>;
   tell(message: string): Promise<void>;
   /** Où en est la mise à jour ; `percent` si le total est connu. */
   status(message: string, kind?: 'info' | 'success' | 'error', percent?: number): void;
@@ -73,7 +75,7 @@ async function checkAndInstall(deps: Deps, silent: boolean): Promise<UpdateResul
     await deps.tell(t('update.moveApp', { version: update.version }));
     return 'error';
   }
-  if (!(await deps.ask(t('update.available', { version: update.version, current: await deps.currentVersion() })))) return 'declined';
+  if (!(await deps.ask(t('update.available', { version: update.version, current: await deps.currentVersion() }), update.notes))) return 'declined';
   try {
     deps.status(t('update.downloading'));
     await update.install((received, total) => {
@@ -145,6 +147,7 @@ export async function tauriDeps(status: Deps['status'], beforeRestart: Deps['bef
       if (!update) return null;
       return {
         version: update.version,
+        notes: update.body,
         async install(onProgress) {
           let received = 0;
           let total: number | undefined;
@@ -156,7 +159,18 @@ export async function tauriDeps(status: Deps['status'], beforeRestart: Deps['bef
       };
     },
     currentVersion: getVersion,
-    ask: (text) => ask(text, { title: t('app.name'), kind: 'info', okLabel: t('update.install'), cancelLabel: t('update.later') }),
+    async ask(text, notes) {
+      // Avec le détail de la version : notre fenêtre (la boîte du système ne sait pas afficher une liste).
+      if (notes?.trim()) {
+        const [{ openDialog }, { notesElement }] = await Promise.all([import('../ui/dialog'), import('./whats-new')]);
+        const body = document.createElement('div');
+        body.className = 'g-dialog-body';
+        for (const paragraph of text.split('\n\n')) body.append(Object.assign(document.createElement('p'), { textContent: paragraph }));
+        body.append(notesElement(notes));
+        return openDialog({ title: t('app.name'), body, okLabel: t('update.install'), cancelLabel: t('update.later'), onOk: () => undefined, wide: true, testId: 'dialog-update' });
+      }
+      return ask(text, { title: t('app.name'), kind: 'info', okLabel: t('update.install'), cancelLabel: t('update.later') });
+    },
     tell: async (text) => void (await message(text, { title: t('app.name') })),
     status(text, kind, percent) {
       if (kind === 'error') {

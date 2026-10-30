@@ -4,8 +4,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [1.14.4] — 2026-10-30
 
+### Ajouté
+- **Nouveautés et historique des versions** dans l'application : après chaque mise à jour, une fenêtre raconte ce qui a été ajouté ou corrigé (une seule fois). On peut aussi relire tout l'historique à tout moment : menu Fichier → « Nouveautés et historique des versions », ou en cliquant sur le numéro de version de l'écran d'accueil.
+- **Avant d'installer une mise à jour** (application Mac), la fenêtre montre déjà ce que la nouvelle version apporte.
+
 ### Corrigé
-- **Mise à jour de l'application Mac : une deuxième icône apparaissait dans le Dock** à chaque redémarrage. Le redémarrage du plugin de mise à jour lançait la nouvelle Grillon (`open -n`) pendant que l'ancienne tournait encore ; le Dock montrait deux icônes et celle en trop pouvait rester. Grillon attend maintenant d'être fermée avant de se rouvrir : une seule instance, la même icône (vérifié sur une vraie mise à jour simulée : jamais deux instances en même temps).
+- **Mise à jour de l'application Mac : une deuxième icône de Grillon apparaissait dans le Dock** à chaque redémarrage, et pouvait y rester. Grillon attend maintenant d'être bien fermée avant de se rouvrir : une seule icône.
 
 ## [1.14.3] — 2026-10-30
 

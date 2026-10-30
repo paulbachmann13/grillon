@@ -122,4 +122,11 @@ describe('mise à jour automatique', () => {
     expect(await runUpdateCheck(deps({}, update(async () => Promise.reject(new Error('réseau')))).d, false)).toBe('error');
     expect(await runUpdateCheck(deps({}, update()).d, false)).toBe('installed');
   });
+
+  it('la fenêtre « Installer » reçoit le détail de la nouvelle version', async () => {
+    const withNotes: AvailableUpdate = { ...update(), notes: '### Corrigé\n- Une chose' };
+    const { d } = deps({}, withNotes);
+    await runUpdateCheck(d, false);
+    expect(d.ask).toHaveBeenCalledWith(expect.stringContaining('1.12.0'), '### Corrigé\n- Une chose');
+  });
 });

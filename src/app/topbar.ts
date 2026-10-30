@@ -3,6 +3,7 @@
  */
 import { t } from '../i18n';
 import { isTauri } from '../io/tauri-files';
+import { showHistory } from './whats-new';
 import type { DocumentController, StatusKind } from './document';
 
 interface MenuItem {
@@ -70,6 +71,7 @@ export class Topbar {
       { id: 'print', label: t('file.print'), shortcut: `${mod}P`, run: () => doc.print() },
       { id: 'settings', label: t('home.nav.settings'), run: () => doc.showHome('settings'), separatorBefore: true },
       ...(isTauri() ? [{ id: 'update', label: t('update.check'), run: () => doc.checkForUpdates(false) }] : []),
+      { id: 'whats-new', label: t('whatsNew.menu'), run: () => showHistory() },
     ];
     for (const item of items) {
       if (item.separatorBefore) {
