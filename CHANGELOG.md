@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.14.4] — 2026-10-30
+
+### Corrigé
+- **Mise à jour de l'application Mac : une deuxième icône apparaissait dans le Dock** à chaque redémarrage. Le redémarrage du plugin de mise à jour lançait la nouvelle Grillon (`open -n`) pendant que l'ancienne tournait encore ; le Dock montrait deux icônes et celle en trop pouvait rester. Grillon attend maintenant d'être fermée avant de se rouvrir : une seule instance, la même icône (vérifié sur une vraie mise à jour simulée : jamais deux instances en même temps).
+
 ## [1.14.3] — 2026-10-30
 
 Comparaison complète avec le vrai Excel : 635 formules et 274 formats calculés par Excel et par Grillon sur le même fichier, et chaque propriété d'un classeur relue dans Excel. Les résultats d'Excel sont gardés comme test permanent.

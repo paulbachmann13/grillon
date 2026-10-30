@@ -135,7 +135,6 @@ function progressPanel(): { show(message: string, percent?: number): void; hide(
 /** Dépendances réelles (application de bureau). */
 export async function tauriDeps(status: Deps['status'], beforeRestart: Deps['beforeRestart']): Promise<Deps> {
   const { check } = await import('@tauri-apps/plugin-updater');
-  const { relaunch } = await import('@tauri-apps/plugin-process');
   const { getVersion } = await import('@tauri-apps/api/app');
   const { ask, message } = await import('@tauri-apps/plugin-dialog');
   const { invoke } = await import('@tauri-apps/api/core');
@@ -166,7 +165,8 @@ export async function tauriDeps(status: Deps['status'], beforeRestart: Deps['bef
         void message(text, { title: t('app.name'), kind: 'error' });
       } else panel.show(text, percent);
     },
-    relaunch,
+    // Redémarrage maison (Rust) : celui du plugin crée une 2e instance, donc une 2e icône dans le Dock.
+    relaunch: () => invoke<void>('relaunch_app'),
     beforeRestart,
     async isTranslocated() {
       const { resourceDir } = await import('@tauri-apps/api/path');

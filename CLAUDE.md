@@ -126,7 +126,7 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 - Plugin `tauri-plugin-updater` : `src/app/updater.ts` (logique testée) ; vérification discrète 5 s après le démarrage
   (fenêtre principale seulement) et Fichier → Rechercher les mises à jour. Point d'accès :
   `https://github.com/paulbachmann13/grillon/releases/latest/download/latest.json` (dans `tauri.conf.json`).
-- `runUpdateCheck` a un verrou commun à toutes les fenêtres (commandes Rust `update_lock_acquire` / `update_lock_release`, libéré si la fenêtre se ferme) et un panneau de progression qui couvre la fenêtre ; après une installation réussie le verrou reste pris (Grillon redémarre). Pour tester sans publier : construire une copie avec `--config` (`endpoints` locaux, clé jetable, `dangerousInsecureTransportProtocol`).
+- `runUpdateCheck` a un verrou commun à toutes les fenêtres (commandes Rust `update_lock_acquire` / `update_lock_release`, libéré si la fenêtre se ferme) et un panneau de progression qui couvre la fenêtre ; après une installation réussie le verrou reste pris (Grillon redémarre). Le redémarrage est la commande Rust `relaunch_app` (celui du plugin lance `open -n` : 2e instance, 2e icône dans le Dock). Pour tester sans publier : construire une copie avec `--config` (`endpoints` locaux, clé jetable, `dangerousInsecureTransportProtocol`).
 - Signature des mises à jour : clé générée avec `npx tauri signer generate`. La clé **privée** est dans
   `~/.tauri/grillon-updater.key` (sauvegarde à garder : sans elle, plus aucune mise à jour possible pour les
   copies déjà installées) et dans le secret GitHub `TAURI_SIGNING_PRIVATE_KEY` ; la clé publique est dans `tauri.conf.json`.

@@ -41,6 +41,41 @@ fn update_lock_release(lock: tauri::State<UpdateLock>) {
     *lock.0.lock().unwrap() = None;
 }
 
+/// Redémarre Grillon après une mise à jour, sans deuxième icône dans le Dock. Le redémarrage de Tauri lance `open -n` (une nouvelle
+/// instance) pendant que l'ancienne tourne encore : le Dock montre deux icônes, et celle en trop peut rester. Ici, un petit script
+/// détaché attend la fin de ce processus, puis rouvre l'application (sans `-n` : une seule instance, la même icône).
+#[tauri::command]
+fn relaunch_app(app: AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        use std::os::unix::process::CommandExt;
+        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+        // …/Grillon.app/Contents/MacOS/grillon → …/Grillon.app
+        let bundle = exe.ancestors().nth(3).filter(|b| b.extension().is_some_and(|e| e == "app")).ok_or("application hors d'un .app")?;
+        let script = format!(
+            "while kill -0 {pid} 2>/dev/null; do sleep 0.2; done; /usr/bin/open \"$1\"",
+            pid = std::process::id()
+        );
+        std::process::Command::new("/bin/sh")
+            .arg("-c")
+            .arg(script)
+            .arg("grillon")
+            .arg(bundle)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .process_group(0)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        app.exit(0);
+        Ok(())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        app.restart()
+    }
+}
+
 /// Crée une fenêtre de plus, avec éventuellement un fichier à y ouvrir.
 fn spawn_window(app: &AppHandle, path: Option<String>) -> Result<(), String> {
     let state = app.state::<Opens>();
@@ -152,7 +187,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(Opens::default())
         .manage(UpdateLock::default())
-        .invoke_handler(tauri::generate_handler![take_pending_opens, take_window_open, new_window, update_lock_acquire, update_lock_release])
+        .invoke_handler(tauri::generate_handler![take_pending_opens, take_window_open, new_window, update_lock_acquire, update_lock_release, relaunch_app])
         .build(tauri::generate_context!())
         .expect("erreur au démarrage de Grillon")
         .run(|app, event| {
