@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.15.1] — 2026-10-31
+
+### Ajouté
+- **« Demander à Claude » et « Coller la réponse » sont maintenant pour tout le monde**, sans rien à activer : onglet Formules et menu Fichier. Vous sélectionnez des cellules, vous écrivez votre question, Grillon prépare un message à coller dans Claude (avec une case pour masquer les noms) ; ensuite vous collez sa réponse, vous voyez « avant / après », et un clic l'écrit dans la feuille (un seul ⌘Z défait tout).
+
+### Modifié
+- La case « Fonctions bêta » des Paramètres disparaît : plus rien n'est à l'essai pour l'instant.
+
 ## [1.15.0] — 2026-10-31
 
 ### Ajouté

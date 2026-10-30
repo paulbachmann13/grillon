@@ -79,7 +79,7 @@
   sinon sélecteur de fichier + téléchargement (Safari, iOS, Firefox). Glisser-déposer.
 - **Sauvegarde automatique** dans IndexedDB, restauration à la réouverture.
 
-### Fonctions bêta (Paramètres → Fonctions bêta, désactivées par défaut)
+### Demander à Claude
 
 - **Demander à Claude / Coller la réponse** (onglet Formules, menu Fichier) : prépare un message à coller dans Claude (question + cellules en texte, avec une option pour masquer les textes), puis lit sa réponse (bloc « grillon », une cellule par ligne) et l'écrit dans la feuille après aperçu avant/après, en une seule annulation. Grillon n'envoie rien tout seul : pas de clé API, pas de coût. Limites : 100 lignes et 30 colonnes au plus dans le message ; la réponse écrit des cellules une à une (pas de plages, pas de mise en forme) ; 500 cellules au plus.
 

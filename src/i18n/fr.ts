@@ -220,11 +220,6 @@ export const fr = {
       aboutText: 'Tableur local et gratuit, compatible Excel. Vos classeurs restent sur votre ordinateur.',
     },
   },
-  beta: {
-    title: 'Fonctions bêta',
-    label: 'Activer les fonctions à l’essai',
-    hint: 'Des nouveautés en cours de test (par exemple « Demander à Claude »). Elles peuvent changer ou disparaître. Fermez puis rouvrez Grillon pour voir les nouveaux boutons.',
-  },
   askClaude: {
     button: 'Demander à Claude',
     paste: 'Coller la réponse',

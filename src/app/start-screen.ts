@@ -9,7 +9,7 @@ import { forgetRecent, loadRecent } from '../storage/recent';
 import { setThemeChoice, themeChoice, type ThemeChoice } from '../univer/view-ribbon';
 import { setTextOverflow, textOverflowEnabled } from '../univer/text-overflow';
 import type { FUniver } from '@univerjs/presets';
-import { autoUpdateEnabled, betaEnabled, setAutoUpdate, setBeta } from './settings';
+import { autoUpdateEnabled, setAutoUpdate } from './settings';
 import { appVersion } from './version';
 import { showHistory } from './whats-new';
 
@@ -267,18 +267,6 @@ export class StartScreen {
       updates.append(auto, now);
       pane.append(updates);
     }
-
-    const beta = el('fieldset');
-    beta.append(el('legend', undefined, t('beta.title')));
-    const betaLabel = el('label', 'g-check');
-    const betaInput = el('input');
-    betaInput.type = 'checkbox';
-    betaInput.checked = betaEnabled();
-    betaInput.dataset.testid = 'setting-beta';
-    betaInput.addEventListener('change', () => setBeta(betaInput.checked));
-    betaLabel.append(betaInput, document.createTextNode(t('beta.label')));
-    beta.append(betaLabel, el('p', 'g-start-sub', t('beta.hint')));
-    pane.append(beta);
 
     const about = el('div', 'g-start-about');
     const history = el('button', 'g-start-button', t('whatsNew.link'));

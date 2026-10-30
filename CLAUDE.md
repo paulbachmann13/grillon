@@ -113,10 +113,10 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 - Le code Rust n'a longtemps été écrit sans pouvoir le compiler localement : sur le Mac, lancer
   `npm run tauri dev` pour le vérifier.
 
-## Fonctions bêta
+## Demander à Claude
 
-- Interrupteur `betaEnabled()` (`src/app/settings.ts`, `localStorage['grillon-beta']`, Paramètres → Fonctions bêta) : lu au démarrage, les boutons n'existent qu'ensuite. Une fonction à l'essai se cache derrière lui ; la rendre officielle = retirer le test.
-- « Demander à Claude » : `src/data/ask-claude.ts` (message à coller et lecture de la réponse, testés) et `src/app/ask-claude.ts` (fenêtres). Aucune requête réseau : copier / coller. Les textes sont masqués par défaut (données d'élèves). La réponse écrite par Claude est un bloc ```grillon (« E2: =MOYENNE(B2:D2) » par ligne) ; l'application passe par une seule commande `sheet.command.set-range-values` (une annulation). Tests : `tests/e2e/demander-claude.spec.ts`.
+- Depuis la 1.15.1, « Demander à Claude » et « Coller la réponse » sont pour tout le monde (onglet Formules, menu Fichier). Il n'y a plus d'interrupteur bêta (il a existé en 1.15.0 : `localStorage['grillon-beta']`, case dans Paramètres, pastille « Bêta » ; retrouvable dans l'historique git si une nouvelle fonction doit être mise à l'essai).
+- `src/data/ask-claude.ts` (message à coller et lecture de la réponse, testés) et `src/app/ask-claude.ts` (fenêtres). Aucune requête réseau : copier / coller. Les textes sont masqués par défaut (données d'élèves). La réponse écrite par Claude est un bloc ```grillon (« E2: =MOYENNE(B2:D2) » par ligne) ; l'application passe par une seule commande `sheet.command.set-range-values` (une annulation). Tests : `tests/e2e/demander-claude.spec.ts`.
 
 ## Écran d'accueil
 

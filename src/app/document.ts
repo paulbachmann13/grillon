@@ -19,7 +19,6 @@ import { installQuickAnalysis } from '../univer/quick-analysis';
 import { installSymbols } from '../univer/symbols';
 import { installDataRibbon } from '../univer/data-ribbon';
 import { installAskClaudeRibbon, installFormulasRibbon } from '../univer/formulas-ribbon';
-import { betaEnabled } from './settings';
 import { installGridShortcuts } from '../univer/grid-shortcuts';
 import { installViewRibbon } from '../univer/view-ribbon';
 import { installBasics } from '../univer/basics';
@@ -112,7 +111,7 @@ export class DocumentController {
         installHomeRibbon(this.api, () => this.markDirtyPublic());
         installDataRibbon(this.api, this);
         installFormulasRibbon(this.api);
-        if (betaEnabled()) installAskClaudeRibbon(this.api, () => this.askClaude(), () => this.pasteClaudeReply());
+        installAskClaudeRibbon(this.api, () => this.askClaude(), () => this.pasteClaudeReply());
         installCharts(this.api);
         installSparklines(this.api);
         installSymbols(this.api);
@@ -431,13 +430,13 @@ export class DocumentController {
     await runUpdateCheck(deps, silent);
   }
 
-  /** Demander à Claude (bêta) : prépare le message à coller dans Claude. */
+  /** Demander à Claude : prépare le message à coller dans Claude. */
   async askClaude(): Promise<void> {
     const { askClaudeDialog } = await import('./ask-claude');
     await askClaudeDialog(this.api, (message, kind) => this.events.onStatus(message, kind));
   }
 
-  /** Coller la réponse de Claude (bêta) : écrit les cellules proposées, après aperçu. */
+  /** Coller la réponse de Claude : écrit les cellules proposées, après aperçu. */
   async pasteClaudeReply(): Promise<void> {
     const { pasteReplyDialog } = await import('./ask-claude');
     await pasteReplyDialog(this.api, (message, kind) => this.events.onStatus(message, kind));

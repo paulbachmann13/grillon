@@ -27,7 +27,7 @@ test('après une mise à jour : ce qui a changé est raconté une seule fois', a
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('h2')).toContainText('Nouveautés de Grillon depuis la version 1.13.0');
   const shown = await dialog.locator('.g-release h3').allTextContents();
-  expect(shown.some((v) => v.includes('1.14.0'))).toBe(true);
+  expect(shown.some((v) => v.includes('1.14.4'))).toBe(true);
   expect(shown.some((v) => v.includes('1.13.0'))).toBe(false);
   await dialog.getByRole('button', { name: 'Compris' }).click();
   await expect(dialog).toBeHidden();

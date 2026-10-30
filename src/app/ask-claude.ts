@@ -1,5 +1,5 @@
 /**
- * « Demander à Claude » (bêta) : deux fenêtres. La première prépare le message à coller dans Claude (la question et les cellules
+ * « Demander à Claude » : deux fenêtres. La première prépare le message à coller dans Claude (la question et les cellules
  * sélectionnées, en texte), la seconde lit la réponse de Claude et écrit les cellules proposées, après les avoir montrées.
  * Grillon n'envoie rien : on copie, on colle. Logique dans src/data/ask-claude.ts.
  */

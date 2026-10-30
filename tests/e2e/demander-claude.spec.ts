@@ -1,7 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { gotoApp } from './helpers';
 
-const beta = (page: Page) => page.addInitScript(() => localStorage.setItem('grillon-beta', 'on'));
 const run = <T = unknown>(page: Page, body: string) => page.evaluate(`(async () => { const api = window.grillon.api; const wb = api.getActiveWorkbook(); const ws = wb.getActiveSheet(); ${body} })()`) as Promise<T>;
 
 async function fill(page: Page) {
@@ -12,31 +11,21 @@ const ribbonButton = async (page: Page, id: string) => {
   await page.locator(`[data-u-command="${id}"]`).first().click();
 };
 
-test('sans l’interrupteur bêta : aucun bouton « Demander à Claude »', async ({ page }) => {
+test('boutons visibles par défaut : onglet Formules et menu Fichier', async ({ page }) => {
   await gotoApp(page);
   await page.getByRole('tab', { name: 'Formules', exact: true }).click();
-  await expect(page.locator('[data-u-command="grillon.beta.ask-claude"]')).toHaveCount(0);
+  await expect(page.locator('[data-u-command="grillon.ask-claude"]')).toHaveCount(1);
+  await expect(page.locator('[data-u-command="grillon.paste-reply"]')).toHaveCount(1);
   await page.getByRole('button', { name: 'Fichier' }).click();
-  await expect(page.getByText('Demander à Claude')).toHaveCount(0);
-});
-
-test('Paramètres : l’interrupteur des fonctions bêta est mémorisé', async ({ page }) => {
-  await gotoApp(page);
-  await page.evaluate(`window.grillon.doc.showHome('settings')`);
-  const box = page.getByTestId('setting-beta');
-  await expect(box).not.toBeChecked();
-  await box.check();
-  expect(await page.evaluate(() => localStorage.getItem('grillon-beta'))).toBe('on');
-  await box.uncheck();
-  expect(await page.evaluate(() => localStorage.getItem('grillon-beta'))).toBeNull();
+  await expect(page.getByText('Demander à Claude')).toBeVisible();
+  await expect(page.getByText('Coller la réponse')).toBeVisible();
 });
 
 test('Demander à Claude : message prêt à coller, textes masqués, copie dans le presse-papiers', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await beta(page);
   await gotoApp(page);
   await fill(page);
-  await ribbonButton(page, 'grillon.beta.ask-claude');
+  await ribbonButton(page, 'grillon.ask-claude');
   const dialog = page.getByTestId('dialog-ask-claude');
   await expect(dialog).toBeVisible();
   const preview = dialog.getByTestId('ask-preview');
@@ -68,10 +57,9 @@ test('Demander à Claude : message prêt à coller, textes masqués, copie dans 
 });
 
 test('Coller la réponse : aperçu avant / après, une seule annulation, la feuille ne bouge pas avant « Appliquer »', async ({ page }) => {
-  await beta(page);
   await gotoApp(page);
   await fill(page);
-  await ribbonButton(page, 'grillon.beta.paste-reply');
+  await ribbonButton(page, 'grillon.paste-reply');
   const dialog = page.getByTestId('dialog-paste-reply');
   await expect(dialog).toBeVisible();
   const apply = dialog.getByRole('button', { name: 'Appliquer' });
@@ -103,7 +91,6 @@ test('Coller la réponse : aperçu avant / après, une seule annulation, la feui
 });
 
 test('Coller la réponse : texte sans bloc exploitable, rien à appliquer', async ({ page }) => {
-  await beta(page);
   await gotoApp(page);
   await fill(page);
   await page.getByRole('button', { name: 'Fichier' }).click();

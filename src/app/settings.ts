@@ -18,23 +18,3 @@ export function setAutoUpdate(enabled: boolean): void {
     /* stockage indisponible : le choix vaut pour la session */
   }
 }
-
-const BETA = 'grillon-beta';
-
-/** Fonctions à l'essai (« Demander à Claude »…) : désactivées par défaut, à activer dans Paramètres. Prend effet au démarrage suivant. */
-export function betaEnabled(): boolean {
-  try {
-    return localStorage.getItem(BETA) === 'on';
-  } catch {
-    return false;
-  }
-}
-
-export function setBeta(enabled: boolean): void {
-  try {
-    if (enabled) localStorage.setItem(BETA, 'on');
-    else localStorage.removeItem(BETA);
-  } catch {
-    /* stockage indisponible : le choix vaut pour la session */
-  }
-}

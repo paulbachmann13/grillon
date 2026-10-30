@@ -1,5 +1,5 @@
 /**
- * « Demander à Claude » (bêta) : prépare le message à coller dans Claude (la question et les cellules sélectionnées, en texte),
+ * « Demander à Claude » : prépare le message à coller dans Claude (la question et les cellules sélectionnées, en texte),
  * puis lit sa réponse (un bloc « grillon » : une cellule par ligne) pour la coller dans la feuille. Rien n'est envoyé par Grillon :
  * on copie, on colle. Logique pure, sans DOM ni Univer.
  */

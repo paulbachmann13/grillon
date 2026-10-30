@@ -1023,7 +1023,7 @@ body,
 .g-start-version-link { display: block; width: 100%; padding: 10px 12px 0; border: 0; background: none; color: inherit; font: inherit; font-size: 12px; text-align: left; opacity: 0.85; cursor: pointer; }
 .g-start-version-link:hover, .g-start-version-link:focus-visible { opacity: 1; text-decoration: underline; outline: none; }
 
-/* Demander à Claude (bêta) */
+/* Demander à Claude */
 .g-ask-text { box-sizing: border-box; width: 100%; padding: 8px; border: 1px solid var(--grillon-border); border-radius: 6px; background: var(--grillon-menu-bg); color: inherit; font: inherit; font-size: 13px; resize: vertical; }
 .g-ask-text[readonly] { font-family: ui-monospace, Menlo, monospace; font-size: 12px; opacity: 0.9; }
 .g-ask-heading { margin: 14px 0 2px; font-size: 13px; font-weight: 600; }
