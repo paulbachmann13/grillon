@@ -7,7 +7,7 @@ import { buildAutoFilterXml, FILTER_RESOURCE, type UniverAutoFilter, type Univer
 import { chartsOfSheet, DRAWING_RESOURCE, writeSheetCharts, type DrawingResource, type SheetChart } from './charts';
 import { DV_RESOURCE, exportDataValidations, type UniverDvResource } from './data-validation';
 import { exportNotes, NOTE_RESOURCE, type UniverNoteResource } from './notes';
-import { insertWorksheetElement, listSheets, loadZip, zipToBytes } from './ooxml';
+import { addContentTypeOverride, addRelationship, insertWorksheetElement, listSheets, loadZip, zipToBytes } from './ooxml';
 import { TABLE_RESOURCE, writeTables, type TableToWrite, type UniverTable, type UniverTableResource } from './tables';
 import {
   CellValueType,
@@ -29,6 +29,7 @@ import { shiftFormula } from '../../data/formula-shift';
 import { sparklinesOfSheet, writeSparklines, type SheetSparkline } from './sparklines';
 import type { PivotDefinition } from '../../data/pivot';
 import { writePivotTables, type PivotToWrite } from './pivot-tables';
+import { CT_SHEET_METADATA, DYNAMIC_ARRAY_METADATA, REL_SHEET_METADATA, rewriteSheetFormulas, toFileFormula } from './future-functions';
 import { planSlicers, tableFilterXml, tableKey, writeSlicers, type SlicerPlan } from './slicers';
 import { sheetProtectionXml, type SheetProtection } from '../../data/sheet-protection';
 import type { Rect } from '../../data/cell-locks';
@@ -342,6 +343,8 @@ function buildWorkbook(wb: IWorkbookData): { xlWb: ExcelJS.Workbook; post: Sheet
   const xlWb = new ExcelJS.Workbook();
   xlWb.creator = 'Grillon';
   xlWb.created = new Date();
+  // Excel recalcule à l'ouverture : les résultats débordants ne sont pas écrits, et il garde sa langue et ses arrondis.
+  xlWb.calcProperties = { fullCalcOnLoad: true };
   const used = new Set<string>();
   const cf = readResource<UniverCfResource>(wb, CF_RESOURCE) ?? {};
   const dv = readResource<UniverDvResource>(wb, DV_RESOURCE) ?? {};
@@ -468,6 +471,31 @@ async function postProcess(wb: IWorkbookData, bytes: Uint8Array, post: SheetPost
     if (p.sparklines.length) xml = writeSparklines(xml, p.sparklines);
     zip.file(sheets[i].path, xml);
     if (p.pivot) pivots.push({ sheetPath: sheets[i].path, def: p.pivot, slicerCols: p.slicerCols });
+  }
+  // Formules : préfixes des fonctions récentes et marque des formules matricielles, dans toutes les feuilles et les noms définis.
+  let hasArray = false;
+  for (const sheet of sheets) {
+    const file = zip.file(sheet.path);
+    if (!file) continue;
+    const xml = await file.async('string');
+    if (!/<f>|<formula/.test(xml)) continue;
+    const rewritten = rewriteSheetFormulas(xml);
+    hasArray ||= rewritten.hasArray;
+    if (rewritten.xml !== xml) zip.file(sheet.path, rewritten.xml);
+  }
+  if (hasArray) {
+    zip.file('xl/metadata.xml', DYNAMIC_ARRAY_METADATA);
+    await addContentTypeOverride(zip, '/xl/metadata.xml', CT_SHEET_METADATA);
+    await addRelationship(zip, 'xl/workbook.xml', REL_SHEET_METADATA, 'metadata.xml');
+  }
+  const wbFile = zip.file('xl/workbook.xml');
+  if (wbFile) {
+    const wbXml = await wbFile.async('string');
+    const named = wbXml
+      .replace(/(<definedName\b[^>]*>)([^<]*)(<\/definedName>)/g, (_m, a: string, f: string, b: string) => `${a}${toFileFormula(f)}${b}`)
+      // Zone d'impression écrite par ExcelJS en « $A1:$F12 » : Excel l'attend en références absolues.
+      .replace(/(<definedName name="_xlnm\.Print_Area"[^>]*>[^<]*!)\$([A-Z]+)(\d+):\$([A-Z]+)(\d+)(<)/g, '$1$$$2$$$3:$$$4$$$5$6');
+    if (named !== wbXml) zip.file('xl/workbook.xml', named);
   }
   // Les tableaux croisés touchent aussi le classeur (caches) : écrits après les feuilles.
   const writtenPivots = pivots.length ? await writePivotTables(zip, wb, pivots) : new Map();

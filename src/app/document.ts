@@ -6,7 +6,7 @@ import { t } from '../i18n';
 import { openFile, saveAs, writeToHandle } from '../io/files';
 import { isTauri, openInNewWindow, pathOfHandle } from '../io/tauri-files';
 import type { IWorkbookData } from '../model/univer-types';
-import { installFrenchDisplay } from '../univer/french-display';
+import { EXCEL_COLUMN_PX, EXCEL_ROW_PX, installExcelSheetDefaults, installFrenchDisplay } from '../univer/french-display';
 import { installFrenchFormulas } from '../univer/french-formulas';
 import { installFrenchEntry } from '../univer/french-entry';
 import { installFormulaBarArrows } from '../univer/formula-arrows';
@@ -98,6 +98,7 @@ export class DocumentController {
       const sheets = Object.fromEntries(Object.entries(data.sheets ?? {}).map(([id, sh]) => [id, { defaultStyle, ...sh }]));
       this.api.createWorkbook({ locale: LOCALE_FR as IWorkbookData['locale'], ...data, sheets, name: fileName.replace(/\.[^.]+$/, '') } as never);
       installFrenchDisplay(this.api);
+      installExcelSheetDefaults(this.api);
       installFrenchFormulas(this.api);
       installFrenchEntry(this.api);
       installFormulaBarArrows(this.api);
@@ -146,7 +147,7 @@ export class DocumentController {
   newWorkbook(): void {
     const id = `sheet-${Math.random().toString(36).slice(2, 10)}`;
     this.load(
-      { defaultStyle: { ff: 'Calibri', fs: 11 }, sheetOrder: [id], sheets: { [id]: { id, name: t('app.defaultSheet'), cellData: {}, rowCount: 1000, columnCount: 26 } } },
+      { defaultStyle: { ff: 'Calibri', fs: 11 }, sheetOrder: [id], sheets: { [id]: { id, name: t('app.defaultSheet'), cellData: {}, rowCount: 1000, columnCount: 26, defaultColumnWidth: EXCEL_COLUMN_PX, defaultRowHeight: EXCEL_ROW_PX } } },
       `${t('app.untitled')}.xlsx`,
     );
     void clearAutosave();

@@ -96,6 +96,9 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
   préfixées, feuilles « sheet.xml », lignes sans numéro…) puis retire ce que Grillon lit lui-même et qu'ExcelJS lit mal ou
   lentement (tableaux, filtres, fusions, propriétés). Notes lues dans commentsN.xml (`readNotes`). Corpus de vérification :
   les 353 fichiers de test d'Apache POI (`test-data/spreadsheet`), aller-retour import → export → import.
+- Fonctions du moteur corrigées (`src/univer/custom-functions.ts`, logique dans `src/data/french-values.ts`) : un nom déjà connu du moteur remplace sa fonction. SORT triait la plage en mémoire ; TEXT, VALUE, DATEVALUE, FIXED, DOLLAR, SEARCH, CHOOSE, FORMULATEXT, `&`, CONCAT, TEXTJOIN, critères de NB.SI… sont à la française. `NumberValueObject.create` et `StringValueObject.convertToNumberObjectValue` sont enveloppés (formats automatiques, « "1,5"+1 »). Le worker doit garder `locale: FR_FR` (sinon ¥). À revérifier à chaque mise à jour d'Univer : `tests/e2e/excel-reference.spec.ts` compare aux résultats relevés dans Excel.
+- Formules dans le fichier (`src/io/xlsx/future-functions.ts`) : `_xlfn.` et `_xlfn._xlws.` (sinon #NOM? ou réparation), `_xlpm.` pour LET/LAMBDA, ajoutés à l'écriture et retirés à la lecture. Un calcul sur plage ou un résultat en tableau est écrit `t="array" cm="1"` + `xl/metadata.xml` (sinon #VALEUR! dans Excel) ; `fullCalcOnLoad` fait recalculer à l'ouverture.
+- Largeur de colonne dans le fichier : elle comprend les 5 px de marge (9,14 = 64 px = 8,43 affiché) ; `defaultColWidth="8.43"` vient des anciens Grillon et vaut 64 px.
 - Calibri absente (Mac sans Office) : `src/app/fonts.ts` déclare Calibri → Carlito (OFL) avant le premier rendu.
 
 ## Application Mac (Tauri)
@@ -123,7 +126,7 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 - Plugin `tauri-plugin-updater` : `src/app/updater.ts` (logique testée) ; vérification discrète 5 s après le démarrage
   (fenêtre principale seulement) et Fichier → Rechercher les mises à jour. Point d'accès :
   `https://github.com/paulbachmann13/grillon/releases/latest/download/latest.json` (dans `tauri.conf.json`).
-- `runUpdateCheck` a un verrou : une seule vérification / installation à la fois (sinon une 2e fenêtre « Installer » s'ouvrait si on cliquait pendant le téléchargement) ; après une installation réussie le verrou reste pris (Grillon redémarre).
+- `runUpdateCheck` a un verrou commun à toutes les fenêtres (commandes Rust `update_lock_acquire` / `update_lock_release`, libéré si la fenêtre se ferme) et un panneau de progression qui couvre la fenêtre ; après une installation réussie le verrou reste pris (Grillon redémarre). Pour tester sans publier : construire une copie avec `--config` (`endpoints` locaux, clé jetable, `dangerousInsecureTransportProtocol`).
 - Signature des mises à jour : clé générée avec `npx tauri signer generate`. La clé **privée** est dans
   `~/.tauri/grillon-updater.key` (sauvegarde à garder : sans elle, plus aucune mise à jour possible pour les
   copies déjà installées) et dans le secret GitHub `TAURI_SIGNING_PRIVATE_KEY` ; la clé publique est dans `tauri.conf.json`.
@@ -139,7 +142,8 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 - Vérifié le 18/10 dans Excel (AppleScript) : un tableau croisé écrit par Grillon s'ouvre et se calcule, 8 graphiques
   classiques s'ouvrent, les sauts de page sont relus. Vérifié le 23/10 : les 4 graphiques chartEx et les segments (tableau,
   tableau croisé) s'ouvrent sans réparation et s'affichent. Vérifié le 24/10 : 326 des 353 fichiers d'Apache POI (dont beaucoup
-  créés par Excel) font l'aller-retour sans perte de valeur ni de formule. Pas encore vérifié : thèmes.
+  créés par Excel) font l'aller-retour sans perte de valeur ni de formule. Vérifié le 30/10 : 635 formules, 274 formats et les propriétés d'un classeur (voir docs/EXCEL-COMPARAISON.md).
+  Cet Excel n'a pas les fonctions récentes (XLOOKUP, SORT, IFS…) : `#NOM?` n'y prouve rien. Pas encore vérifié : thèmes, un Excel 365 (débordement des formules matricielles).
 - Vérifié dans WebKit (moteur de l'app Mac) : ⌘C / ⌘V / ⌘Z, ⌘B… ; l'app Mac compile et se lance, la mise à jour automatique
   fonctionne (1.12 → 1.13). Vérifié le 23/10 : impression (fenêtre du Mac), menus en français, mise à jour 1.13.3 → 1.13.4. Pas encore vérifié : double-clic dans le Finder, plusieurs fenêtres,
   bouton Coller du ruban (autorisation du presse-papiers de WebKit).

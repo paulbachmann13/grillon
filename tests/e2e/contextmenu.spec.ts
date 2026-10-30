@@ -6,7 +6,7 @@ test('clic droit sur une cellule : la cellule est sélectionnée, sans sélectio
   await gotoApp(page);
   const box = (await page.locator('canvas[id^="univer-sheet-main-canvas"]').boundingBox())!;
   await page.mouse.click(box.x + 150, box.y + 80, { button: 'right' });
-  await expect.poll(() => page.evaluate(`window.grillon.api.getActiveWorkbook().getActiveRange().getA1Notation()`)).toBe('B3');
+  await expect.poll(() => page.evaluate(`window.grillon.api.getActiveWorkbook().getActiveRange().getA1Notation()`)).toBe('B4');
   const collapsed = await page.evaluate(() => getSelection()?.isCollapsed ?? true);
   expect(collapsed).toBe(true);
 });

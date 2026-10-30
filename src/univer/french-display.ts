@@ -7,6 +7,7 @@
  * Cet intercepteur ne change que l'affichage : la valeur stockée reste un nombre.
  */
 import { INTERCEPTOR_POINT, SheetInterceptorService } from '@univerjs/preset-sheets-core';
+import { numfmt } from '@univerjs/core';
 import { InterceptorEffectEnum } from '@univerjs/presets';
 import type { FUniver } from '@univerjs/presets';
 import { frenchError, isErrorValue } from '../data/formula-errors';
@@ -45,6 +46,27 @@ function isDefaultPattern(pattern: string | undefined): boolean {
 
 const installed = new WeakSet<object>();
 
+/** Dimensions d'une feuille neuve dans Excel (Univer : 88 × 24 px). */
+export const EXCEL_COLUMN_PX = 64;
+export const EXCEL_ROW_PX = 20;
+const UNIVER_COLUMN_PX = 88;
+const UNIVER_ROW_PX = 24;
+const defaultsInstalled = new WeakSet<object>();
+
+/** Feuille ajoutée (bouton +, Insérer) : aux dimensions d'Excel. */
+export function installExcelSheetDefaults(api: FUniver): void {
+  if (defaultsInstalled.has(api)) return;
+  defaultsInstalled.add(api);
+  api.addEvent(api.Event.BeforeCommandExecute, (e) => {
+    if (e.id !== 'sheet.mutation.insert-sheet') return;
+    const sheet = (e.params as { sheet?: { defaultColumnWidth?: number; defaultRowHeight?: number } } | undefined)?.sheet;
+    if (sheet?.defaultColumnWidth === UNIVER_COLUMN_PX && sheet.defaultRowHeight === UNIVER_ROW_PX) {
+      sheet.defaultColumnWidth = EXCEL_COLUMN_PX;
+      sheet.defaultRowHeight = EXCEL_ROW_PX;
+    }
+  });
+}
+
 /** À appeler après la création d'un classeur (les services de feuille sont enregistrés à ce moment-là). */
 export function installFrenchDisplay(api: FUniver): void {
   if (installed.has(api)) return;
@@ -61,14 +83,23 @@ export function installFrenchDisplay(api: FUniver): void {
       if (isErrorValue(cell.v) && frenchError(cell.v) !== cell.v) return next({ ...cell, v: frenchError(cell.v) });
       const isBool = cell.t === BOOLEAN;
       const isNum = typeof cell.v === 'number' && (cell.t === NUMBER || cell.t === undefined || cell.t === null);
-      if (!isBool && !isNum) return next(cell);
-      const styleId = cell.s;
-      const style = typeof styleId === 'string' ? location.workbook.getStyles().get(styleId) : styleId;
-      if (!isDefaultPattern(style?.n?.pattern ?? undefined)) return next(cell);
+      // Un logique s'affiche VRAI / FAUX quel que soit le format de nombre.
       if (isBool) {
         const truthy = cell.v === true || cell.v === 1 || String(cell.v).toUpperCase() === 'TRUE';
         return next({ ...cell, v: truthy ? 'VRAI' : 'FAUX', t: BOOLEAN as never });
       }
+      const styleId = cell.s;
+      const style = typeof styleId === 'string' ? location.workbook.getStyles().get(styleId) : styleId;
+      const pattern = style?.n?.pattern ?? undefined;
+      // Texte dans un format à section @ (« "> "@ ») : Univer l'affiche sans le format.
+      if (typeof cell.v === 'string' && pattern && pattern !== '@' && pattern.includes('@')) {
+        try {
+          return next({ ...cell, v: numfmt.format(pattern, cell.v, { locale: 'fr' }) });
+        } catch {
+          return next(cell);
+        }
+      }
+      if (!isNum || !isDefaultPattern(pattern)) return next(cell);
       return next({ ...cell, v: formatGeneralFr(cell.v as number), t: NUMBER as never });
     },
   });

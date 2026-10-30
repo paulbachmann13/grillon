@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { isTranslocatedPath, resetUpdateLock, runUpdateCheck, type AvailableUpdate, type Deps } from '../../src/app/updater';
+import { isTranslocatedPath, runUpdateCheck, type AvailableUpdate, type Deps } from '../../src/app/updater';
+
+/** Verrou partagé, comme celui de l'application (commun à toutes les fenêtres). */
+let locked = false;
 
 function deps(overrides: Partial<Deps> = {}, update: AvailableUpdate | null = null) {
   const log: string[] = [];
@@ -12,6 +15,8 @@ function deps(overrides: Partial<Deps> = {}, update: AvailableUpdate | null = nu
     relaunch: vi.fn(async () => void log.push('relaunch')),
     beforeRestart: vi.fn(async () => void log.push('save')),
     isTranslocated: async () => false,
+    tryLock: async () => (locked ? false : (locked = true)),
+    unlock: async () => void (locked = false),
     ...overrides,
   };
   return { d, log };
@@ -20,7 +25,7 @@ function deps(overrides: Partial<Deps> = {}, update: AvailableUpdate | null = nu
 const update = (install = async (p: (r: number, t: number | undefined) => void) => (p(50, 100), p(100, 100))): AvailableUpdate => ({ version: '1.12.0', install });
 
 describe('mise à jour automatique', () => {
-  beforeEach(resetUpdateLock);
+  beforeEach(() => void (locked = false));
 
   it('à jour : silencieux au démarrage, message à la demande', async () => {
     const quiet = deps();

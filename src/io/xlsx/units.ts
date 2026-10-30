@@ -8,14 +8,17 @@
  */
 
 const MAX_DIGIT_WIDTH = 7;
-const COLUMN_PADDING = 5;
 
-export function excelWidthToPx(chars: number): number {
-  return Math.round(chars * MAX_DIGIT_WIDTH + COLUMN_PADDING);
+/**
+ * Largeur de colonne dans le fichier (`<col width>`, `defaultColWidth`) : elle comprend déjà la marge de 5 px. Le « 8,43 » affiché
+ * par Excel correspond à 9,14 dans le fichier, soit 64 px (spécification OOXML, vérifié avec Excel pour Mac).
+ */
+export function excelWidthToPx(width: number): number {
+  return Math.round(width * MAX_DIGIT_WIDTH);
 }
 
 export function pxToExcelWidth(px: number): number {
-  return Math.max(0, Math.round(((px - COLUMN_PADDING) / MAX_DIGIT_WIDTH) * 100) / 100);
+  return Math.max(0, Math.round((px / MAX_DIGIT_WIDTH) * 256) / 256);
 }
 
 export function ptToPx(pt: number): number {
@@ -27,7 +30,7 @@ export function pxToPt(px: number): number {
 }
 
 /** Largeur Excel par défaut (8,43 caractères = 64 px) et hauteur par défaut (15 pt = 20 px). */
-export const EXCEL_DEFAULT_COL_WIDTH = 8.43;
+export const EXCEL_DEFAULT_COL_WIDTH = 64 / MAX_DIGIT_WIDTH;
 export const EXCEL_DEFAULT_ROW_HEIGHT_PT = 15;
 
 const MS_PER_DAY = 86_400_000;

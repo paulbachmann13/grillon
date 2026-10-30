@@ -20,6 +20,27 @@ struct Opens {
     counter: AtomicUsize,
 }
 
+/// Fenêtre qui fait la mise à jour en cours : une seule à la fois dans toute l'application
+/// (chaque fenêtre a son propre JavaScript : un verrou côté page ne suffit pas).
+#[derive(Default)]
+struct UpdateLock(Mutex<Option<String>>);
+
+/// Prend le verrou de mise à jour ; faux si une autre vérification est en cours.
+#[tauri::command]
+fn update_lock_acquire(window: tauri::Window, lock: tauri::State<UpdateLock>) -> bool {
+    let mut owner = lock.0.lock().unwrap();
+    if owner.is_some() {
+        return false;
+    }
+    *owner = Some(window.label().to_string());
+    true
+}
+
+#[tauri::command]
+fn update_lock_release(lock: tauri::State<UpdateLock>) {
+    *lock.0.lock().unwrap() = None;
+}
+
 /// Crée une fenêtre de plus, avec éventuellement un fichier à y ouvrir.
 fn spawn_window(app: &AppHandle, path: Option<String>) -> Result<(), String> {
     let state = app.state::<Opens>();
@@ -130,10 +151,19 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(Opens::default())
-        .invoke_handler(tauri::generate_handler![take_pending_opens, take_window_open, new_window])
+        .manage(UpdateLock::default())
+        .invoke_handler(tauri::generate_handler![take_pending_opens, take_window_open, new_window, update_lock_acquire, update_lock_release])
         .build(tauri::generate_context!())
         .expect("erreur au démarrage de Grillon")
         .run(|app, event| {
+            // Fenêtre fermée pendant sa vérification : le verrou ne doit pas rester pris.
+            if let tauri::RunEvent::WindowEvent { label, event: tauri::WindowEvent::Destroyed, .. } = &event {
+                let lock = app.state::<UpdateLock>();
+                let mut owner = lock.0.lock().unwrap();
+                if owner.as_deref() == Some(label.as_str()) {
+                    *owner = None;
+                }
+            }
             // macOS : double-clic sur un .xlsx / .csv associé à Grillon.
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Opened { urls } = &event {

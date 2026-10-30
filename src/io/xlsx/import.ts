@@ -159,7 +159,9 @@ function convertWorksheet(ws: ExcelJS.Worksheet, registry: StyleRegistry, sheetM
   const unlocked: [number, number][] = [];
 
   const props = ws.properties ?? ({} as ExcelJS.WorksheetProperties);
-  const defaultColWidthPx = excelWidthToPx(props.defaultColWidth ?? EXCEL_DEFAULT_COL_WIDTH);
+  // « 8,43 » dans le fichier : valeur des anciennes versions de Grillon (et d'ExcelJS), qui voulaient dire la colonne standard de 64 px.
+  const fileDefaultWidth = props.defaultColWidth;
+  const defaultColWidthPx = excelWidthToPx(fileDefaultWidth === undefined || Math.abs(fileDefaultWidth - 8.43) < 0.001 ? EXCEL_DEFAULT_COL_WIDTH : fileDefaultWidth);
   const defaultRowHeightPx = ptToPx(props.defaultRowHeight ?? EXCEL_DEFAULT_ROW_HEIGHT_PT);
 
   ws.eachRow({ includeEmpty: true }, (row, rowNumber) => {

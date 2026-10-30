@@ -162,8 +162,9 @@ export function toExcelPageSetup(p: PageSetup): { pageSetup: ExcelPageSetupLike;
   } else if (p.scale && p.scale !== 100) {
     pageSetup.scale = Math.round(p.scale);
   }
-  if (p.printArea) pageSetup.printArea = p.printArea;
-  if (p.titleRows) pageSetup.printTitlesRow = p.titleRows;
+  // Sans « $ » : ExcelJS ajoute les siens, et « $$1:$$1 » fait réparer le fichier par Excel (on peut taper $1:$1 dans la boîte Mise en page).
+  if (p.printArea) pageSetup.printArea = p.printArea.replace(/\$/g, '');
+  if (p.titleRows) pageSetup.printTitlesRow = p.titleRows.replace(/\$/g, '');
   if (p.centerH) pageSetup.horizontalCentered = true;
   if (p.centerV) pageSetup.verticalCentered = true;
   if (p.gridlines) pageSetup.showGridLines = true;

@@ -134,5 +134,33 @@ Légende : **Oui** = disponible · **Partiel** = disponible avec des limites (vo
 | Touches d'accès (Alt…) | Non | |
 | Grille jusqu'à 1 048 576 × 16 384 | Oui | |
 | Classeurs de 100 000 lignes | Oui | Quelques secondes à l'ouverture |
-| Application Mac et Windows | Partiel | Mac : .dmg construit (plusieurs fenêtres), à tester ; Windows : web/PWA |
+| Application Mac et Windows | Partiel | Mac : .dmg construit, impression et mise à jour vérifiées ; Windows : web/PWA |
 | iPad / iPhone | Oui | Appli installée depuis Safari |
+
+## Comparaison automatique avec le vrai Excel
+
+Relevé du 30/10/2026 avec Excel pour Mac (version sans abonnement, qui ouvre et calcule mais n'enregistre pas). Le même fichier, écrit par
+Grillon, est calculé par Excel et par Grillon ; les résultats d'Excel sont dans `tests/fixtures/excel-reference.json` et vérifiés à
+chaque test (`tests/e2e/excel-reference.spec.ts`).
+
+| Domaine | Résultat |
+|---|---|
+| 635 formules (maths, stats, logique, texte, dates, recherche, finance, ingénierie, base de données, usages courants) | 565 identiques ; 43 non vérifiables (fonction absente de cette version d'Excel, voir ci-dessous) ; 27 écarts acceptés (dont 17 nombres complexes) |
+| 274 valeurs × formats de nombre | Identiques, aux écarts acceptés près |
+| Classeur relu dans Excel : polices, couleurs, bordures, alignements, rotation, retrait, largeurs, hauteurs, masquage, plan, fusions, volets, zoom, quadrillage, impression, noms, filtre, lien, validation, mise en forme conditionnelle, feuille masquée, protection | Conformes |
+| 353 fichiers de test d'Apache POI : ouverture, enregistrement, réouverture | 326 sans perte de valeur ni de formule ; 26 fichiers abîmés refusés ; 1 fichier d'attaque (bombe de chaînes) |
+
+**Non vérifiables ici** : `SI.CONDITIONS`, `SI.MULTIPLE`, `CONCAT`, `JOINDRE.TEXTE`, `MAX.SI.ENS`, `MIN.SI.ENS`, `RECHERCHEX`, `EQUIVX`, `LET`, `TRIER`, `TRIERPAR`, `FILTRE`, `UNIQUE`, `SEQUENCE`, `ASSEMB.H`, `ASSEMB.V`… Cette version d'Excel ne les a pas : le fichier s'ouvre sans réparation et elle affiche `#NOM?`. Les résultats de Grillon pour ces fonctions n'ont donc pas été comparés à Excel, et le débordement des formules marquées matricielles n'a pas été vu dans un Excel 365.
+
+**Écarts acceptés** :
+
+| Cas | Excel | Grillon |
+|---|---|---|
+| `NB.SI(A:A;">=12.5")` avec un point | Excel français : aucun résultat | Comprend le point (fichiers venus d'un Excel anglais) |
+| Mois et jours abrégés (`mmm`, `jjj`) | Mac : `janv`, `lun` | `janv.`, `lun.` (forme d'Excel Windows, à vérifier) |
+| Format `h:mm:ss` à minuit | `00:00:00` (format n° 21) | `0:00:00` |
+| Nombres complexes (`IMDIV`…) | `0,6+0,2i` | `0.6+0.2i` |
+| `EQUIV(x;liste croissante;-1)` | `#N/A` | Une position |
+| `ADRESSE(…;FAUX)` | `L2C3` | `R2C3` |
+| `ZONES((A1;C1))` (union) | `2` | `#VALEUR!` |
+| `DBCS` | Inchangé en français | Pleine chasse |

@@ -40,7 +40,7 @@ Environ **520 fonctions Excel** sont prises en charge, dont :
 | FORECAST.ETS, FORECAST.ETS.CONFINT, FORECAST.ETS.SEASONALITY, FORECAST.ETS.STAT | Lissage exponentiel triple non implémenté (utiliser FORECAST.LINEAR / TREND) |
 | GETPIVOTDATA | Les TCD de Grillon sont des tableaux de valeurs |
 | PIVOTBY | Non implémentée (utiliser GROUPBY ou un TCD) |
-| AMORDEGRC, EUROCONVERT, INFO, ISOMITTED, PHONETIC, UNION | Rares ou propres à Excel Windows |
+| EUROCONVERT, INFO, ISOMITTED, PHONETIC, UNION | Rares ou propres à Excel Windows |
 
 Une formule utilisant une de ces fonctions affiche `#NAME?` ; elle est conservée telle quelle
 à l'enregistrement et fonctionnera de nouveau à l'ouverture dans Excel.

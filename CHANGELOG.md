@@ -2,6 +2,34 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.14.3] — 2026-10-30
+
+Comparaison complète avec le vrai Excel : 635 formules et 274 formats calculés par Excel et par Grillon sur le même fichier, et chaque propriété d'un classeur relue dans Excel. Les résultats d'Excel sont gardés comme test permanent.
+
+### Corrigé
+- **Calculs faux à cause de TRIER** : une formule `TRIER` (SORT) triait la colonne en mémoire, et les autres formules du classeur lisaient ensuite les valeurs dans le désordre (`INDEX/EQUIV` renvoyait le mauvais nom, `SOMMEPROD` le mauvais total).
+- **Fichiers Grillon dans Excel** :
+  - les fonctions récentes (`SI.CONDITIONS`, `ECARTYPE.STANDARD`, `MAX.SI.ENS`, `RECHERCHEX`, `JOINDRE.TEXTE`, `LOI.NORMALE.N`… plus de 200) s'affichaient en `#NOM?` ;
+  - `TRIER` et `FILTRE` faisaient réparer le fichier par Excel ;
+  - les calculs sur des plages (`=SOMME((A1:A5="x")*B1:B5)`, `=MAX(SI(…))`) donnaient `#VALEUR!` ;
+  - les colonnes étaient 5 pixels trop étroites (dates en `########`) ;
+  - « Lignes à répéter » tapé `$1:$1` faisait réparer le fichier.
+- **Fichiers Excel dans Grillon** : les mêmes fonctions récentes écrites par Excel (`_xlfn.…`) s'affichaient en `#NOM?` ; les colonnes étaient 5 pixels trop larges.
+- **Formules à la française**, comme Excel en français :
+  - `TEXTE(A1;"jj/mm/aaaa")` donnait n'importe quoi, les mois étaient en anglais, `"# ##0,00"` et `"0,0"` étaient mal lus ;
+  - `"a"&VRAI` donnait `aTRUE`, `"Moyenne : "&1,5` donnait `1.5` (idem `CONCAT`, `JOINDRE.TEXTE`) ;
+  - `CNUM("12,5")`, `CNUM("1 000")`, `DATEVAL("15/03/2024")`, `"1,5"+1` donnaient `#VALEUR!` ;
+  - `NB.SI(A:A;">=12,5")` et `SOMME.SI(A:A;">"&12,5)` ne comprenaient pas la virgule ;
+  - `CTXT` et `EURO` écrivaient `1,234.6` et `¥1,234.57` ; `FORMULETEXTE` montrait la formule en anglais.
+- **Formats automatiques** : `VPM`, `VC`, `VAN`… s'affichaient en `(¥106,07)` (`-106,07 €` maintenant) ; `DATE`, `MAINTENANT` en `2024/03/01` (`01/03/2024`) ; `TEMPS` en `2:01 AM` (`02:01`).
+- `CHOISIR({1;2};…)` (recherche vers la gauche) donnait `#N/A` ; `CHERCHE` ne comprenait pas `?` et `*` ; `SECONDE`, `MINUTE`, `HEURE` n'arrondissaient pas à la seconde comme Excel ; `MOYENNEA`, `ECARTYPEA`, `VARA`… comptaient un texte « 3 » pour 3 au lieu de 0.
+- Un logique avec un format de nombre affichait `TRUE` (`VRAI`) ; un texte dans un format `"> "@` s'affichait sans le format.
+- **Feuille neuve** : colonnes de 64 px et lignes de 20 px, comme Excel (88 et 24 px avant).
+- **Mise à jour de l'application Mac** : un grand panneau montre la progression du téléchargement (un petit texte passait inaperçu, et on recliquait) et bloque la fenêtre ; une seule mise à jour à la fois dans **toute** l'application, même avec plusieurs fenêtres ouvertes.
+
+### Ajouté
+- Fonction `AMORDEGRC` (amortissement dégressif).
+
 ## [1.14.2] — 2026-10-24
 
 ### Corrigé

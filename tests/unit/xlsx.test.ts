@@ -30,7 +30,7 @@ describe('import xlsx — styles', () => {
     expect(s('B4')).toMatchObject({ cl: { rgb: '#4F81BD' } });
     expect(s('C1').tr).toEqual({ a: 45 });
     expect(s('C3')).toMatchObject({ bg: { rgb: '#00B050' } });
-    expect(sheetByName(wb, 'Styles').columnData?.[1]?.w).toBe(215);
+    expect(sheetByName(wb, 'Styles').columnData?.[1]?.w).toBe(210);
   });
 
   it('lit le texte enrichi (styles par morceau, sauts de ligne)', async () => {
@@ -89,7 +89,7 @@ describe('import xlsx — mise en page', () => {
     );
     expect(a.freeze).toEqual({ xSplit: 1, ySplit: 2, startRow: 2, startColumn: 1 });
     expect(a.tabColor).toBe('#4472C4');
-    expect(a.columnData?.[0]?.w).toBe(180);
+    expect(a.columnData?.[0]?.w).toBe(175);
     expect(a.columnData?.[4]?.hd).toBe(1);
     expect(a.rowData?.[1]?.h).toBe(53);
     expect(a.rowData?.[5]?.hd).toBe(1);

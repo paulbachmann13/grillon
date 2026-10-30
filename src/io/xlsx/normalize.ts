@@ -5,6 +5,7 @@
  * propriétés du document inhabituelles. On les ramène à la forme courante (vérifié sur les fichiers de test d'Apache POI).
  */
 import type JSZip from 'jszip';
+import { fromFileFormula } from './future-functions';
 import { readRelationships, resolveRelTarget } from './ooxml';
 import { columnToLetters, fromA1 } from './units';
 
@@ -63,6 +64,17 @@ export async function normalizePackage(zip: JSZip): Promise<boolean> {
     const xml = await zip.file(path)!.async('string');
     let out = unprefixRoot(xml);
     if (path.startsWith('xl/worksheets/') && path.endsWith('.xml')) out = numberRowsAndCells(out);
+    if (out !== xml) {
+      zip.file(path, out);
+      changed = true;
+    }
+  }
+  // Préfixes des fonctions récentes (_xlfn.IFS…) dans les formules des feuilles et les noms définis : Grillon ne les garde pas.
+  for (const path of Object.keys(zip.files)) {
+    if (zip.files[path].dir || !/^xl\/(workbook\.xml|worksheets\/[^/]+\.xml)$/.test(path)) continue;
+    const xml = await zip.file(path)!.async('string');
+    if (!xml.includes('_xl')) continue;
+    const out = fromFileFormula(xml);
     if (out !== xml) {
       zip.file(path, out);
       changed = true;
