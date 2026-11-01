@@ -13,7 +13,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [1.15.0] — 2026-10-31
 
 ### Ajouté
-- **« Demander à Claude » (à l'essai, caché par défaut).** Pour l'essayer : Paramètres → « Fonctions bêta », cochez la case, puis fermez et rouvrez Grillon. Deux boutons apparaissent dans l'onglet Formules (et dans le menu Fichier) :
+- **« Demander à Claude »** (d'abord à l'essai, devenu normal dans la 1.15.1 : rien à activer). Deux boutons apparaissent dans l'onglet Formules (et dans le menu Fichier) :
   - **Demander à Claude** : vous sélectionnez des cellules (ou vous cliquez dans votre tableau), vous écrivez votre question, et Grillon prépare un message à coller dans Claude. Vous voyez en entier ce qui sera copié. Rien n'est envoyé par Grillon : c'est vous qui collez. Une case permet de **masquer les noms et autres textes** (remplacés par « Texte 1 », « Texte 2 »…) avant la copie.
   - **Coller la réponse** : vous collez la réponse de Claude ; Grillon repère les cellules à remplir et vous montre « avant / après ». Un clic sur *Appliquer* les écrit, et un seul ⌘Z défait tout.
 

@@ -81,6 +81,16 @@ describe('réponse de Claude', () => {
     const many = Array.from({ length: 700 }, (_, i) => `A${i + 1}: ${i}`).join('\n');
     expect(parseReply(`\`\`\`grillon\n${many}\n\`\`\``).edits).toHaveLength(500);
   });
+  it('textes masqués : ceux écrits dans une formule aussi (opérateur gardé), pas les valeurs sans lettre', () => {
+    const p = buildPrompt({
+      question: 'q', sheetName: 'F', row: 0, col: 0, hideTexts: true,
+      cells: [[{ shown: 'Léa' }, { shown: '3', numeric: true, formula: '=NB.SI(A1:A9;"<>Léa")+NB.SI(B1:B9;">5")' }]],
+    });
+    expect(p.text).not.toContain('Léa');
+    expect(p.text).toContain('"<>Texte 1"');
+    expect(p.text).toContain('">5"');
+  });
+
   it('le contenu : formule en anglais stocké, nombre, logique, texte, vide', () => {
     expect(toCellContent('=SOMME(A1;A2)')).toEqual({ f: '=SUM(A1,A2)' });
     expect(toCellContent('=SI(A1>10;"oui";"non")')).toEqual({ f: '=IF(A1>10,"oui","non")' });

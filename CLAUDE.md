@@ -50,7 +50,7 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 
 ## Pièges connus (Univer 1.0.x)
 
-- Les versions d'Univer sont **figées** dans `package.json` (sans `^`) : plusieurs correctifs touchent des services internes. Pour monter de version : changer les 12 paquets ensemble, puis lancer tous les tests (surtout `formules-fr`, `tri-filtres`, `excel-reference`).
+- Les versions d'Univer sont **figées** dans `package.json` (sans `^`) : plusieurs correctifs touchent des services internes. Pour monter de version : changer les 11 paquets `@univerjs/preset*` ensemble, puis lancer tous les tests (surtout `formules-fr`, `tri-filtres`, `excel-reference`).
 - Les presets open source seulement. Le moteur de formules est celui d'Univer ; `getFormula().executeFormulas`
   calcule des sous-expressions (utilisé par « Évaluer la formule »).
 - Marge du plan : les en-têtes de lignes/colonnes sont agrandis (`setRowHeaderWidth`) ; les boutons sont une

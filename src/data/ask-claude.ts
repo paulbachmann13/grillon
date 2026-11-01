@@ -68,6 +68,14 @@ function hider(): (text: string) => string {
   };
 }
 
+/** Textes écrits en dur dans une formule (="Léa", NB.SI(B:B;"<>Lyon")) : masqués aussi, en gardant l'opérateur de comparaison ; les valeurs sans lettre (">5", ";") restent. */
+function hideLiterals(formula: string, hide: (text: string) => string): string {
+  return formula.replace(/"((?:[^"]|"")*)"/g, (whole, body: string) => {
+    const [, op = '', rest = ''] = /^(<>|>=|<=|=|<|>)?([\s\S]*)$/.exec(body) ?? [];
+    return /\p{L}/u.test(rest) ? `"${op}${hide(rest.replace(/""/g, '"'))}"` : whole;
+  });
+}
+
 const oneLine = (s: string) => s.replace(/[\t\r\n]+/g, ' ').trim();
 
 /** Le message complet à coller dans Claude, avec le nombre de lignes envoyées (pour le montrer avant de copier). */
@@ -97,7 +105,7 @@ export function buildPrompt(o: PromptOptions): Prompt {
         shown = hide(shown);
         hiddenTexts++;
       }
-      out.push(cell.formula ? `${cell.formula}${shown ? ` → ${shown}` : ''}` : shown);
+      out.push(cell.formula ? `${o.hideTexts ? hideLiterals(cell.formula, hide) : cell.formula}${shown ? ` → ${shown}` : ''}` : shown);
     }
     lines.push(out.join('\t'));
   }
