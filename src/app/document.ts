@@ -6,6 +6,7 @@ import { t } from '../i18n';
 import { openFile, saveAs, writeToHandle } from '../io/files';
 import { isTauri, openInNewWindow, pathOfHandle } from '../io/tauri-files';
 import type { IWorkbookData } from '../model/univer-types';
+import type { LossKind } from '../io/xlsx/losses';
 import { EXCEL_COLUMN_PX, EXCEL_ROW_PX, installExcelSheetDefaults, installFrenchDisplay } from '../univer/french-display';
 import { installFrenchFormulas } from '../univer/french-formulas';
 import { installFrenchEntry } from '../univer/french-entry';
@@ -60,6 +61,8 @@ export interface DocumentEvents {
 export class DocumentController {
   fileName = `${t('app.untitled')}.xlsx`;
   handle: FileSystemFileHandle | undefined;
+  /** Éléments du fichier ouvert que Grillon ne sait pas garder : on prévient avant d'écraser le fichier. */
+  private losses: LossKind[] = [];
   dirty = false;
   private loading = false;
   private ribbonReady = false;
@@ -201,9 +204,10 @@ export class DocumentController {
     this.events.onStatus(t('status.loading', { name }));
     try {
       if (/\.xlsx$/i.test(name)) {
-        const { importXlsxAsync } = await import('../io/xlsx/xlsx-client');
-        const data = await importXlsxAsync(bytes, { name });
+        const { detectLossesAsync, importXlsxAsync } = await import('../io/xlsx/xlsx-client');
+        const [data, losses] = await Promise.all([importXlsxAsync(bytes, { name }), detectLossesAsync(bytes)]);
         this.load(data, name, handle);
+        this.losses = losses;
         void rememberFile(handle, name);
       } else if (/\.(csv|txt|tsv)$/i.test(name)) {
         const { csvToWorkbook } = await import('../io/csv');
@@ -214,11 +218,12 @@ export class DocumentController {
         }
         // Un CSV ouvert devient un classeur ; « Enregistrer » produira un .xlsx (comme Excel le propose).
         this.load(csvToWorkbook(choice.text, name, choice.options), name.replace(/\.[^.]+$/, '.xlsx'));
+        this.losses = [];
       } else {
         this.events.onStatus(t('errors.unsupported', { name }), 'error');
         return;
       }
-      this.events.onStatus(t('status.saved'), 'success');
+      this.events.onStatus(this.losses.length ? t('losses.status') : t('status.saved'), this.losses.length ? 'info' : 'success');
       void this.autosaveNow();
     } catch (e) {
       console.error(e);
@@ -234,11 +239,13 @@ export class DocumentController {
 
   async save(): Promise<void> {
     if (!this.handle) return this.saveAs();
+    if (this.losses.length && !(await this.confirmLosses())) return;
     this.events.onStatus(t('status.saving'));
     try {
       const bytes = await this.exportXlsxBytes();
       if (await writeToHandle(this.handle, bytes)) {
         this.dirty = false;
+        this.losses = [];
         void rememberFile(this.handle, this.fileName);
         this.events.onStatus(t('status.savedTo', { name: this.fileName }), 'success');
         this.events.onChange();
@@ -250,6 +257,22 @@ export class DocumentController {
       console.error(e);
       this.events.onStatus(t('errors.save', { message: (e as Error).message }), 'error');
     }
+  }
+
+  /** Avant d'écraser un fichier qui contient ce que Grillon ne sait pas garder (comme le vérificateur de compatibilité d'Excel). */
+  private async confirmLosses(): Promise<boolean> {
+    const list = document.createElement('ul');
+    for (const kind of this.losses) list.append(Object.assign(document.createElement('li'), { textContent: t(`losses.kinds.${kind}`) }));
+    const p = (text: string) => Object.assign(document.createElement('p'), { textContent: text });
+    const { openDialog, box } = await import('../ui/dialog');
+    return openDialog({
+      title: t('losses.title', { name: this.fileName }),
+      testId: 'dialog-losses',
+      okLabel: t('losses.ok'),
+      cancelLabel: t('dialog.cancel'),
+      body: box(p(t('losses.intro')), list, p(t('losses.hint'))),
+      onOk: () => undefined,
+    });
   }
 
   async saveAs(): Promise<void> {
@@ -264,6 +287,7 @@ export class DocumentController {
       }
       if (handle) {
         this.handle = handle;
+        this.losses = [];
         this.fileName = handle.name;
         void rememberFile(handle, handle.name);
         this.events.onStatus(t('status.savedTo', { name: handle.name }), 'success');

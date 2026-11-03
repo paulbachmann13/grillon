@@ -117,7 +117,7 @@ export function buildPrompt(o: PromptOptions): Prompt {
     '',
     `Ma demande : ${o.question.trim() || '(à préciser)'}`,
     '',
-    `Voici ma feuille « ${o.sheetName} », cellules ${first}:${last}${truncated ? ` (seulement ${rows} lignes sur ${totalRows} et ${cols} colonnes sur ${totalCols}, le reste n’est pas montré)` : ''}.`,
+    `Voici ${o.hideTexts ? 'ma feuille' : `ma feuille « ${o.sheetName} »`}, cellules ${first}:${last}${truncated ? ` (seulement ${rows} lignes sur ${totalRows} et ${cols} colonnes sur ${totalCols}, le reste n’est pas montré)` : ''}.`,
     'Les colonnes sont désignées par leur lettre et les lignes par leur numéro (première ligne du tableau ci-dessous : les lettres). Les cellules sont séparées par des tabulations ; une cellule qui commence par = est une formule, suivie de → et de son résultat.',
     '',
     lines.join('\n'),

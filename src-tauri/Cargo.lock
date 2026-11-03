@@ -1183,7 +1183,7 @@ dependencies = [
 
 [[package]]
 name = "grillon"
-version = "1.15.1"
+version = "1.16.0"
 dependencies = [
  "serde_json",
  "tauri",

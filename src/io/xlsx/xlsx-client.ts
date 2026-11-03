@@ -4,6 +4,7 @@
  */
 import type { IWorkbookData } from '../../model/univer-types';
 import type { ImportOptions } from './import';
+import type { LossKind } from './losses';
 
 let worker: Worker | null = null;
 let failed = false;
@@ -64,5 +65,20 @@ export async function exportXlsxAsync(data: IWorkbookData): Promise<Uint8Array> 
     if ((e as Error).message !== 'worker') throw e;
     const { exportXlsx } = await import('./export');
     return exportXlsx(data);
+  }
+}
+
+/** Ce que Grillon ne sait pas garder dans ce fichier (perdu si on l'écrase). Jamais d'erreur : au pire, rien. */
+export async function detectLossesAsync(bytes: Uint8Array): Promise<LossKind[]> {
+  try {
+    const copy = bytes.slice();
+    return await call<LossKind[]>({ kind: 'losses', bytes: copy }, [copy.buffer]);
+  } catch {
+    try {
+      const { detectLosses } = await import('./losses');
+      return await detectLosses(bytes);
+    } catch {
+      return [];
+    }
   }
 }

@@ -220,6 +220,23 @@ export const fr = {
       aboutText: 'Tableur local et gratuit, compatible Excel. Vos classeurs restent sur votre ordinateur.',
     },
   },
+  losses: {
+    status: 'Fichier ouvert. Il contient des éléments que Grillon ne sait pas garder ; Grillon vous préviendra avant de l’écraser.',
+    title: 'Enregistrer par-dessus « {name} » ?',
+    intro: 'Ce fichier contient des éléments que Grillon ne sait pas garder. Ils seront perdus si vous l’écrasez :',
+    hint: 'Pour garder l’original intact, choisissez Annuler puis Fichier → Enregistrer sous.',
+    ok: 'Enregistrer quand même',
+    kinds: {
+      macros: 'des macros (VBA)',
+      threadedComments: 'des commentaires en fil de discussion (les notes, elles, sont gardées)',
+      smartArt: 'des graphiques SmartArt',
+      unsupportedCharts: 'des graphiques 3D, boursiers, de surface, Pareto, compartimentés, rayons de soleil ou cartes',
+      formulaNames: 'des noms définis par une formule',
+      advancedFilters: 'des filtres par couleur, « 10 premiers » ou de dates (le filtre lui-même est gardé)',
+      extraPivots: 'plusieurs tableaux croisés sur une même feuille (seul le premier reste un tableau croisé)',
+      excelTimelines: 'des chronologies d’Excel',
+    },
+  },
   askClaude: {
     button: 'Demander à Claude',
     paste: 'Coller la réponse',

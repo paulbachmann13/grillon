@@ -4,7 +4,8 @@ import { defineConfig, devices } from '@playwright/test';
  * Les tests tournent sur le build de production (service worker compris),
  * servi par `vite preview` sur le même sous-chemin que GitHub Pages.
  */
-const PORT = 4173;
+// Réglable : un autre projet peut occuper 4173 en même temps (GRILLON_E2E_PORT=4180 npm run test:e2e).
+const PORT = Number(process.env.GRILLON_E2E_PORT) || 4173;
 
 export default defineConfig({
   testDir: 'tests/e2e',

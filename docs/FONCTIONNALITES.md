@@ -1,6 +1,6 @@
 # Fonctionnalités et limites connues
 
-État à la fin de la **phase 5** (version 1.0).
+État de la version en cours (voir `CHANGELOG.md` pour le détail de chaque version).
 
 ## Fonctionnalités
 
@@ -77,6 +77,7 @@
   aperçu ; export de la feuille active au format Excel français.
 - **Ouvrir/enregistrer** : File System Access API (Chrome/Edge : Ctrl+S réécrit le fichier),
   sinon sélecteur de fichier + téléchargement (Safari, iOS, Firefox). Glisser-déposer.
+- **Avant d'écraser un fichier** qui contient ce que Grillon ne garde pas (macros, commentaires en fil, SmartArt, graphiques 3D/boursiers/Pareto…, noms définis par formule, filtres par couleur / 10 premiers / dynamiques, plusieurs tableaux croisés sur une feuille, chronologies d'Excel) : fenêtre qui liste les pertes, comme le vérificateur de compatibilité d'Excel. Application Mac : **enregistrement atomique** (copie complète puis remplacement : l'original reste intact en cas de coupure ou de disque plein ; navigateur : déjà le cas avec l'API File System Access).
 - **Sauvegarde automatique** dans IndexedDB, restauration à la réouverture.
 
 ### Demander à Claude

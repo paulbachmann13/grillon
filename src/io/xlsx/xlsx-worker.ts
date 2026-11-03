@@ -5,15 +5,19 @@
 import type { IWorkbookData } from '../../model/univer-types';
 import { exportXlsx } from './export';
 import { importXlsx, type ImportOptions } from './import';
+import { detectLosses } from './losses';
 
 type Request =
   | { id: number; kind: 'import'; bytes: Uint8Array; options: ImportOptions }
-  | { id: number; kind: 'export'; data: IWorkbookData };
+  | { id: number; kind: 'export'; data: IWorkbookData }
+  | { id: number; kind: 'losses'; bytes: Uint8Array };
 
 self.onmessage = async (e: MessageEvent<Request>) => {
   const req = e.data;
   try {
-    if (req.kind === 'import') {
+    if (req.kind === 'losses') {
+      (self as unknown as Worker).postMessage({ id: req.id, ok: true, result: await detectLosses(req.bytes) });
+    } else if (req.kind === 'import') {
       const data = await importXlsx(req.bytes, req.options);
       (self as unknown as Worker).postMessage({ id: req.id, ok: true, result: data });
     } else {

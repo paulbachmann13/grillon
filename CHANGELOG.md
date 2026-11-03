@@ -2,7 +2,16 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
-## [1.15.1] — 2026-10-31
+## [1.16.0] — 2026-11-03
+
+### Ajouté
+- **Grillon prévient avant d'écraser un fichier Excel qui contient ce qu'il ne sait pas garder** (macros, commentaires en fil de discussion, SmartArt, certains graphiques, noms calculés par une formule, filtres par couleur, plusieurs tableaux croisés sur une feuille, chronologies). Une fenêtre liste ce qui serait perdu ; *Annuler* ne touche pas au fichier, et *Fichier → Enregistrer sous* permet d'en garder une copie intacte.
+
+### Corrigé
+- **Enregistrement plus sûr dans l'application Mac** : Grillon écrit d'abord une copie complète à côté du fichier, puis la met à sa place. Si l'ordinateur s'éteint ou si le disque est plein pendant l'enregistrement, l'ancien fichier reste intact.
+- **« Demander à Claude » avec « Masquer les textes »** : les noms écrits dans une formule (par exemple `="Léa"`) et le nom de la feuille ne partent plus en clair.
+
+ — 2026-10-31
 
 ### Ajouté
 - **« Demander à Claude » et « Coller la réponse » sont maintenant pour tout le monde**, sans rien à activer : onglet Formules et menu Fichier. Vous sélectionnez des cellules, vous écrivez votre question, Grillon prépare un message à coller dans Claude (avec une case pour masquer les noms) ; ensuite vous collez sa réponse, vous voyez « avant / après », et un clic l'écrit dans la feuille (un seul ⌘Z défait tout).

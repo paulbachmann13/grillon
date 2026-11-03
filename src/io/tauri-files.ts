@@ -19,6 +19,31 @@ export interface TauriFileHandle {
 
 export const baseName = (path: string): string => path.split(/[\/]/).pop() || path;
 
+interface AtomicFs {
+  writeFile(path: string, data: Uint8Array): Promise<void>;
+  rename(from: string, to: string): Promise<void>;
+  remove(path: string): Promise<void>;
+}
+
+/** Fichier temporaire à côté de l'original (même disque : le renommage est instantané). Pas de point au début : les autorisations de Tauri refusent les fichiers cachés. */
+export const tempPathFor = (path: string): string => `${path}.grillon-tmp`;
+
+/**
+ * Écrit d'abord une copie complète à côté, puis la renomme sur l'original : si Grillon est coupée ou si le disque
+ * est plein pendant l'écriture, l'ancien fichier reste intact. Jamais de repli en écriture directe : un disque plein
+ * tronquerait l'original. En cas d'échec, l'erreur remonte (l'utilisatrice peut « Enregistrer sous »).
+ */
+export async function writeAtomic(path: string, data: Uint8Array, fs: AtomicFs): Promise<void> {
+  const tmp = tempPathFor(path);
+  try {
+    await fs.writeFile(tmp, data);
+    await fs.rename(tmp, path);
+  } catch (e) {
+    await fs.remove(tmp).catch(() => undefined);
+    throw e;
+  }
+}
+
 export function tauriHandleFromPath(path: string): FileSystemFileHandle {
   const name = baseName(path);
   const handle: TauriFileHandle = {
@@ -36,14 +61,14 @@ export function tauriHandleFromPath(path: string): FileSystemFileHandle {
           chunks.push(typeof data === 'string' ? new TextEncoder().encode(data) : data);
         },
         async close() {
-          const { writeFile } = await import('@tauri-apps/plugin-fs');
+          const fs = await import('@tauri-apps/plugin-fs');
           const out = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
           let offset = 0;
           for (const c of chunks) {
             out.set(c, offset);
             offset += c.length;
           }
-          await writeFile(path, out);
+          await writeAtomic(path, out, fs);
         },
       };
     },

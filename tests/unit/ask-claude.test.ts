@@ -81,6 +81,12 @@ describe('réponse de Claude', () => {
     const many = Array.from({ length: 700 }, (_, i) => `A${i + 1}: ${i}`).join('\n');
     expect(parseReply(`\`\`\`grillon\n${many}\n\`\`\``).edits).toHaveLength(500);
   });
+  it('textes masqués : le nom de la feuille (une classe, un nom) n’est pas envoyé', () => {
+    const cells = [[{ shown: '1', numeric: true }]];
+    expect(buildPrompt({ question: 'q', sheetName: '3e B Dupont', row: 0, col: 0, cells, hideTexts: true }).text).not.toContain('Dupont');
+    expect(buildPrompt({ question: 'q', sheetName: '3e B Dupont', row: 0, col: 0, cells }).text).toContain('« 3e B Dupont »');
+  });
+
   it('textes masqués : ceux écrits dans une formule aussi (opérateur gardé), pas les valeurs sans lettre', () => {
     const p = buildPrompt({
       question: 'q', sheetName: 'F', row: 0, col: 0, hideTexts: true,

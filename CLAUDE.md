@@ -114,6 +114,11 @@ Les tests LibreOffice (`tests/unit/libreoffice.test.ts`) sont ignorés si `soffi
 - Le code Rust n'a longtemps été écrit sans pouvoir le compiler localement : sur le Mac, lancer
   `npm run tauri dev` pour le vérifier.
 
+## Ne pas perdre de données
+
+- `src/io/xlsx/losses.ts` (`detectLosses`, dans le worker) liste à l'ouverture ce que Grillon ne garde pas ; `DocumentController.save` demande confirmation (`dialog-losses`) avant d'écraser ce fichier. Toute nouvelle limite d'import connue doit y être ajoutée (et dans `losses.kinds` de fr.ts). Test : `tests/e2e/pertes.spec.ts`.
+- Application Mac : `writeAtomic` (`src/io/tauri-files.ts`) écrit `<fichier>.grillon-tmp` puis renomme ; jamais de repli en écriture directe (un disque plein tronquerait l'original). Le nom temporaire ne commence pas par un point : les autorisations fs de Tauri refusent les fichiers cachés.
+
 ## Demander à Claude
 
 - Depuis la 1.15.1, « Demander à Claude » et « Coller la réponse » sont pour tout le monde (onglet Formules, menu Fichier). Il n'y a plus d'interrupteur bêta (il a existé en 1.15.0 : `localStorage['grillon-beta']`, case dans Paramètres, pastille « Bêta » ; retrouvable dans l'historique git si une nouvelle fonction doit être mise à l'essai).

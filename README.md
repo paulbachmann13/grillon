@@ -62,6 +62,8 @@ Détails : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Application Mac (Tauri)
 
+L'application de bureau n'est construite et testée **que pour Mac** ; sur Windows et Linux, utiliser le site (installable comme application depuis Chrome ou Edge).
+
 Le dossier `src-tauri/` emballe l'appli web dans une vraie application Mac (Tauri 2, licence MIT/Apache-2.0) :
 boîtes Ouvrir / Enregistrer natives, **Cmd+S réécrit le fichier d'origine**, double-clic sur un .xlsx ou .csv
 dans le Finder. L'accès aux fichiers est isolé dans `src/io/files.ts` et `src/io/tauri-files.ts`.
