@@ -154,6 +154,7 @@ export class DocumentController {
       { defaultStyle: { ff: 'Calibri', fs: 11 }, sheetOrder: [id], sheets: { [id]: { id, name: t('app.defaultSheet'), cellData: {}, rowCount: 1000, columnCount: 26, defaultColumnWidth: EXCEL_COLUMN_PX, defaultRowHeight: EXCEL_ROW_PX } } },
       `${t('app.untitled')}.xlsx`,
     );
+    this.losses = [];
     void clearAutosave();
   }
 
@@ -492,6 +493,7 @@ export class DocumentController {
       await stashDraft();
     }
     this.load(draft.data, draft.fileName, draft.handle, true);
+    this.losses = [];
     await clearDraft(id);
     this.markDirty();
   }
@@ -508,6 +510,7 @@ export class DocumentController {
     if (!entry?.data?.sheetOrder?.length) return false;
     try {
       this.load(entry.data, entry.fileName, entry.handle, entry.dirty);
+      this.losses = [];
       return true;
     } catch (e) {
       console.warn('Restauration impossible', e);
