@@ -101,6 +101,7 @@
 
 ### Performance
 - 50 000 lignes × 6 colonnes : ouverture ≈ 2 s, enregistrement ≈ 2 s ; 100 000 lignes : ≈ 7 s chacun (Chrome, PC portable).
+- Mesure du 03/11/2026 (Node, Mac, partie fichier seule, 8 colonnes dont une formule) : 100 000 lignes ≈ 2 s à l'enregistrement et ≈ 2 s à l'ouverture (≈ 0,5 Go de mémoire) ; 300 000 lignes ≈ 9 s chacun (≈ 1,5 Go). Le temps est proportionnel au nombre de cellules ; c'est la **mémoire** qui limite : ≈ 5 Go attendus pour 1 million de lignes, hors de portée d'un navigateur. Limite connue : au-delà de 300 000 lignes, Grillon n'est pas fiable (non mesuré dans l'interface : grille et calcul d'Univer en plus). La détection des éléments perdus est négligeable (< 0,1 s).
 - Lecture/écriture des .xlsx et recalcul des formules dans des Web Workers : l'interface ne se fige pas ; grille virtualisée (défilement fluide).
 
 ## Limites connues
