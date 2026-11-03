@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.16.1] — 2026-11-03
+
+### Corrigé
+- **L'avertissement avant d'écraser un fichier ne reste plus d'un classeur à l'autre** : après avoir ouvert un fichier Excel avec des éléments non gardés, puis un nouveau classeur ou une reprise, Grillon ne redemande plus à tort de confirmer.
+- **Le titre de la version 1.15.1 s'affichait mal** dans la liste des nouveautés : c'est réparé.
+
 ## [1.16.0] — 2026-11-03
 
 ### Ajouté
